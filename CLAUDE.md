@@ -1,74 +1,76 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Этот файл содержит инструкции для Claude Code при работе с данным репозиторием.
 
-## Agent Model Usage
+## Важное правило: выбор модели для агентов
 
-**Always use `model: "haiku"` when spawning Agent tool calls for research, web search, or information gathering tasks.** Only use Sonnet/Opus agents for complex code generation or analysis tasks.
+**При запуске агентов (Agent tool) для поиска информации, веб-поиска или исследования — всегда использовать `model: "haiku"`.**
+Sonnet/Opus использовать только для сложной генерации или анализа кода.
 
-## Commands
+## Команды
 
 ```bash
-# Install dependencies
+# Установка зависимостей
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 
-# Run the server (dev)
+# Запуск сервера (режим разработки)
 uvicorn app.main:app --reload
 
-# Run tests
+# Тесты
 pytest
 
-# Run single test
+# Запуск одного теста
 pytest tests/test_health.py::test_health -v
 
-# Lint
+# Линтер
 ruff check .
 
-# Type check
+# Проверка типов
 mypy app/
 
 # Docker
 docker-compose up --build
 ```
 
-## Architecture
+## Архитектура
 
-**FastAPI service** that proxies VK API calls and (in future) caches data locally.
+**FastAPI-сервис**, который проксирует запросы к VK API и (в будущем) кэширует данные локально.
 
-### Request flow
+### Поток запроса
 
 ```
-Client → X-VK-Token header → API endpoint → Service layer → VK API
+Клиент → заголовок X-VK-Token → API endpoint → слой сервисов → VK API
 ```
 
-The VK user access token is passed per-request via `X-VK-Token` header (`app/api/v1/deps.py`). No token storage yet — planned for future multi-user support.
+VK-токен пользователя передаётся в каждом запросе через заголовок `X-VK-Token` (`app/api/v1/deps.py`). Хранение токенов пока не реализовано — запланировано для мультипользовательского режима.
 
-### Layer separation
+### Слои приложения
 
-- `app/core/` — config (`Settings` via pydantic-settings), exceptions, logging
-- `app/services/` — all VK API communication. Two HTTP clients:
-  - `VKApiClient` (`services/vk_client.py`) — for `api.vk.com/method/ads.*` (legacy ads API)
-  - `VKAdsApiClient` (`services/vk_client.py`) — for `ads.vk.com/api/v2` (new VK Реклама API)
-- `app/schemas/` — Pydantic request/response models
-- `app/api/v1/` — FastAPI routers, one file per domain area
+- `app/core/` — конфиг (`Settings` через pydantic-settings), исключения, логирование
+- `app/services/` — вся работа с VK API. Два HTTP-клиента:
+  - `VKApiClient` (`services/vk_client.py`) — для `api.vk.com/method/ads.*` (старый Ads API)
+  - `VKAdsApiClient` (`services/vk_client.py`) — для `ads.vk.com/api/v2` (новая VK Реклама)
+- `app/schemas/` — Pydantic-модели запросов и ответов
+- `app/api/v1/` — FastAPI-роутеры, по одному файлу на каждую область
 
-### VK API distinction
+### Два разных рекламных API ВКонтакте
 
-There are two separate VK advertising APIs — do not confuse them:
-- **`api.vk.com/method/ads.*`** — legacy VK Ads, accessed via standard VK OAuth token, rate-limited per token (error codes 6, 9, 601)
-- **`ads.vk.com/api/v2`** — new VK Реклама, requires manual access via `ads_api@vk.team`, returns `X-RateLimit-*` headers, HTTP 429 on limit exceeded
+Важно не путать:
+- **`api.vk.com/method/ads.*`** — старый VK Ads. Стандартный VK OAuth-токен. Лимиты скрыты, при превышении — коды ошибок 6, 9, 601
+- **`ads.vk.com/api/v2`** — новая VK Реклама. Доступ только по заявке на `ads_api@vk.team`. Лимиты приходят в заголовках ответа (`X-RateLimit-*`), при превышении — HTTP 429
 
-Current services (`ads_accounts`, `campaigns`, `ads`, `targeting`) use the legacy API via `VKApiClient`.
+Текущие сервисы (`ads_accounts`, `campaigns`, `ads`, `targeting`) используют старый API через `VKApiClient`.
 
-### Error handling
+### Обработка ошибок
 
-`VKAPIError` and `VKAdsAPIError` are raised in service layer and caught either by global exception handlers in `app/main.py` or by `raise_http_from_vk_error()` in routers. Key VK error codes: 5=invalid token, 601=daily quota exceeded.
+`VKAPIError` и `VKAdsAPIError` выбрасываются в слое сервисов и перехватываются либо глобальными обработчиками в `app/main.py`, либо функцией `raise_http_from_vk_error()` в роутерах. Ключевые коды ошибок VK: 5 = невалидный токен, 601 = дневной лимит исчерпан.
 
-## Planned architecture (discussed, not yet implemented)
+## Запланированная архитектура (обсуждена, ещё не реализована)
 
-- PostgreSQL replacing SQLite; unit of sync is **ad account** (not user) — multiple users share one account's data
-- Token pool per account: pick token with lowest recent usage, read remaining quota from `X-RateLimit-Hourly-Remaining`
-- Celery + Redis for background sync (campaigns every 10 min, statistics every hour)
-- JWT auth layer; `user_accounts` many-to-many table
-- Token auto-refresh before 24h expiry
+- PostgreSQL вместо SQLite
+- Единица синхронизации — **рекламный кабинет** (не пользователь): несколько пользователей/таргетологов одного кабинета получают данные из одной синхронизации
+- Пул токенов на кабинет: выбирать токен с наименьшей нагрузкой, читать остаток лимита из `X-RateLimit-Hourly-Remaining`
+- Celery + Redis для фоновой синхронизации (кампании — каждые 10 мин, статистика — каждый час)
+- JWT-авторизация на уровне сервиса; таблица `user_accounts` (многие-ко-многим)
+- Автообновление токенов до истечения 24 часов
