@@ -7,17 +7,17 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #f5f6fa;
-  --surface: #ffffff;
-  --surface2: #f0f2f8;
-  --border: #e0e4ef;
-  --accent: #2688eb;
-  --accent-hover: #1a73d3;
-  --text: #1a1a2e;
-  --text-dim: #6b7280;
-  --green: #12b76a;
-  --red: #f04438;
-  --yellow: #f79009;
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #22263a;
+  --border: #2e3350;
+  --accent: #5b8cff;
+  --accent-hover: #7aa3ff;
+  --text: #e2e6f3;
+  --text-dim: #8892b0;
+  --green: #4ade80;
+  --red: #f87171;
+  --yellow: #fbbf24;
   --radius: 8px;
   --sidebar: 200px;
   --panel-w: 480px;
@@ -92,7 +92,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; b
   transition: all 0.1s; border-left: 3px solid transparent;
 }
 .nav-item:hover { background: var(--surface2); color: var(--text); }
-.nav-item.active { background: #e8f0fd; color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+.nav-item.active { background: rgba(91,140,255,0.12); color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
 .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
 .nav-sep { height: 1px; background: var(--border); margin: 6px 12px; }
 
@@ -199,7 +199,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; b
   transition: background 0.1s; cursor: pointer;
 }
 .data-table tbody tr:hover { background: var(--surface2); }
-.data-table tbody tr.selected { background: #e8f0fd; }
+.data-table tbody tr.selected { background: rgba(91,140,255,0.1); }
 .data-table td { padding: 10px 12px; vertical-align: middle; }
 .data-table tfoot td {
   padding: 10px 12px; background: var(--surface);
@@ -243,11 +243,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; b
 
 /* ── BADGES ── */
 .badge { display: inline-block; padding: 2px 7px; border-radius: 99px; font-size: 11px; font-weight: 600; }
-.badge-green { background: rgba(18,183,106,0.1); color: var(--green); }
-.badge-red { background: rgba(240,68,56,0.1); color: var(--red); }
-.badge-blue { background: rgba(38,136,235,0.1); color: var(--accent); }
-.badge-gray { background: rgba(107,114,128,0.1); color: var(--text-dim); }
-.badge-yellow { background: rgba(247,144,9,0.1); color: var(--yellow); }
+.badge-green { background: rgba(74,222,128,0.15); color: var(--green); }
+.badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+.badge-blue { background: rgba(91,140,255,0.15); color: var(--accent); }
+.badge-gray { background: rgba(136,146,176,0.15); color: var(--text-dim); }
+.badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
 
 /* ── CHECKBOX ── */
 input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
@@ -316,9 +316,9 @@ tr:hover .row-menu-btn { opacity: 1; }
 /* ── TOAST ── */
 #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
 .toast { padding: 10px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500; max-width: 320px; animation: fadeUp 0.2s ease; border: 1px solid; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-.toast-success { background: #f0fdf4; border-color: #a7f3d0; color: #065f46; }
-.toast-error { background: #fff1f0; border-color: #fca5a5; color: #7f1d1d; }
-.toast-info { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+.toast-success { background: rgba(74,222,128,0.1); border-color: var(--green); color: var(--green); }
+.toast-error { background: rgba(248,113,113,0.1); border-color: var(--red); color: var(--red); }
+.toast-info { background: rgba(91,140,255,0.1); border-color: var(--accent); color: var(--accent); }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ── SCROLLBAR ── */
@@ -488,6 +488,23 @@ const DemoData = {
     { id: 234567, screen_name: 'sokol_retail', name: 'Соколов Ретейл', type: 'group', is_closed: 0, members_count: 31400 },
     { id: 345678, screen_name: 'vk', name: 'ВКонтакте', type: 'page', is_closed: 0, members_count: 98400000 },
   ],
+  adgroups: {
+    2001: [
+      { id: 4001, campaign_id: 2001, name: 'ГЕО/ Красная пахра / 2 крео', status: 1, day_limit: '300', strategy: 'min_price', sex: 1, age_from: 30, age_to: 62, spent: 92.96, results: 0, cpr: 0 },
+      { id: 4002, campaign_id: 2001, name: 'ГЕО/ Руднево / 2 крео', status: 1, day_limit: '300', strategy: 'min_price', sex: 1, age_from: 30, age_to: 62, spent: 195.42, results: 0, cpr: 0 },
+      { id: 4003, campaign_id: 2001, name: 'ГЕО/ Микрон / 2 крео', status: 1, day_limit: '300', strategy: 'min_price', sex: 1, age_from: 25, age_to: 55, spent: 189.03, results: 0, cpr: 0 },
+      { id: 4004, campaign_id: 2001, name: 'ГЕО/ Калуга / 2 крео', status: 1, day_limit: '300', strategy: 'min_price', sex: 1, age_from: 25, age_to: 55, spent: 189.93, results: 0, cpr: 0 },
+      { id: 4005, campaign_id: 2001, name: 'ГЕО/ Алабушево / 2 крео', status: 1, day_limit: '300', strategy: 'min_price', sex: 0, age_from: 30, age_to: 62, spent: 190.17, results: 0, cpr: 0 },
+      { id: 4006, campaign_id: 2001, name: 'ГЕО/Печатники / 2 крео', status: 1, day_limit: '300', strategy: 'min_price', sex: 1, age_from: 30, age_to: 62, spent: 186.79, results: 0, cpr: 0 },
+    ],
+    2006: [
+      { id: 4007, campaign_id: 2006, name: 'Топ пром / супер гео / Печатники', status: 0, day_limit: '500', strategy: 'min_price', sex: 1, age_from: 28, age_to: 60, spent: 0, results: 0, cpr: 0 },
+      { id: 4008, campaign_id: 2006, name: 'Топ пром / супер гео / Алабушево', status: 0, day_limit: '500', strategy: 'min_price', sex: 1, age_from: 28, age_to: 60, spent: 0, results: 0, cpr: 0 },
+    ],
+    2007: [
+      { id: 4009, campaign_id: 2007, name: 'Охватная / Москва и МО', status: 1, day_limit: '2000', strategy: 'min_price', sex: 0, age_from: 25, age_to: 65, spent: 4210.50, results: 3, cpr: 1403.50 },
+    ],
+  },
   _nextId: 9000,
   newId() { return ++this._nextId; },
 };
@@ -567,6 +584,31 @@ const Demo = {
       }
       return { response: 1 };
     }
+    // adgroups (demo-only layer)
+    if (method === 'GET' && path === '/_demo/adgroups') {
+      const campId = +params?.campaign_id;
+      if (campId) return DemoData.adgroups[campId] ?? [];
+      const all = [];
+      Object.values(DemoData.adgroups).forEach(arr => all.push(...arr));
+      return all;
+    }
+    if (method === 'PATCH' && path.match(/^\/_demo\/adgroups\/\d+$/)) {
+      const gid = +path.split('/').pop();
+      for (const arr of Object.values(DemoData.adgroups)) {
+        const g = arr.find(x => x.id === gid);
+        if (g) { Object.assign(g, body); break; }
+      }
+      return { ok: 1 };
+    }
+    if (method === 'DELETE' && path.match(/^\/_demo\/adgroups\/\d+$/)) {
+      const gid = +path.split('/').pop();
+      for (const arr of Object.values(DemoData.adgroups)) {
+        const i = arr.findIndex(x => x.id === gid);
+        if (i !== -1) { arr.splice(i, 1); break; }
+      }
+      return { ok: 1 };
+    }
+
     const rtListM = path.match(/^\/api\/v1\/accounts\/(\d+)\/targeting\/retargeting$/);
     if (rtListM && method === 'GET') return DemoData.retargeting[+rtListM[1]] ?? [];
     if (rtListM && method === 'POST') {
@@ -797,8 +839,8 @@ const Views = {
   },
 
   _tabsHtml(active) {
-    const tabs = [['campaigns','Кампании'],['ads','Объявления'],['stats','Статистика'],['audiences','Аудитории']];
-    return `<div class="tabs-bar">${tabs.map(([v,l]) => `<div class="tab ${active===v?'active':''}" onclick="Views.${v==='stats'?'stats':v==='audiences'?'audiences':v}()">${l}</div>`).join('')}</div>`;
+    const tabs = [['campaigns','Кампании'],['adgroups','Группы'],['ads','Объявления'],['stats','Статистика'],['audiences','Аудитории']];
+    return `<div class="tabs-bar">${tabs.map(([v,l]) => `<div class="tab ${active===v?'active':''}" onclick="Views.${v}()">${l}</div>`).join('')}</div>`;
   },
 
   _campToolbar(accId) {
@@ -1044,6 +1086,235 @@ const Views = {
       State.campaigns = [];
       Views.campaigns();
     } catch(e) { toast(e.message, 'error'); }
+  },
+
+  // ── AD GROUPS ─────────────────────────────────────────────────────────────
+  async adgroups(campaignId) {
+    State.currentTab = 'adgroups';
+    await App._loadAccounts();
+    const accId = State.selectedAccount;
+    if (!State.campaigns.length) {
+      const data = await api.get(`/api/v1/accounts/${accId}/campaigns/`);
+      State.campaigns = data.response ?? data ?? [];
+    }
+    App._renderShell(App._accountBarHtml(), Views._tabsHtml('adgroups'), Views._agToolbar(accId), Views._loadingTable(8));
+    try {
+      const params = campaignId ? { campaign_id: String(campaignId) } : {};
+      const groups = await api.get('/_demo/adgroups', params);
+      State._adgroups = groups;
+      Views._renderAdgroupsTable(accId);
+    } catch(e) { Views._tableError(e.message); }
+  },
+
+  _agToolbar(accId) {
+    const campOpts = State.campaigns.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    return `
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="Views._createAdgroup(${accId})">Создать группу</button>
+        <select class="form-select" id="ag-camp-filter" style="width:220px" onchange="Views.adgroups(+this.value||undefined)">
+          <option value="">Все кампании</option>${campOpts}
+        </select>
+        <button class="btn-icon" onclick="Views.adgroups()" title="Обновить">↻</button>
+        <div class="toolbar-sep"></div>
+        <div class="search-input">🔍 <input type="text" placeholder="Поиск групп" id="ag-search" oninput="Views._filterAdgroups(${accId})"></div>
+      </div>`;
+  },
+
+  _renderAdgroupsTable(accId) {
+    const q = (document.getElementById('ag-search')?.value || '').toLowerCase();
+    const sexMap = { 0: 'Любой', 1: 'Мужской', 2: 'Женский' };
+    const list = (State._adgroups || []).filter(g => !q || g.name.toLowerCase().includes(q));
+    const totalSpent = list.reduce((s, g) => s + (g.spent || 0), 0);
+    const rows = list.length ? list.map(g => {
+      const camp = State.campaigns.find(c => c.id === g.campaign_id);
+      return `<tr onclick="Views._openAdgroupPanel(${g.id},${accId})">
+        <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox"></td>
+        <td class="col-toggle">${statusToggle(g.id, g.status, 'Views._toggleAdgroupStatus')}</td>
+        <td class="col-name">
+          <div class="cell-name">${g.name}</div>
+          <div class="cell-dim">${camp?.name ?? ''}</div>
+        </td>
+        <td class="col-status">${statusText(g.status)}</td>
+        <td class="col-budget cell-right">${g.day_limit && g.day_limit !== '0' ? fmtMoney(g.day_limit) + '/д' : 'Без лимита'}</td>
+        <td style="width:120px;font-size:12px;color:var(--text-dim)">${sexMap[g.sex] ?? '—'}, ${g.age_from}–${g.age_to}</td>
+        <td class="col-result cell-right">${fmtNum(g.results)}</td>
+        <td class="col-spend cell-right">${fmtMoney(g.spent)}</td>
+        <td class="col-actions"><button class="row-menu-btn" onclick="event.stopPropagation();Views._agRowMenu(event,${g.id},${accId})">⋯</button></td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="9"><div class="empty"><div class="empty-icon">📭</div>Нет групп объявлений</div></td></tr>`;
+    const tbl = `<table class="data-table">
+      <thead><tr>
+        <th class="col-check"><input type="checkbox"></th>
+        <th class="col-toggle"></th>
+        <th class="col-name">Название группы</th>
+        <th class="col-status">Статус</th>
+        <th class="col-budget cell-right">Бюджет</th>
+        <th style="width:120px">Демография</th>
+        <th class="col-result cell-right">Результат</th>
+        <th class="col-spend cell-right">Потрачено</th>
+        <th class="col-actions"></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="4">Итого: ${list.length} групп</td><td></td><td></td><td></td><td class="cell-right">${fmtMoney(totalSpent)}</td><td></td></tr></tfoot>
+    </table>`;
+    const ta = document.querySelector('.table-area');
+    if (ta) ta.innerHTML = tbl;
+  },
+
+  _filterAdgroups(accId) { Views._renderAdgroupsTable(accId); },
+
+  async _toggleAdgroupStatus(id, checked) {
+    const status = checked ? 1 : 0;
+    try {
+      await api.patch(`/_demo/adgroups/${id}`, { status });
+      const g = (State._adgroups || []).find(x => x.id === id);
+      if (g) g.status = status;
+      toast(checked ? 'Группа запущена' : 'Группа остановлена', 'success');
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  _openAdgroupPanel(id, accId) {
+    const g = (State._adgroups || []).find(x => x.id === id);
+    if (!g) return;
+    const sexOpts = [['0','Любой'],['1','Мужской'],['2','Женский']];
+    Panel.open(`Группа: ${g.name}`, `
+      <div class="form-section">
+        <div class="form-section-title">Основное</div>
+        <div class="form-row single"><div class="form-group"><label class="form-label">Название</label><input class="form-input" id="ag-name" value="${g.name}"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Статус</label>
+            <select class="form-select" id="ag-status">
+              <option value="1" ${g.status===1?'selected':''}>Активна</option>
+              <option value="0" ${g.status===0?'selected':''}>Остановлена</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Дневной бюджет (₽)</label>
+            <input class="form-input" id="ag-budget" type="number" value="${g.day_limit||0}">
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Демография</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Пол</label>
+            <select class="form-select" id="ag-sex">
+              ${sexOpts.map(([v,l]) => `<option value="${v}" ${String(g.sex)===v?'selected':''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Возраст</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input class="form-input" id="ag-age-from" type="number" value="${g.age_from}" style="width:70px">
+              <span style="color:var(--text-dim)">—</span>
+              <input class="form-input" id="ag-age-to" type="number" value="${g.age_to}" style="width:70px">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Статистика</div>
+        <div class="stat-cards">
+          <div class="stat-card"><div class="stat-label">Потрачено</div><div class="stat-value">${fmtMoney(g.spent)}</div></div>
+          <div class="stat-card"><div class="stat-label">Результатов</div><div class="stat-value">${fmtNum(g.results)}</div></div>
+          <div class="stat-card"><div class="stat-label">Цена/рез-т</div><div class="stat-value">${g.cpr ? fmtMoney(g.cpr) : '—'}</div></div>
+        </div>
+      </div>`,
+      `<button class="btn btn-danger btn-sm" onclick="Views._deleteAdgroup(${id})">Удалить</button>
+       <button class="btn btn-primary" onclick="Views._saveAdgroup(${id},${accId})">Сохранить</button>`
+    );
+  },
+
+  async _saveAdgroup(id, accId) {
+    const body = {
+      name: document.getElementById('ag-name').value.trim(),
+      status: +document.getElementById('ag-status').value,
+      day_limit: document.getElementById('ag-budget').value,
+      sex: +document.getElementById('ag-sex').value,
+      age_from: +document.getElementById('ag-age-from').value,
+      age_to: +document.getElementById('ag-age-to').value,
+    };
+    try {
+      await api.patch(`/_demo/adgroups/${id}`, body);
+      const g = (State._adgroups || []).find(x => x.id === id);
+      if (g) Object.assign(g, body);
+      Panel.close(); toast('Сохранено', 'success');
+      Views._renderAdgroupsTable(accId);
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  async _deleteAdgroup(id) {
+    if (!confirm('Удалить группу?')) return;
+    try {
+      await api.delete(`/_demo/adgroups/${id}`);
+      if (State._adgroups) { const i = State._adgroups.findIndex(x => x.id === id); if (i !== -1) State._adgroups.splice(i, 1); }
+      Panel.close(); toast('Удалено', 'success');
+      Views._renderAdgroupsTable(State.selectedAccount);
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  _createAdgroup(accId) {
+    const campOpts = State.campaigns.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    Panel.open('Новая группа объявлений', `
+      <div class="form-section">
+        <div class="form-row single"><div class="form-group"><label class="form-label">Название *</label><input class="form-input" id="ng-name" placeholder="ГЕО / Москва / 2 крео"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Кампания</label><select class="form-select" id="ng-camp">${campOpts}</select></div>
+          <div class="form-group"><label class="form-label">Дневной бюджет (₽)</label><input class="form-input" id="ng-budget" type="number" value="300"></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Демография</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Пол</label>
+            <select class="form-select" id="ng-sex"><option value="0">Любой</option><option value="1">Мужской</option><option value="2">Женский</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Возраст</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input class="form-input" id="ng-af" type="number" value="25" style="width:70px">
+              <span style="color:var(--text-dim)">—</span>
+              <input class="form-input" id="ng-at" type="number" value="55" style="width:70px">
+            </div>
+          </div>
+        </div>
+      </div>`,
+      `<button class="btn btn-primary" onclick="Views._submitAdgroup(${accId})">Создать</button>`
+    );
+  },
+
+  async _submitAdgroup(accId) {
+    const name = document.getElementById('ng-name').value.trim();
+    if (!name) { toast('Введите название', 'error'); return; }
+    const campId = +document.getElementById('ng-camp').value;
+    const ng = {
+      id: DemoData.newId(), campaign_id: campId, name,
+      status: 1, day_limit: document.getElementById('ng-budget').value,
+      strategy: 'min_price',
+      sex: +document.getElementById('ng-sex').value,
+      age_from: +document.getElementById('ng-af').value,
+      age_to: +document.getElementById('ng-at').value,
+      spent: 0, results: 0, cpr: 0,
+    };
+    if (!DemoData.adgroups[campId]) DemoData.adgroups[campId] = [];
+    DemoData.adgroups[campId].push(ng);
+    if (!State._adgroups) State._adgroups = [];
+    State._adgroups.push(ng);
+    Panel.close(); toast('Группа создана', 'success');
+    Views._renderAdgroupsTable(accId);
+  },
+
+  _agRowMenu(e, id, accId) {
+    e.stopPropagation();
+    const menuId = `row-menu-${id}`;
+    let existing = document.getElementById(menuId);
+    if (existing) { existing.remove(); return; }
+    const menu = document.createElement('div');
+    menu.id = menuId;
+    menu.className = 'dropdown-menu open';
+    menu.style.cssText = `position:fixed;left:${e.clientX-160}px;top:${e.clientY}px`;
+    menu.innerHTML = `
+      <div class="dropdown-item" onclick="Views._openAdgroupPanel(${id},${accId});document.getElementById('${menuId}').remove()">✏️ Редактировать</div>
+      <div class="dropdown-item danger" onclick="Views._deleteAdgroup(${id});document.getElementById('${menuId}').remove()">🗑 Удалить</div>`;
+    document.body.appendChild(menu);
+    setTimeout(() => { document.addEventListener('click', () => menu.remove(), { once: true }); }, 0);
   },
 
   // ── ADS ──────────────────────────────────────────────────────────────────
