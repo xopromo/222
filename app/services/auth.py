@@ -25,8 +25,8 @@ def _generate_pkce() -> tuple[str, str]:
 class VKOAuthService:
     """VK ID OAuth 2.1 (PKCE) flow"""
 
-    VK_ID_AUTH_URL = "https://id.vk.com/oauth2/auth"
-    VK_ID_TOKEN_URL = "https://id.vk.com/oauth2/token"
+    VK_ID_AUTH_URL = "https://id.vk.ru/authorize"
+    VK_ID_TOKEN_URL = "https://id.vk.ru/oauth2/token"
 
     def __init__(self):
         self._settings = get_settings()
