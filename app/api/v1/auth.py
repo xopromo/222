@@ -13,8 +13,7 @@ async def login(scope: str = "ads,offline,wall,groups,stats"):
 
 
 @router.get("/callback")
-async def callback(code: str):
+async def callback(code: str, device_id: str = "", state: str = ""):
     svc = VKOAuthService()
-    token_data = await svc.exchange_code(code)
-    # In a real app: persist token to DB / session, then redirect to frontend
+    token_data = await svc.exchange_code(code, device_id=device_id, state=state)
     return token_data
