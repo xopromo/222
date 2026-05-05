@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VK Ads · Pro</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #080b0f;
+  --bg1:      #0d1117;
+  --bg2:      #111620;
+  --bg3:      #161c2a;
+  --border:   #1e2a3a;
+  --border2:  #253044;
+  --text:     #cdd6f4;
+  --dim:      #6272a4;
+  --dim2:     #44475a;
+  --cyan:     #00d4aa;
+  --green:    #50fa7b;
+  --red:      #ff5555;
+  --orange:   #ffb86c;
+  --yellow:   #f1fa8c;
+  --purple:   #bd93f9;
+  --pink:     #ff79c6;
+  --blue:     #8be9fd;
+  --accent:   #00d4aa;
+  --r: 4px;
+}
+html, body { height: 100%; }
+body {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  background: var(--bg); color: var(--text); font-size: 11px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 12px; background: var(--bg1);
+  border-bottom: 1px solid var(--border); flex-shrink: 0; height: 34px;
+}
+.topbar-logo { color: var(--cyan); font-weight: 700; font-size: 12px; letter-spacing: .05em; }
+.topbar-sep { width: 1px; height: 18px; background: var(--border2); }
+.topbar-label { color: var(--dim); font-size: 10px; }
+.t-input {
+  background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r);
+  color: var(--text); padding: 3px 7px; font-size: 11px; font-family: inherit; outline: none; width: 180px;
+}
+.t-input:focus { border-color: var(--cyan); }
+#t-api { width: 160px; }
+#t-token { width: 160px; }
+.tb-btn {
+  padding: 3px 10px; border-radius: var(--r); border: 1px solid; cursor: pointer;
+  font-size: 11px; font-family: inherit; font-weight: 600; transition: all .12s;
+}
+.tb-btn-cyan { background: transparent; border-color: var(--cyan); color: var(--cyan); }
+.tb-btn-cyan:hover { background: var(--cyan); color: var(--bg); }
+.tb-btn-dim { background: transparent; border-color: var(--border2); color: var(--dim); }
+.tb-btn-dim:hover { border-color: var(--text); color: var(--text); }
+.tb-flex { flex: 1; }
+.back-link { color: var(--dim); font-size: 10px; text-decoration: none; }
+.back-link:hover { color: var(--cyan); }
+
+/* ── CHART AREA ── */
+.chart-area {
+  height: 110px; background: var(--bg1); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; position: relative; overflow: hidden;
+}
+.chart-area canvas { display: block; width: 100%; height: 100%; }
+.chart-overlay {
+  position: absolute; top: 4px; left: 10px;
+  display: flex; gap: 20px; pointer-events: none;
+}
+.chart-stat { display: flex; flex-direction: column; gap: 1px; }
+.chart-stat-label { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.chart-stat-value { font-size: 13px; font-weight: 700; }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: flex; align-items: center; gap: 0;
+  background: var(--bg1); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; overflow-x: auto; white-space: nowrap;
+}
+.stats-bar::-webkit-scrollbar { height: 3px; }
+.stats-bar::-webkit-scrollbar-thumb { background: var(--border2); }
+.sbar-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sbar-label { color: var(--dim); font-size: 10px; }
+.sbar-value { font-size: 12px; font-weight: 700; }
+.sbar-sub { font-size: 9px; color: var(--dim); }
+
+/* ── CTRL BAR ── */
+.ctrl-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px; background: var(--bg2);
+  border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+}
+.ctrl-sep { width: 1px; height: 16px; background: var(--border2); }
+.ctrl-label { color: var(--dim); font-size: 10px; }
+.c-input {
+  background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r);
+  color: var(--text); padding: 2px 6px; font-size: 11px; font-family: inherit; outline: none; width: 70px;
+}
+.c-input:focus { border-color: var(--cyan); }
+.c-select {
+  background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r);
+  color: var(--text); padding: 2px 6px; font-size: 11px; font-family: inherit; outline: none;
+}
+.c-select:focus { border-color: var(--cyan); }
+.c-btn {
+  padding: 2px 9px; border-radius: var(--r); border: 1px solid; cursor: pointer;
+  font-size: 11px; font-family: inherit; transition: all .12s; white-space: nowrap;
+}
+.c-btn-green { background: transparent; border-color: var(--green); color: var(--green); }
+.c-btn-green:hover { background: var(--green); color: var(--bg); }
+.c-btn-red { background: transparent; border-color: var(--red); color: var(--red); }
+.c-btn-red:hover { background: var(--red); color: var(--bg); }
+.c-btn-dim { background: transparent; border-color: var(--border2); color: var(--dim); }
+.c-btn-dim:hover { border-color: var(--text); color: var(--text); }
+.c-btn-cyan { background: transparent; border-color: var(--cyan); color: var(--cyan); }
+.c-btn-cyan:hover { background: var(--cyan); color: var(--bg); }
+.ckbox { display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--dim); user-select: none; }
+.ckbox input { accent-color: var(--cyan); width: 12px; height: 12px; cursor: pointer; }
+.ckbox:hover { color: var(--text); }
+
+/* ── LAYOUT ── */
+.body-area { flex: 1; display: flex; overflow: hidden; }
+
+/* ── TABLE ── */
+.table-wrap {
+  flex: 1; overflow: auto; position: relative;
+}
+.table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+.table-wrap::-webkit-scrollbar-track { background: var(--bg); }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+.dtable { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+.dtable thead { position: sticky; top: 0; z-index: 20; }
+.dtable thead tr.hdr-row th {
+  background: var(--bg2); padding: 5px 8px; text-align: right;
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--dim); border-bottom: 1px solid var(--border2);
+  border-right: 1px solid var(--border); cursor: pointer; white-space: nowrap;
+  user-select: none;
+}
+.dtable thead tr.hdr-row th:hover { color: var(--cyan); }
+.dtable thead tr.hdr-row th.th-name { text-align: left; }
+.dtable thead tr.filter-row th {
+  background: var(--bg2); padding: 2px 4px;
+  border-bottom: 1px solid var(--border2); border-right: 1px solid var(--border);
+}
+.dtable thead tr.filter-row th input {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 2px; color: var(--text); padding: 1px 4px;
+  font-size: 10px; font-family: inherit; outline: none;
+}
+.dtable thead tr.filter-row th input:focus { border-color: var(--cyan); }
+.dtable tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .08s;
+}
+.dtable tbody tr:hover { background: var(--bg3); }
+.dtable tbody tr.active { background: rgba(0,212,170,0.06); }
+.dtable tbody tr.sel { background: rgba(0,212,170,0.1); }
+.dtable td {
+  padding: 4px 8px; text-align: right;
+  border-right: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dtable td.td-name { text-align: left; font-size: 10px; max-width: 260px; }
+.dtable td.td-check { width: 24px; text-align: center; padding: 0; }
+.dtable td.td-star { width: 20px; text-align: center; padding: 0; color: var(--dim2); cursor: pointer; }
+.dtable td.td-star.starred { color: var(--yellow); }
+.dtable td.td-toggle { width: 40px; text-align: center; padding: 2px; }
+.dtable tfoot td {
+  padding: 4px 8px; background: var(--bg2); border-top: 2px solid var(--border2);
+  text-align: right; font-weight: 700; color: var(--cyan); position: sticky; bottom: 0;
+  border-right: 1px solid var(--border);
+}
+.dtable tfoot td.td-name { text-align: left; color: var(--dim); }
+
+/* value colors */
+.v-pos { color: var(--green); }
+.v-neg { color: var(--red); }
+.v-warn { color: var(--orange); }
+.v-ok { color: var(--cyan); }
+.v-dim { color: var(--dim); }
+.v-yellow { color: var(--yellow); }
+
+/* toggle */
+.tog { position: relative; display: inline-block; width: 28px; height: 15px; }
+.tog input { display: none; }
+.tog-sl { position: absolute; inset: 0; background: var(--border2); border-radius: 15px; cursor: pointer; transition: background .15s; }
+.tog-sl::before { content:''; position:absolute; width:11px; height:11px; background:#fff; border-radius:50%; top:2px; left:2px; transition:transform .15s; }
+.tog input:checked + .tog-sl { background: var(--cyan); }
+.tog input:checked + .tog-sl::before { transform: translateX(13px); }
+
+/* ── SIDE PANEL ── */
+.side-panel {
+  width: 360px; flex-shrink: 0; background: var(--bg1);
+  border-left: 1px solid var(--border); display: flex; flex-direction: column;
+  overflow: hidden; transition: width .18s ease;
+}
+.side-panel.collapsed { width: 0; }
+.sp-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  background: var(--bg2); flex-shrink: 0;
+}
+.sp-title { color: var(--cyan); font-size: 11px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-close { background: none; border: none; color: var(--dim); cursor: pointer; font-size: 14px; padding: 0 2px; }
+.sp-close:hover { color: var(--red); }
+.sp-body { flex: 1; overflow-y: auto; padding: 10px; }
+.sp-body::-webkit-scrollbar { width: 4px; }
+.sp-body::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sp-section { margin-bottom: 12px; }
+.sp-section-title {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--dim); border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.sp-section-title::before { content: '▸'; color: var(--cyan); }
+.sp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.sp-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 6px 8px; }
+.sp-card-label { font-size: 9px; color: var(--dim); text-transform: uppercase; margin-bottom: 3px; letter-spacing: .04em; }
+.sp-card-value { font-size: 16px; font-weight: 700; }
+.sp-card-sub { font-size: 9px; color: var(--dim); margin-top: 1px; }
+.sp-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+.sp-row:last-child { border-bottom: none; }
+.sp-row-label { color: var(--dim); }
+.sp-row-value { font-weight: 600; }
+.sp-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+.sp-action-btn {
+  padding: 5px 8px; border-radius: var(--r); border: 1px solid; cursor: pointer;
+  font-size: 10px; font-family: inherit; font-weight: 600; text-align: center; transition: all .12s;
+}
+.spa-green { border-color: var(--green); color: var(--green); background: transparent; }
+.spa-green:hover { background: var(--green); color: var(--bg); }
+.spa-red { border-color: var(--red); color: var(--red); background: transparent; }
+.spa-red:hover { background: var(--red); color: var(--bg); }
+.spa-cyan { border-color: var(--cyan); color: var(--cyan); background: transparent; }
+.spa-cyan:hover { background: var(--cyan); color: var(--bg); }
+.spa-purple { border-color: var(--purple); color: var(--purple); background: transparent; }
+.spa-purple:hover { background: var(--purple); color: var(--bg); }
+.spa-full { grid-column: 1/-1; border-color: var(--border2); color: var(--dim); background: transparent; }
+.spa-full:hover { border-color: var(--text); color: var(--text); }
+
+.sp-sparkline { height: 40px; width: 100%; margin: 4px 0; }
+.sp-edit-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.sp-edit-label { color: var(--dim); font-size: 10px; width: 100px; }
+.sp-edit-input {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r);
+  color: var(--text); padding: 3px 6px; font-size: 11px; font-family: inherit; outline: none;
+}
+.sp-edit-input:focus { border-color: var(--cyan); }
+.sp-edit-select {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r);
+  color: var(--text); padding: 3px 6px; font-size: 11px; font-family: inherit; outline: none;
+}
+
+/* ── MISC ── */
+.sort-arrow { font-size: 8px; margin-left: 2px; }
+input[type=checkbox] { accent-color: var(--cyan); cursor: pointer; }
+.badge-s { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9px; font-weight: 700; }
+.badge-run { background: rgba(80,250,123,.15); color: var(--green); }
+.badge-stop { background: rgba(255,85,85,.1); color: var(--red); }
+#row-count { color: var(--dim); font-size: 10px; }
+.empty-msg { text-align: center; padding: 40px; color: var(--dim); font-size: 12px; }
+
+/* scrollbar global */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="topbar-logo">◈ VK ADS PRO</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-label">API</span>
+  <input class="t-input" id="t-api" value="http://localhost:8000" placeholder="http://localhost:8000">
+  <span class="topbar-label">TOKEN</span>
+  <input class="t-input" id="t-token" type="password" placeholder="vk1.a.xxx...">
+  <button class="tb-btn tb-btn-cyan" onclick="Pro.connect()">CONNECT</button>
+  <div class="topbar-sep"></div>
+  <select class="c-select" id="t-account" onchange="Pro.switchAccount(+this.value)" style="width:180px"></select>
+  <span id="t-balance" style="color:var(--cyan);font-size:11px;font-weight:700"></span>
+  <div class="tb-flex"></div>
+  <span id="row-count"></span>
+  <div class="topbar-sep"></div>
+  <label class="ckbox"><input type="checkbox" id="t-demo" onchange="Pro.toggleDemo(this.checked)"> DEMO</label>
+  <div class="topbar-sep"></div>
+  <a class="back-link" href="index.html">← Обычный интерфейс</a>
+</div>
+
+<!-- CHART -->
+<div class="chart-area">
+  <canvas id="main-chart"></canvas>
+  <div class="chart-overlay">
+    <div class="chart-stat">
+      <span class="chart-stat-label">Расход</span>
+      <span class="chart-stat-value v-ok" id="cstat-spend">—</span>
+    </div>
+    <div class="chart-stat">
+      <span class="chart-stat-label">Показы</span>
+      <span class="chart-stat-value" id="cstat-imp" style="color:var(--blue)">—</span>
+    </div>
+    <div class="chart-stat">
+      <span class="chart-stat-label">Клики</span>
+      <span class="chart-stat-value" id="cstat-clicks" style="color:var(--purple)">—</span>
+    </div>
+    <div class="chart-stat">
+      <span class="chart-stat-label">CTR</span>
+      <span class="chart-stat-value" id="cstat-ctr" style="color:var(--yellow)">—</span>
+    </div>
+    <div class="chart-stat">
+      <span class="chart-stat-label">CPC ср.</span>
+      <span class="chart-stat-value" id="cstat-cpc" style="color:var(--orange)">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar" id="stats-bar">
+  <div class="sbar-item"><span class="sbar-label">Кампаний</span><span class="sbar-value" id="sb-total">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Активных</span><span class="sbar-value v-pos" id="sb-active">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Остановлено</span><span class="sbar-value v-neg" id="sb-stopped">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Потрачено</span><span class="sbar-value v-ok" id="sb-spend">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Показов</span><span class="sbar-value" id="sb-imp">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Кликов</span><span class="sbar-value" id="sb-clicks">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Ср. CTR</span><span class="sbar-value" id="sb-ctr">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Ср. CPC</span><span class="sbar-value" id="sb-cpc">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Результатов</span><span class="sbar-value" id="sb-results">—</span></div>
+  <div class="sbar-item"><span class="sbar-label">Ср. CPR</span><span class="sbar-value" id="sb-cpr">—</span></div>
+</div>
+
+<!-- CTRL BAR -->
+<div class="ctrl-bar">
+  <button class="c-btn c-btn-green" onclick="Pro.bulkAction(1)">▶ Запустить</button>
+  <button class="c-btn c-btn-red" onclick="Pro.bulkAction(0)">⏸ Стоп</button>
+  <button class="c-btn c-btn-cyan" onclick="Pro.loadAll()">↻ Обновить</button>
+  <div class="ctrl-sep"></div>
+  <span class="ctrl-label">Расход ≥</span>
+  <input class="c-input" id="f-spend" placeholder="0" oninput="Pro.applyFilters()">
+  <span class="ctrl-label">CTR ≥</span>
+  <input class="c-input" id="f-ctr" placeholder="0" style="width:55px" oninput="Pro.applyFilters()">
+  <span class="ctrl-label">%</span>
+  <span class="ctrl-label">Клики ≥</span>
+  <input class="c-input" id="f-clicks" placeholder="0" oninput="Pro.applyFilters()">
+  <span class="ctrl-label">Статус</span>
+  <select class="c-select" id="f-status" onchange="Pro.applyFilters()">
+    <option value="">Все</option>
+    <option value="1">Активные</option>
+    <option value="0">Остановленные</option>
+  </select>
+  <div class="ctrl-sep"></div>
+  <label class="ckbox"><input type="checkbox" id="f-color" checked onchange="Pro.renderTable()"> Цвет</label>
+  <label class="ckbox"><input type="checkbox" id="f-starred" onchange="Pro.applyFilters()"> Избранные</label>
+  <div class="ctrl-sep"></div>
+  <span class="ctrl-label">Сортировка</span>
+  <select class="c-select" id="sort-col" onchange="Pro.applyFilters()">
+    <option value="name">Название</option>
+    <option value="spent" selected>Расход</option>
+    <option value="impressions">Показы</option>
+    <option value="clicks">Клики</option>
+    <option value="ctr">CTR</option>
+    <option value="cpc">CPC</option>
+    <option value="results">Результаты</option>
+    <option value="cpr">CPR</option>
+  </select>
+  <select class="c-select" id="sort-dir" onchange="Pro.applyFilters()">
+    <option value="desc">↓ Убыв.</option>
+    <option value="asc">↑ Возр.</option>
+  </select>
+  <div class="ctrl-sep"></div>
+  <span id="row-count-bar" style="color:var(--dim);font-size:10px"></span>
+</div>
+
+<!-- BODY -->
+<div class="body-area">
+  <div class="table-wrap">
+    <table class="dtable" id="main-table">
+      <thead>
+        <tr class="hdr-row" id="hdr-row">
+          <th style="width:24px" class="td-check"><input type="checkbox" id="chk-all" onchange="Pro.selectAll(this.checked)"></th>
+          <th style="width:20px"></th>
+          <th style="width:36px" class="td-toggle"></th>
+          <th class="th-name" style="min-width:220px;text-align:left" onclick="Pro.sortBy('name')">Кампания</th>
+          <th style="width:90px" onclick="Pro.sortBy('spent')">Расход ₽</th>
+          <th style="width:80px" onclick="Pro.sortBy('impressions')">Показы</th>
+          <th style="width:70px" onclick="Pro.sortBy('clicks')">Клики</th>
+          <th style="width:60px" onclick="Pro.sortBy('ctr')">CTR %</th>
+          <th style="width:75px" onclick="Pro.sortBy('cpc')">CPC ₽</th>
+          <th style="width:60px" onclick="Pro.sortBy('results')">Рез-т</th>
+          <th style="width:75px" onclick="Pro.sortBy('cpr')">CPR ₽</th>
+          <th style="width:80px" onclick="Pro.sortBy('day_limit')">Бюджет/д</th>
+          <th style="width:55px" onclick="Pro.sortBy('util')">Утилиз.</th>
+          <th style="width:80px">Тип</th>
+        </tr>
+        <tr class="filter-row">
+          <th colspan="4"><input placeholder="поиск по названию..." id="col-search" oninput="Pro.applyFilters()"></th>
+          <th><input placeholder="≥" id="col-spend" oninput="Pro.applyFilters()"></th>
+          <th><input placeholder="≥" id="col-imp" oninput="Pro.applyFilters()"></th>
+          <th><input placeholder="≥" id="col-clicks2" oninput="Pro.applyFilters()"></th>
+          <th><input placeholder="≥" id="col-ctr" oninput="Pro.applyFilters()"></th>
+          <th><input placeholder="≤" id="col-cpc" oninput="Pro.applyFilters()"></th>
+          <th></th><th></th><th></th><th></th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body">
+        <tr><td colspan="14" class="empty-msg">Нажмите CONNECT или включите DEMO</td></tr>
+      </tbody>
+      <tfoot id="tbl-foot"></tfoot>
+    </table>
+  </div>
+
+  <!-- SIDE PANEL -->
+  <div class="side-panel collapsed" id="side-panel">
+    <div class="sp-header">
+      <span class="sp-title" id="sp-title">—</span>
+      <button class="sp-close" onclick="Pro.closePanel()">✕</button>
+    </div>
+    <div class="sp-body" id="sp-body"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// DEMO DATA
+// ══════════════════════════════════════════════════════════════════════════════
+const DEMO = {
+  accounts: [
+    { account_id: 1001, account_name: 'ВКР ГМЛ, КК', account_status: 1 },
+    { account_id: 1002, account_name: 'ИП Соколов — Ретейл', account_status: 1 },
+  ],
+  budgets: { 1001: 15335.13, 1002: 12750.00 },
+  campaigns: [
+    { id: 2001, name: 'Агоп / ГЕО / лид форма 1 / дубль', type: 'normal', status: 1, day_limit: '0', spent: 1043.98, impressions: 148320, clicks: 2184, results: 0, cpr: 0 },
+    { id: 2002, name: 'Реклама по ГЕО', type: 'normal', status: 0, day_limit: '3000', spent: 0, impressions: 0, clicks: 0, results: 0, cpr: 0 },
+    { id: 2003, name: 'Агоп / Супер гео / пром 1 / лид форма', type: 'promoted_posts', status: 0, day_limit: '0', spent: 0, impressions: 0, clicks: 0, results: 0, cpr: 0 },
+    { id: 2004, name: 'Копия_1 Копия Агоп / пром 1 / лид форма', type: 'normal', status: 0, day_limit: '0', spent: 0, impressions: 0, clicks: 0, results: 0, cpr: 0 },
+    { id: 2005, name: 'Копия Агоп / пром 1 / лид форма', type: 'normal', status: 0, day_limit: '0', spent: 0, impressions: 0, clicks: 0, results: 0, cpr: 0 },
+    { id: 2006, name: 'Топ пром / 2 крео / супер гео', type: 'normal', status: 1, day_limit: '5000', spent: 3210.50, impressions: 284100, clicks: 3980, results: 2, cpr: 1605.25 },
+    { id: 2007, name: 'Бренд-awareness Q2', type: 'normal', status: 1, day_limit: '8000', spent: 4210.50, impressions: 613000, clicks: 4291, results: 3, cpr: 1403.50 },
+    { id: 2008, name: 'Look-alike — апрель', type: 'promoted_posts', status: 0, day_limit: '2000', spent: 1820.00, impressions: 97400, clicks: 974, results: 1, cpr: 1820.00 },
+    { id: 2009, name: 'Мобайл / Android / Москва', type: 'mobile_apps', status: 1, day_limit: '1500', spent: 980.30, impressions: 52000, clicks: 1040, results: 4, cpr: 245.08 },
+    { id: 2010, name: 'Ретаргетинг / корзина / 14д', type: 'normal', status: 1, day_limit: '2000', spent: 2140.70, impressions: 38200, clicks: 1146, results: 8, cpr: 267.59 },
+    { id: 2011, name: 'Промо / Январь / архив', type: 'normal', status: 0, day_limit: '0', spent: 8400.00, impressions: 920000, clicks: 9200, results: 12, cpr: 700.00 },
+    { id: 2012, name: 'CRM upload / сегмент A', type: 'normal', status: 0, day_limit: '1000', spent: 640.20, impressions: 28400, clicks: 568, results: 0, cpr: 0 },
+  ],
+  stats_by_day: {
+    '2026-04-29': { impressions: 121400, clicks: 1820, spent: 1824.30 },
+    '2026-04-30': { impressions: 138200, clicks: 2073, spent: 2077.40 },
+    '2026-05-01': { impressions: 115600, clicks: 1734, spent: 1736.20 },
+    '2026-05-02': { impressions: 142800, clicks: 2142, spent: 2145.50 },
+    '2026-05-03': { impressions: 98400,  clicks: 1476, spent: 1478.80 },
+    '2026-05-04': { impressions: 131000, clicks: 1965, spent: 1968.30 },
+    '2026-05-05': { impressions: 64800,  clicks: 972,  spent: 219.48 },
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════════
+const S = {
+  demo: false, apiUrl: 'http://localhost:8000', token: '',
+  accounts: [], selectedAccount: null,
+  allCampaigns: [],   // raw
+  campaigns: [],      // filtered+sorted
+  stats: [],          // per-day aggregates
+  selected: new Set(), starred: new Set(),
+  sortCol: 'spent', sortDir: 'desc',
+  activeCampId: null,
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// API
+// ══════════════════════════════════════════════════════════════════════════════
+const api = {
+  async req(method, path, body = null, params = {}) {
+    if (S.demo) return demoHandle(method, path, body, params);
+    const url = new URL(S.apiUrl + path);
+    Object.entries(params).forEach(([k,v]) => { if (v != null && v !== '') url.searchParams.set(k,v); });
+    const opts = { method, headers: { 'X-Vk-Token': S.token, 'Accept': 'application/json' } };
+    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    const res = await fetch(url, opts);
+    const data = await res.json().catch(() => ({ detail: res.statusText }));
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+    return data;
+  },
+  get: (p, params) => api.req('GET', p, null, params),
+  post: (p, b) => api.req('POST', p, b),
+  patch: (p, b) => api.req('PATCH', p, b),
+};
+
+async function demoHandle(method, path, body, params) {
+  await new Promise(r => setTimeout(r, 80 + Math.random()*60));
+  if (path === '/api/v1/accounts/') return DEMO.accounts;
+  if (path.match(/\/accounts\/\d+\/budget/)) return { budget: DEMO.budgets[S.selectedAccount] ?? 0 };
+  if (path.match(/\/accounts\/\d+\/campaigns\/$/) && method === 'GET') return [...DEMO.campaigns];
+  if (path.match(/\/accounts\/\d+\/campaigns\/stats$/) && method === 'POST') {
+    return (body.ids ?? []).map(id => ({ id, stats: Object.entries(DEMO.stats_by_day).map(([day, s]) => ({ day, ...s })) }));
+  }
+  if (path.match(/\/accounts\/\d+\/campaigns\/\d+$/) && method === 'PATCH') {
+    const id = +path.split('/').pop();
+    const c = DEMO.campaigns.find(x => x.id === id);
+    if (c) Object.assign(c, body);
+    return { response: 1 };
+  }
+  return {};
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════════════════════════
+const fmt = {
+  money: v => v == null ? '—' : Number(v).toLocaleString('ru', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+  num: v => v == null ? '—' : Number(v).toLocaleString('ru'),
+  pct: v => v == null ? '—' : Number(v).toFixed(2) + '%',
+  short: v => { if (v == null) return '—'; v = +v; if (v >= 1e6) return (v/1e6).toFixed(1)+'M'; if (v >= 1e3) return (v/1e3).toFixed(1)+'K'; return String(v); },
+};
+
+function ctr(c) { return c.impressions ? c.clicks / c.impressions * 100 : 0; }
+function cpc(c) { return c.clicks ? c.spent / c.clicks : 0; }
+function util(c) { return c.day_limit && +c.day_limit ? c.spent / +c.day_limit * 100 : null; }
+
+function colorVal(val, lo, hi, invert = false) {
+  if (val == null) return 'v-dim';
+  const good = invert ? val <= lo : val >= hi;
+  const bad  = invert ? val >= hi : val <= lo;
+  if (good) return 'v-pos';
+  if (bad)  return 'v-neg';
+  return 'v-warn';
+}
+
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;bottom:${16 + document.querySelectorAll('.pro-toast').length*36}px;right:16px;z-index:9999;padding:6px 14px;border-radius:4px;font-size:11px;font-family:inherit;font-weight:600;border:1px solid;animation:fadeUp .2s ease`;
+  el.className = 'pro-toast';
+  const colors = { ok: 'var(--cyan)', err: 'var(--red)', warn: 'var(--orange)' };
+  el.style.borderColor = colors[type]; el.style.color = colors[type];
+  el.style.background = 'var(--bg1)'; el.style.boxShadow = '0 4px 12px rgba(0,0,0,.4)';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHART
+// ══════════════════════════════════════════════════════════════════════════════
+function drawChart(stats) {
+  const canvas = document.getElementById('main-chart');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+  if (!stats.length) return;
+
+  const pad = { t: 14, b: 22, l: 52, r: 20 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+
+  const spends = stats.map(s => s.spent);
+  const imps   = stats.map(s => s.impressions);
+  const maxSpend = Math.max(...spends) * 1.1 || 1;
+  const maxImp   = Math.max(...imps) * 1.1 || 1;
+  const n = stats.length;
+
+  const xPos = i => pad.l + (i / (n - 1)) * cW;
+  const ySpend = v => pad.t + cH - (v / maxSpend) * cH;
+  const yImp   = v => pad.t + cH - (v / maxImp) * cH;
+
+  // grid
+  ctx.strokeStyle = '#1e2a3a'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (i / 4) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    const val = maxSpend * (1 - i / 4);
+    ctx.fillStyle = '#6272a4'; ctx.font = '9px monospace'; ctx.textAlign = 'right';
+    ctx.fillText(fmt.short(val), pad.l - 4, y + 3);
+  }
+
+  // x labels
+  ctx.textAlign = 'center'; ctx.fillStyle = '#6272a4'; ctx.font = '9px monospace';
+  stats.forEach((s, i) => {
+    if (i % Math.ceil(n / 7) === 0 || i === n - 1) {
+      ctx.fillText(s.day?.slice(5) ?? '', xPos(i), H - 4);
+    }
+  });
+
+  // impressions area (behind)
+  ctx.beginPath();
+  stats.forEach((s, i) => { i === 0 ? ctx.moveTo(xPos(i), yImp(s.impressions)) : ctx.lineTo(xPos(i), yImp(s.impressions)); });
+  ctx.lineTo(xPos(n-1), pad.t + cH); ctx.lineTo(pad.l, pad.t + cH); ctx.closePath();
+  ctx.fillStyle = 'rgba(139,233,253,0.06)'; ctx.fill();
+
+  // impressions line
+  ctx.beginPath();
+  stats.forEach((s, i) => { i === 0 ? ctx.moveTo(xPos(i), yImp(s.impressions)) : ctx.lineTo(xPos(i), yImp(s.impressions)); });
+  ctx.strokeStyle = 'rgba(139,233,253,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+
+  // spend area
+  ctx.beginPath();
+  stats.forEach((s, i) => { i === 0 ? ctx.moveTo(xPos(i), ySpend(s.spent)) : ctx.lineTo(xPos(i), ySpend(s.spent)); });
+  ctx.lineTo(xPos(n-1), pad.t + cH); ctx.lineTo(pad.l, pad.t + cH); ctx.closePath();
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + cH);
+  grad.addColorStop(0, 'rgba(0,212,170,0.25)'); grad.addColorStop(1, 'rgba(0,212,170,0.02)');
+  ctx.fillStyle = grad; ctx.fill();
+
+  // spend line
+  ctx.beginPath();
+  stats.forEach((s, i) => { i === 0 ? ctx.moveTo(xPos(i), ySpend(s.spent)) : ctx.lineTo(xPos(i), ySpend(s.spent)); });
+  ctx.strokeStyle = '#00d4aa'; ctx.lineWidth = 2; ctx.stroke();
+
+  // dots
+  stats.forEach((s, i) => {
+    ctx.beginPath(); ctx.arc(xPos(i), ySpend(s.spent), 3, 0, Math.PI*2);
+    ctx.fillStyle = '#00d4aa'; ctx.fill();
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SPARKLINE
+// ══════════════════════════════════════════════════════════════════════════════
+function drawSparkline(canvasId, values, color = '#00d4aa') {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !values.length) return;
+  const W = canvas.offsetWidth || 320, H = 40;
+  canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(devicePixelRatio, devicePixelRatio);
+  const min = Math.min(...values), max = Math.max(...values) || 1;
+  const xP = i => (i / (values.length - 1)) * W;
+  const yP = v => H - 4 - ((v - min) / (max - min || 1)) * (H - 8);
+  ctx.beginPath();
+  values.forEach((v, i) => i === 0 ? ctx.moveTo(xP(i), yP(v)) : ctx.lineTo(xP(i), yP(v)));
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PRO APP
+// ══════════════════════════════════════════════════════════════════════════════
+const Pro = {
+  async connect() {
+    S.apiUrl = document.getElementById('t-api').value.replace(/\/$/,'');
+    S.token  = document.getElementById('t-token').value.trim();
+    if (!S.demo && !S.token) { toast('Введите токен', 'err'); return; }
+    localStorage.setItem('pro_api', S.apiUrl);
+    localStorage.setItem('pro_token', S.token);
+    await this.loadAll();
+  },
+
+  toggleDemo(checked) {
+    S.demo = checked;
+    localStorage.setItem('pro_demo', checked ? '1' : '0');
+    document.getElementById('t-api').disabled = checked;
+    document.getElementById('t-token').disabled = checked;
+    if (checked) { S.token = 'demo'; this.loadAll(); }
+  },
+
+  async loadAll() {
+    try {
+      // accounts
+      const accData = await api.get('/api/v1/accounts/');
+      S.accounts = accData.response ?? accData ?? [];
+      const sel = document.getElementById('t-account');
+      sel.innerHTML = S.accounts.map(a => `<option value="${a.account_id}">${a.account_name}</option>`).join('');
+      if (!S.selectedAccount && S.accounts.length) S.selectedAccount = S.accounts[0].account_id;
+      sel.value = S.selectedAccount;
+
+      await this._loadAccountData();
+    } catch(e) { toast(e.message, 'err'); }
+  },
+
+  async _loadAccountData() {
+    const accId = S.selectedAccount;
+    // balance
+    try {
+      const bd = await api.get(`/api/v1/accounts/${accId}/budget`);
+      const bal = bd.budget ?? bd.response ?? 0;
+      document.getElementById('t-balance').textContent = fmt.money(bal) + ' ₽';
+    } catch {}
+
+    // campaigns
+    const cd = await api.get(`/api/v1/accounts/${accId}/campaigns/`);
+    S.allCampaigns = cd.response ?? cd ?? [];
+
+    // stats for all campaigns with data
+    const statsIds = S.allCampaigns.map(c => c.id);
+    if (statsIds.length) {
+      try {
+        const sd = await api.post(`/api/v1/accounts/${accId}/campaigns/stats`, {
+          ids: statsIds, period: 'day', date_from: '0', date_to: '0',
+        });
+        const statsMap = {};
+        (sd.response ?? sd ?? []).forEach(item => { statsMap[item.id] = item.stats ?? []; });
+
+        // inject stats into campaigns + compute day-level aggregate
+        const dayAgg = {};
+        S.allCampaigns.forEach(c => {
+          const cs = statsMap[c.id] ?? [];
+          if (cs.length && !c.spent) {
+            c.impressions = cs.reduce((s, r) => s + (r.impressions ?? 0), 0);
+            c.clicks      = cs.reduce((s, r) => s + (r.clicks ?? 0), 0);
+            c.spent       = cs.reduce((s, r) => s + (+(r.spent ?? 0)), 0);
+          }
+          cs.forEach(r => {
+            if (!dayAgg[r.day]) dayAgg[r.day] = { day: r.day, impressions: 0, clicks: 0, spent: 0 };
+            dayAgg[r.day].impressions += r.impressions ?? 0;
+            dayAgg[r.day].clicks      += r.clicks ?? 0;
+            dayAgg[r.day].spent       += +(r.spent ?? 0);
+          });
+        });
+        S.stats = Object.values(dayAgg).sort((a,b) => a.day > b.day ? 1 : -1);
+      } catch {}
+    }
+
+    this.applyFilters();
+    this._updateStatsBar();
+    drawChart(S.stats);
+    this._updateChartStats();
+  },
+
+  switchAccount(id) {
+    S.selectedAccount = id;
+    S.allCampaigns = []; S.campaigns = []; S.stats = [];
+    this._loadAccountData();
+  },
+
+  _updateStatsBar() {
+    const cs = S.allCampaigns;
+    const totalSpend  = cs.reduce((s, c) => s + (+c.spent||0), 0);
+    const totalImp    = cs.reduce((s, c) => s + (+c.impressions||0), 0);
+    const totalClicks = cs.reduce((s, c) => s + (+c.clicks||0), 0);
+    const totalRes    = cs.reduce((s, c) => s + (+c.results||0), 0);
+    const avgCTR      = totalImp ? totalClicks / totalImp * 100 : 0;
+    const avgCPC      = totalClicks ? totalSpend / totalClicks : 0;
+    const avgCPR      = totalRes ? totalSpend / totalRes : 0;
+    const active      = cs.filter(c => c.status === 1).length;
+    document.getElementById('sb-total').textContent   = cs.length;
+    document.getElementById('sb-active').textContent  = active;
+    document.getElementById('sb-stopped').textContent = cs.length - active;
+    document.getElementById('sb-spend').textContent   = fmt.money(totalSpend) + ' ₽';
+    document.getElementById('sb-imp').textContent     = fmt.short(totalImp);
+    document.getElementById('sb-clicks').textContent  = fmt.short(totalClicks);
+    document.getElementById('sb-ctr').textContent     = fmt.pct(avgCTR);
+    document.getElementById('sb-cpc').textContent     = fmt.money(avgCPC) + ' ₽';
+    document.getElementById('sb-results').textContent = fmt.num(totalRes);
+    document.getElementById('sb-cpr').textContent     = totalRes ? fmt.money(avgCPR) + ' ₽' : '—';
+  },
+
+  _updateChartStats() {
+    const totSpend  = S.stats.reduce((s,r) => s + r.spent, 0);
+    const totImp    = S.stats.reduce((s,r) => s + r.impressions, 0);
+    const totClicks = S.stats.reduce((s,r) => s + r.clicks, 0);
+    const avgCTR    = totImp ? totClicks / totImp * 100 : 0;
+    const avgCPC    = totClicks ? totSpend / totClicks : 0;
+    document.getElementById('cstat-spend').textContent  = fmt.money(totSpend) + ' ₽';
+    document.getElementById('cstat-imp').textContent    = fmt.short(totImp);
+    document.getElementById('cstat-clicks').textContent = fmt.short(totClicks);
+    document.getElementById('cstat-ctr').textContent    = fmt.pct(avgCTR);
+    document.getElementById('cstat-cpc').textContent    = fmt.money(avgCPC) + ' ₽';
+  },
+
+  applyFilters() {
+    const fSpend   = +(document.getElementById('f-spend')?.value || document.getElementById('col-spend')?.value || 0);
+    const fCtr     = +(document.getElementById('f-ctr')?.value   || document.getElementById('col-ctr')?.value   || 0);
+    const fClicks  = +(document.getElementById('f-clicks')?.value || document.getElementById('col-clicks2')?.value || 0);
+    const fImp     = +(document.getElementById('col-imp')?.value  || 0);
+    const fCpcMax  = +(document.getElementById('col-cpc')?.value  || Infinity) || Infinity;
+    const fStatus  = document.getElementById('f-status')?.value || '';
+    const fStarred = document.getElementById('f-starred')?.checked;
+    const fSearch  = (document.getElementById('col-search')?.value || '').toLowerCase();
+    const sortCol  = document.getElementById('sort-col')?.value || 'spent';
+    const sortDir  = document.getElementById('sort-dir')?.value || 'desc';
+    S.sortCol = sortCol; S.sortDir = sortDir;
+
+    let list = S.allCampaigns.filter(c => {
+      if (fStatus && String(c.status) !== fStatus) return false;
+      if (fStarred && !S.starred.has(c.id)) return false;
+      if (+c.spent < fSpend) return false;
+      if (ctr(c) < fCtr) return false;
+      if (+c.clicks < fClicks) return false;
+      if (+c.impressions < fImp) return false;
+      if (cpc(c) > fCpcMax) return false;
+      if (fSearch && !c.name.toLowerCase().includes(fSearch)) return false;
+      return true;
+    });
+
+    const dir = sortDir === 'desc' ? -1 : 1;
+    list.sort((a, b) => {
+      let va, vb;
+      if (sortCol === 'ctr') { va = ctr(a); vb = ctr(b); }
+      else if (sortCol === 'cpc') { va = cpc(a); vb = cpc(b); }
+      else if (sortCol === 'util') { va = util(a) ?? -1; vb = util(b) ?? -1; }
+      else if (sortCol === 'name') { va = a.name; vb = b.name; return va > vb ? dir : -dir; }
+      else { va = +(a[sortCol] ?? 0); vb = +(b[sortCol] ?? 0); }
+      return (va - vb) * dir;
+    });
+
+    S.campaigns = list;
+    this.renderTable();
+    document.getElementById('row-count-bar').textContent = `n=${list.length} / ${S.allCampaigns.length}`;
+  },
+
+  renderTable() {
+    const colorOn = document.getElementById('f-color')?.checked !== false;
+    const avgCTR = S.allCampaigns.length
+      ? S.allCampaigns.reduce((s,c) => s + ctr(c), 0) / S.allCampaigns.length : 1;
+    const avgCPR = S.allCampaigns.filter(c => c.cpr > 0).reduce((s,c) => s + c.cpr, 0)
+      / (S.allCampaigns.filter(c => c.cpr > 0).length || 1);
+
+    const rows = S.campaigns.map(c => {
+      const ct = ctr(c), cp = cpc(c), ut = util(c);
+      const ctrCls  = colorOn ? colorVal(ct, avgCTR*0.5, avgCTR*1.2) : '';
+      const cpcCls  = colorOn ? colorVal(cp, 0, cp > 0 ? 1 : 0, true) : '';
+      const spendCls = colorOn ? (c.spent > 0 ? 'v-ok' : 'v-dim') : '';
+      const utCls   = colorOn && ut != null ? (ut > 90 ? 'v-warn' : ut > 50 ? 'v-ok' : 'v-dim') : '';
+      const statusBadge = c.status === 1
+        ? '<span class="badge-s badge-run">RUN</span>'
+        : '<span class="badge-s badge-stop">STOP</span>';
+      const starred = S.starred.has(c.id);
+      const sel = S.selected.has(c.id);
+      const active = S.activeCampId === c.id;
+      return `<tr class="${active ? 'active' : ''} ${sel ? 'sel' : ''}" data-id="${c.id}" onclick="Pro.openPanel(${c.id})">
+        <td class="td-check" onclick="event.stopPropagation()">
+          <input type="checkbox" ${sel ? 'checked' : ''} onchange="Pro.toggleSel(${c.id},this.checked)">
+        </td>
+        <td class="td-star ${starred ? 'starred' : ''}" onclick="event.stopPropagation();Pro.toggleStar(${c.id})">${starred ? '★' : '☆'}</td>
+        <td class="td-toggle" onclick="event.stopPropagation()">
+          <label class="tog"><input type="checkbox" ${c.status === 1 ? 'checked' : ''} onchange="Pro.toggleStatus(${c.id},this.checked)"><span class="tog-sl"></span></label>
+        </td>
+        <td class="td-name" title="${c.name}">${c.name}</td>
+        <td class="${spendCls}">${c.spent > 0 ? fmt.money(c.spent) : '<span class="v-dim">0,00</span>'}</td>
+        <td>${fmt.short(c.impressions)}</td>
+        <td>${fmt.short(c.clicks)}</td>
+        <td class="${ctrCls}">${ct > 0 ? fmt.pct(ct) : '<span class="v-dim">—</span>'}</td>
+        <td class="${cpcCls}">${cp > 0 ? fmt.money(cp) : '<span class="v-dim">—</span>'}</td>
+        <td>${c.results > 0 ? '<span class="v-pos">'+c.results+'</span>' : '<span class="v-dim">0</span>'}</td>
+        <td>${c.cpr > 0 ? '<span class="v-yellow">'+fmt.money(c.cpr)+'</span>' : '<span class="v-dim">—</span>'}</td>
+        <td>${c.day_limit && +c.day_limit ? fmt.money(c.day_limit) : '<span class="v-dim">∞</span>'}</td>
+        <td class="${utCls}">${ut != null ? fmt.pct(ut) : '<span class="v-dim">—</span>'}</td>
+        <td style="color:var(--dim);font-size:9px">${c.type}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('tbl-body').innerHTML = rows ||
+      `<tr><td colspan="14" class="empty-msg" style="color:var(--dim)">Нет данных по фильтрам</td></tr>`;
+
+    // footer totals
+    const list = S.campaigns;
+    const ts = list.reduce((s,c) => s + (+c.spent||0), 0);
+    const ti = list.reduce((s,c) => s + (+c.impressions||0), 0);
+    const tc = list.reduce((s,c) => s + (+c.clicks||0), 0);
+    const tr2 = list.reduce((s,c) => s + (+c.results||0), 0);
+    const aCTR = ti ? tc/ti*100 : 0;
+    const aCPC = tc ? ts/tc : 0;
+    const aCPR = tr2 ? ts/tr2 : 0;
+    document.getElementById('tbl-foot').innerHTML = `<tr>
+      <td colspan="4" class="td-name">Итого: ${list.length} кампани${list.length===1?'я':list.length<5?'и':'й'}</td>
+      <td>${fmt.money(ts)}</td>
+      <td>${fmt.short(ti)}</td>
+      <td>${fmt.short(tc)}</td>
+      <td>${fmt.pct(aCTR)}</td>
+      <td>${fmt.money(aCPC)}</td>
+      <td>${tr2}</td>
+      <td>${tr2 ? fmt.money(aCPR) : '—'}</td>
+      <td></td><td></td><td></td>
+    </tr>`;
+  },
+
+  toggleSel(id, checked) {
+    if (checked) S.selected.add(id); else S.selected.delete(id);
+    this.renderTable();
+  },
+
+  selectAll(checked) {
+    if (checked) S.campaigns.forEach(c => S.selected.add(c.id));
+    else S.selected.clear();
+    this.renderTable();
+  },
+
+  toggleStar(id) {
+    if (S.starred.has(id)) S.starred.delete(id); else S.starred.add(id);
+    this.renderTable();
+  },
+
+  sortBy(col) {
+    if (S.sortCol === col) S.sortDir = S.sortDir === 'desc' ? 'asc' : 'desc';
+    else { S.sortCol = col; S.sortDir = 'desc'; }
+    document.getElementById('sort-col').value = col;
+    document.getElementById('sort-dir').value = S.sortDir;
+    this.applyFilters();
+  },
+
+  async toggleStatus(id, checked) {
+    const accId = S.selectedAccount;
+    const status = checked ? 1 : 0;
+    try {
+      await api.patch(`/api/v1/accounts/${accId}/campaigns/${id}`, { campaign_id: id, status });
+      const c = S.allCampaigns.find(x => x.id === id);
+      if (c) c.status = status;
+      this._updateStatsBar();
+      this.applyFilters();
+      toast(checked ? `▶ Кампания ${id} запущена` : `⏸ Кампания ${id} остановлена`);
+      if (S.activeCampId === id) this.openPanel(id);
+    } catch(e) { toast(e.message, 'err'); this.renderTable(); }
+  },
+
+  async bulkAction(status) {
+    if (!S.selected.size) { toast('Выберите кампании', 'warn'); return; }
+    const accId = S.selectedAccount;
+    let done = 0;
+    for (const id of S.selected) {
+      try {
+        await api.patch(`/api/v1/accounts/${accId}/campaigns/${id}`, { campaign_id: id, status });
+        const c = S.allCampaigns.find(x => x.id === id);
+        if (c) c.status = status;
+        done++;
+      } catch {}
+    }
+    toast(`${status ? '▶' : '⏸'} Обновлено: ${done}/${S.selected.size}`);
+    this._updateStatsBar();
+    this.applyFilters();
+  },
+
+  openPanel(id) {
+    S.activeCampId = id;
+    this.renderTable();
+    const c = S.allCampaigns.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('side-panel').classList.remove('collapsed');
+    document.getElementById('sp-title').textContent = c.name;
+    const ct = ctr(c), cp = cpc(c), ut = util(c);
+    const accId = S.selectedAccount;
+    const sparkId = 'sp-spark-' + id;
+    document.getElementById('sp-body').innerHTML = `
+      <div class="sp-section">
+        <div class="sp-section-title">Метрики</div>
+        <div class="sp-grid">
+          <div class="sp-card"><div class="sp-card-label">Расход</div><div class="sp-card-value v-ok">${fmt.money(c.spent)}</div><div class="sp-card-sub">₽</div></div>
+          <div class="sp-card"><div class="sp-card-label">Показы</div><div class="sp-card-value">${fmt.short(c.impressions)}</div></div>
+          <div class="sp-card"><div class="sp-card-label">Клики</div><div class="sp-card-value">${fmt.short(c.clicks)}</div></div>
+          <div class="sp-card"><div class="sp-card-label">CTR</div><div class="sp-card-value ${ct > 1 ? 'v-pos' : ct > 0.3 ? 'v-warn' : 'v-neg'}">${fmt.pct(ct)}</div></div>
+          <div class="sp-card"><div class="sp-card-label">CPC</div><div class="sp-card-value">${cp > 0 ? fmt.money(cp) : '—'}</div><div class="sp-card-sub">₽</div></div>
+          <div class="sp-card"><div class="sp-card-label">Рез-т</div><div class="sp-card-value ${c.results > 0 ? 'v-pos' : 'v-dim'}">${c.results}</div></div>
+        </div>
+        ${c.cpr > 0 ? `<div class="sp-row" style="margin-top:6px"><span class="sp-row-label">CPR</span><span class="sp-row-value v-yellow">${fmt.money(c.cpr)} ₽</span></div>` : ''}
+        ${ut != null ? `<div class="sp-row"><span class="sp-row-label">Утилизация бюджета</span><span class="sp-row-value">${fmt.pct(ut)}</span></div>` : ''}
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-section-title">Динамика расхода</div>
+        <canvas id="${sparkId}" class="sp-sparkline" width="320" height="40"></canvas>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-section-title">Параметры кампании</div>
+        <div class="sp-edit-row"><span class="sp-edit-label">Название</span><input class="sp-edit-input" id="sp-name" value="${c.name}"></div>
+        <div class="sp-edit-row"><span class="sp-edit-label">Статус</span>
+          <select class="sp-edit-select" id="sp-status">
+            <option value="1" ${c.status===1?'selected':''}>▶ Активна</option>
+            <option value="0" ${c.status===0?'selected':''}>⏸ Остановлена</option>
+          </select>
+        </div>
+        <div class="sp-edit-row"><span class="sp-edit-label">Дневной лимит ₽</span><input class="sp-edit-input" id="sp-day" type="number" value="${c.day_limit||0}"></div>
+        <div class="sp-edit-row"><span class="sp-edit-label">Тип</span><input class="sp-edit-input" value="${c.type}" disabled style="opacity:.5"></div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-section-title">Действия</div>
+        <div class="sp-actions">
+          <button class="sp-action-btn spa-green" onclick="Pro._spSave(${id},${accId})">💾 Сохранить</button>
+          <button class="sp-action-btn spa-cyan" onclick="Pro._spDup(${id})">⧉ Дублировать</button>
+          <button class="sp-action-btn ${c.status===1?'spa-red':'spa-green'}" onclick="Pro.toggleStatus(${id},${c.status===0})">
+            ${c.status===1 ? '⏸ Остановить' : '▶ Запустить'}
+          </button>
+          <button class="sp-action-btn spa-purple" onclick="Pro._spStats(${id},${accId})">📊 Статистика</button>
+        </div>
+      </div>
+
+      <div class="sp-section" id="sp-stats-section" style="display:none">
+        <div class="sp-section-title">Статистика по дням</div>
+        <div id="sp-stats-table"></div>
+      </div>`;
+
+    // draw sparkline from global stats (proportional allocation by campaign share)
+    const spends = S.stats.map(d => d.spent);
+    drawSparkline(sparkId, spends, '#00d4aa');
+  },
+
+  async _spSave(id, accId) {
+    const body = {
+      campaign_id: id,
+      name: document.getElementById('sp-name').value.trim(),
+      status: +document.getElementById('sp-status').value,
+      day_limit: String(document.getElementById('sp-day').value),
+    };
+    try {
+      await api.patch(`/api/v1/accounts/${accId}/campaigns/${id}`, body);
+      const c = S.allCampaigns.find(x => x.id === id);
+      if (c) Object.assign(c, body);
+      toast('✓ Сохранено');
+      this._updateStatsBar();
+      this.applyFilters();
+      this.openPanel(id);
+    } catch(e) { toast(e.message, 'err'); }
+  },
+
+  _spDup(id) {
+    const c = S.allCampaigns.find(x => x.id === id);
+    if (!c) return;
+    const nc = { ...c, id: 90000 + Math.floor(Math.random()*9999), name: 'Копия / ' + c.name, status: 0, spent: 0, impressions: 0, clicks: 0, results: 0, cpr: 0 };
+    S.allCampaigns.push(nc);
+    DEMO.campaigns.push(nc);
+    this.applyFilters();
+    toast('⧉ Продублировано (demo)');
+  },
+
+  async _spStats(id, accId) {
+    const sec = document.getElementById('sp-stats-section');
+    sec.style.display = 'block';
+    document.getElementById('sp-stats-table').innerHTML = '<span style="color:var(--dim)">Загрузка...</span>';
+    try {
+      const data = await api.post(`/api/v1/accounts/${accId}/campaigns/stats`, { ids: [id], period: 'day', date_from: '0', date_to: '0' });
+      const stats = (data.response ?? data ?? [])[0]?.stats ?? [];
+      if (!stats.length) { document.getElementById('sp-stats-table').innerHTML = '<span style="color:var(--dim)">Нет данных</span>'; return; }
+      const rows = stats.map(s => {
+        const ct = s.impressions ? (s.clicks / s.impressions * 100) : 0;
+        const cp = s.clicks ? (+s.spent / s.clicks) : 0;
+        return `<div class="sp-row">
+          <span class="sp-row-label">${s.day}</span>
+          <span>${fmt.short(s.impressions)} показов</span>
+          <span class="${ct > 1 ? 'v-pos' : 'v-dim'}">${fmt.pct(ct)}</span>
+          <span class="v-ok">${fmt.money(+s.spent)} ₽</span>
+        </div>`;
+      }).join('');
+      document.getElementById('sp-stats-table').innerHTML = rows;
+    } catch(e) { toast(e.message, 'err'); }
+  },
+
+  closePanel() {
+    document.getElementById('side-panel').classList.add('collapsed');
+    S.activeCampId = null;
+    this.renderTable();
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
+(function init() {
+  const savedApi   = localStorage.getItem('pro_api');
+  const savedToken = localStorage.getItem('pro_token');
+  const savedDemo  = localStorage.getItem('pro_demo');
+  if (savedApi)   { document.getElementById('t-api').value = savedApi; S.apiUrl = savedApi; }
+  if (savedToken) { document.getElementById('t-token').value = savedToken; S.token = savedToken; }
+  if (savedDemo === '1') {
+    S.demo = true;
+    document.getElementById('t-demo').checked = true;
+    document.getElementById('t-api').disabled = true;
+    document.getElementById('t-token').disabled = true;
+    S.token = 'demo';
+    Pro.loadAll();
+  }
+  window.addEventListener('resize', () => drawChart(S.stats));
+})();
+</script>
+</body>
+</html>
