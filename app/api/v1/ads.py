@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, Query
 from app.api.v1.deps import get_token
 from app.services.ads import AdsService
