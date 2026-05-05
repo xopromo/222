@@ -404,6 +404,7 @@ const S = {
   stats: [],          // per-day aggregates
   selected: new Set(), starred: new Set(),
   sortCol: 'spent', sortDir: 'desc',
+  statsMap: {},   // campId → [{day, spent, impressions, clicks}]
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -616,8 +617,10 @@ const Pro = {
 
         // inject stats into campaigns + compute day-level aggregate
         const dayAgg = {};
+        S.statsMap = {};
         S.allCampaigns.forEach(c => {
           const cs = statsMap[c.id] ?? [];
+          S.statsMap[c.id] = cs;
           if (cs.length && !c.spent) {
             c.impressions = cs.reduce((s, r) => s + (r.impressions ?? 0), 0);
             c.clicks      = cs.reduce((s, r) => s + (r.clicks ?? 0), 0);
@@ -636,8 +639,6 @@ const Pro = {
 
     this.applyFilters();
     this._updateStatsBar();
-    drawChart(S.stats);
-    this._updateChartStats();
   },
 
   switchAccount(id) {
@@ -666,19 +667,6 @@ const Pro = {
     document.getElementById('sb-cpc').textContent     = fmt.money(avgCPC) + ' ₽';
     document.getElementById('sb-results').textContent = fmt.num(totalRes);
     document.getElementById('sb-cpr').textContent     = totalRes ? fmt.money(avgCPR) + ' ₽' : '—';
-  },
-
-  _updateChartStats() {
-    const totSpend  = S.stats.reduce((s,r) => s + r.spent, 0);
-    const totImp    = S.stats.reduce((s,r) => s + r.impressions, 0);
-    const totClicks = S.stats.reduce((s,r) => s + r.clicks, 0);
-    const avgCTR    = totImp ? totClicks / totImp * 100 : 0;
-    const avgCPC    = totClicks ? totSpend / totClicks : 0;
-    document.getElementById('cstat-spend').textContent  = fmt.money(totSpend) + ' ₽';
-    document.getElementById('cstat-imp').textContent    = fmt.short(totImp);
-    document.getElementById('cstat-clicks').textContent = fmt.short(totClicks);
-    document.getElementById('cstat-ctr').textContent    = fmt.pct(avgCTR);
-    document.getElementById('cstat-cpc').textContent    = fmt.money(avgCPC) + ' ₽';
   },
 
   applyFilters() {
@@ -719,6 +707,7 @@ const Pro = {
 
     S.campaigns = list;
     this.renderTable();
+    this._refreshChart();
     document.getElementById('row-count-bar').textContent = `n=${list.length} / ${S.allCampaigns.length}`;
   },
 
@@ -786,6 +775,29 @@ const Pro = {
       <td>${tr2 ? fmt.money(aCPR) : '—'}</td>
       <td></td><td></td><td></td>
     </tr>`;
+  },
+
+  _refreshChart() {
+    const dayAgg = {};
+    S.campaigns.forEach(c => {
+      (S.statsMap[c.id] ?? []).forEach(r => {
+        if (!dayAgg[r.day]) dayAgg[r.day] = { day: r.day, impressions: 0, clicks: 0, spent: 0 };
+        dayAgg[r.day].impressions += r.impressions ?? 0;
+        dayAgg[r.day].clicks      += r.clicks ?? 0;
+        dayAgg[r.day].spent       += +(r.spent ?? 0);
+      });
+    });
+    const stats = Object.values(dayAgg).sort((a,b) => a.day > b.day ? 1 : -1);
+    drawChart(stats);
+    // update chart overlay stats
+    const ts = stats.reduce((s,r) => s + r.spent, 0);
+    const ti = stats.reduce((s,r) => s + r.impressions, 0);
+    const tc = stats.reduce((s,r) => s + r.clicks, 0);
+    document.getElementById('cstat-spend').textContent  = fmt.money(ts) + ' ₽';
+    document.getElementById('cstat-imp').textContent    = fmt.short(ti);
+    document.getElementById('cstat-clicks').textContent = fmt.short(tc);
+    document.getElementById('cstat-ctr').textContent    = fmt.pct(ti ? tc/ti*100 : 0);
+    document.getElementById('cstat-cpc').textContent    = fmt.money(tc ? ts/tc : 0) + ' ₽';
   },
 
   toggleSel(id, checked) {
