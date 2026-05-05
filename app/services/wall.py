@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import logging
-from typing import Any
+from typing import Optional, Any
 from app.services.vk_client import VKApiClient
 
 logger = logging.getLogger(__name__)
@@ -25,11 +23,11 @@ class WallService:
 
     async def post(
         self,
-        owner_id: int | None = None,
+        owner_id:Optional[int] = None,
         message: str = "",
         attachments: str = "",
         from_group: int = 0,
-        publish_date: int | None = None,
+        publish_date:Optional[int] = None,
         **kwargs: Any,
     ) -> dict:
         params: dict[str, Any] = {"message": message, "from_group": from_group}

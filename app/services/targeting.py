@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import logging
-from typing import Any
+from typing import Optional, Any
 from app.services.vk_client import VKApiClient
 
 logger = logging.getLogger(__name__)
@@ -19,7 +17,7 @@ class TargetingService:
         criteria: dict,
         ad_format: int = 9,
         ad_platform: str = "all",
-        client_id: int | None = None,
+        client_id:Optional[int] = None,
         link_url: str = "",
     ) -> dict:
         params: dict[str, Any] = {
@@ -33,7 +31,7 @@ class TargetingService:
             params["client_id"] = client_id
         return await self._client.call("ads.getTargetingStats", **params)
 
-    async def get_suggestions(self, section: str, ids: list[int] | None = None, q: str | None = None) -> list[dict]:
+    async def get_suggestions(self, section: str, ids:Optional[list[int]] = None, q:Optional[str] = None) -> list[dict]:
         params: dict[str, Any] = {"section": section}
         if ids:
             params["ids"] = ",".join(str(i) for i in ids)
@@ -44,7 +42,7 @@ class TargetingService:
     async def get_categories(self, lang: str = "ru") -> dict:
         return await self._client.call("ads.getCategories", lang=lang)
 
-    async def get_retargeting_groups(self, account_id: int, client_id: int | None = None) -> list[dict]:
+    async def get_retargeting_groups(self, account_id: int, client_id:Optional[int] = None) -> list[dict]:
         params: dict[str, Any] = {"account_id": account_id}
         if client_id:
             params["client_id"] = client_id
@@ -55,7 +53,7 @@ class TargetingService:
         account_id: int,
         name: str,
         lifetime: int = 30,
-        client_id: int | None = None,
+        client_id:Optional[int] = None,
     ) -> dict:
         params: dict[str, Any] = {
             "account_id": account_id,
@@ -66,7 +64,7 @@ class TargetingService:
             params["client_id"] = client_id
         return await self._client.call("ads.createRetargetingGroup", **params)
 
-    async def delete_retargeting_group(self, account_id: int, target_group_id: int, client_id: int | None = None) -> int:
+    async def delete_retargeting_group(self, account_id: int, target_group_id: int, client_id:Optional[int] = None) -> int:
         params: dict[str, Any] = {
             "account_id": account_id,
             "target_group_id": target_group_id,
@@ -80,7 +78,7 @@ class TargetingService:
         account_id: int,
         target_group_id: int,
         contacts: str,
-        client_id: int | None = None,
+        client_id:Optional[int] = None,
     ) -> int:
         params: dict[str, Any] = {
             "account_id": account_id,
@@ -91,7 +89,7 @@ class TargetingService:
             params["client_id"] = client_id
         return await self._client.call("ads.importTargetContacts", **params)
 
-    async def get_lookalike_requests(self, account_id: int, client_id: int | None = None) -> dict:
+    async def get_lookalike_requests(self, account_id: int, client_id:Optional[int] = None) -> dict:
         params: dict[str, Any] = {"account_id": account_id}
         if client_id:
             params["client_id"] = client_id
@@ -101,8 +99,8 @@ class TargetingService:
         self,
         account_id: int,
         source_type: str,
-        retargeting_group_id: int | None = None,
-        client_id: int | None = None,
+        retargeting_group_id:Optional[int] = None,
+        client_id:Optional[int] = None,
     ) -> dict:
         params: dict[str, Any] = {
             "account_id": account_id,

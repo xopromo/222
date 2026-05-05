@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 import json
 import logging
-from typing import Any
+from typing import Optional, Any
 from app.services.vk_client import VKApiClient
 
 logger = logging.getLogger(__name__)
@@ -17,9 +15,9 @@ class AdsService:
     async def get_ads(
         self,
         account_id: int,
-        campaign_ids: list[int] | None = None,
-        ad_ids: list[int] | None = None,
-        client_id: int | None = None,
+        campaign_ids:Optional[list[int]] = None,
+        ad_ids:Optional[list[int]] = None,
+        client_id:Optional[int] = None,
         include_deleted: bool = False,
         only_deleted: bool = False,
     ) -> list[dict]:
@@ -57,7 +55,7 @@ class AdsService:
             ids=json.dumps(ad_ids),
         )
 
-    async def get_ads_layout(self, account_id: int, ad_ids: list[int], client_id: int | None = None) -> list[dict]:
+    async def get_ads_layout(self, account_id: int, ad_ids: list[int], client_id:Optional[int] = None) -> list[dict]:
         params: dict[str, Any] = {
             "account_id": account_id,
             "ad_ids": json.dumps(ad_ids),
@@ -66,7 +64,7 @@ class AdsService:
             params["client_id"] = client_id
         return await self._client.call("ads.getAdsLayout", **params)
 
-    async def get_ad_targeting(self, account_id: int, ad_ids: list[int], client_id: int | None = None) -> list[dict]:
+    async def get_ad_targeting(self, account_id: int, ad_ids: list[int], client_id:Optional[int] = None) -> list[dict]:
         params: dict[str, Any] = {
             "account_id": account_id,
             "ad_ids": json.dumps(ad_ids),

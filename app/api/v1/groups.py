@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from app.api.v1.deps import get_token
 from app.services.groups import GroupsService
@@ -37,7 +36,7 @@ async def search_groups(
 
 @router.get("/my")
 async def get_my_groups(
-    user_id: int | None = Query(None),
+    user_id:Optional[int] = Query(None),
     extended: bool = Query(False),
     filter: str = Query(""),
     token: str = Depends(get_token),

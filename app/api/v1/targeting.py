@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from app.api.v1.deps import get_token
 from app.services.targeting import TargetingService
@@ -27,7 +26,7 @@ async def get_targeting_stats(account_id: int, body: TargetingStatsRequest, toke
 @router.get("/retargeting")
 async def list_retargeting_groups(
     account_id: int,
-    client_id: int | None = Query(None),
+    client_id:Optional[int] = Query(None),
     token: str = Depends(get_token),
 ):
     try:
@@ -52,7 +51,7 @@ async def create_retargeting_group(
 async def delete_retargeting_group(
     account_id: int,
     group_id: int,
-    client_id: int | None = Query(None),
+    client_id:Optional[int] = Query(None),
     token: str = Depends(get_token),
 ):
     try:
@@ -66,7 +65,7 @@ async def import_contacts(
     account_id: int,
     group_id: int,
     contacts: str,
-    client_id: int | None = Query(None),
+    client_id:Optional[int] = Query(None),
     token: str = Depends(get_token),
 ):
     try:
@@ -78,7 +77,7 @@ async def import_contacts(
 
 
 @router.get("/lookalike")
-async def list_lookalike(account_id: int, client_id: int | None = Query(None), token: str = Depends(get_token)):
+async def list_lookalike(account_id: int, client_id:Optional[int] = Query(None), token: str = Depends(get_token)):
     try:
         return await TargetingService(token).get_lookalike_requests(account_id, client_id)
     except VKAPIError as e:
@@ -107,7 +106,7 @@ async def get_categories(token: str = Depends(get_token)):
 async def get_suggestions(
     account_id: int,
     section: str,
-    q: str | None = Query(None),
+    q:Optional[str] = Query(None),
     token: str = Depends(get_token),
 ):
     try:

@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import logging
-from typing import Any
+from typing import Optional, Any
 from app.services.vk_client import VKApiClient
 
 logger = logging.getLogger(__name__)
@@ -43,7 +41,7 @@ class GroupsService:
             params["date_to"] = date_to
         return await self._client.call("stats.get", group_id=group_id, date_from=date_from, date_to=date_to)
 
-    async def get_user_groups(self, user_id: int | None = None, extended: bool = False, filter_: str = "") -> dict:
+    async def get_user_groups(self, user_id:Optional[int] = None, extended: bool = False, filter_: str = "") -> dict:
         params: dict[str, Any] = {"extended": 1 if extended else 0}
         if user_id:
             params["user_id"] = user_id

@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from app.api.v1.deps import get_token
 from app.services.campaigns import CampaignsService
@@ -12,7 +11,7 @@ router = APIRouter(prefix="/accounts/{account_id}/campaigns", tags=["campaigns"]
 @router.get("/")
 async def list_campaigns(
     account_id: int,
-    client_id: int | None = Query(None),
+    client_id:Optional[int] = Query(None),
     include_deleted: bool = Query(False),
     token: str = Depends(get_token),
 ):

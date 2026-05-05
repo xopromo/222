@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Optional, Literal
 
 
 class CampaignCreate(BaseModel):
@@ -11,17 +9,17 @@ class CampaignCreate(BaseModel):
     lifetime_limit: str = "0"
     start_time: int = 0
     stop_time: int = 0
-    client_id: int | None = None
+    client_id:Optional[int] = None
 
 
 class CampaignUpdate(BaseModel):
     campaign_id: int
-    name: str | None = None
-    status: Literal[0, 1, 2] | None = None  # 0=stopped, 1=running, 2=deleted
-    day_limit: str | None = None
-    lifetime_limit: str | None = None
-    start_time: int | None = None
-    stop_time: int | None = None
+    name:Optional[str] = None
+    status:Optional[Literal[0, 1, 2]] = None  # 0=stopped, 1=running, 2=deleted
+    day_limit:Optional[str] = None
+    lifetime_limit:Optional[str] = None
+    start_time:Optional[int] = None
+    stop_time:Optional[int] = None
 
 
 class CampaignStatsRequest(BaseModel):

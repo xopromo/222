@@ -1,10 +1,9 @@
-from __future__ import annotations
-
+from typing import Optional
 from fastapi import HTTPException, status
 
 
 class VKAPIError(Exception):
-    def __init__(self, error_code: int, error_msg: str, request_params: list | None = None):
+    def __init__(self, error_code: int, error_msg: str, request_params:Optional[list] = None):
         self.error_code = error_code
         self.error_msg = error_msg
         self.request_params = request_params or []

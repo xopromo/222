@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 import json
 import logging
-from typing import Any
+from typing import Optional, Any
 from app.services.vk_client import VKApiClient
 
 logger = logging.getLogger(__name__)
@@ -17,8 +15,8 @@ class CampaignsService:
     async def get_campaigns(
         self,
         account_id: int,
-        client_id: int | None = None,
-        campaign_ids: list[int] | None = None,
+        client_id:Optional[int] = None,
+        campaign_ids:Optional[list[int]] = None,
         include_deleted: bool = False,
     ) -> list[dict]:
         params: dict[str, Any] = {"account_id": account_id}

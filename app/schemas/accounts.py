@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -18,6 +17,6 @@ class ClientCreate(BaseModel):
 
 
 class ClientUpdate(BaseModel):
-    name: str | None = None
-    day_limit: str | None = None
-    month_limit: str | None = None
+    name:Optional[str] = None
+    day_limit:Optional[str] = None
+    month_limit:Optional[str] = None
