@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, List, Union
 from app.services.vk_client import VKApiClient
 
 logger = logging.getLogger(__name__)
@@ -11,13 +11,13 @@ class GroupsService:
     def __init__(self, access_token: str):
         self._client = VKApiClient(access_token)
 
-    async def get_by_id(self, group_ids: list[str | int], fields: str = "") -> list[dict]:
+    async def get_by_id(self, group_ids: List[Union[str, int]], fields: str = "") -> list[dict]:
         params: dict[str, Any] = {"group_ids": ",".join(str(g) for g in group_ids)}
         if fields:
             params["fields"] = fields
         return await self._client.call("groups.getById", **params)
 
-    async def get_members(self, group_id: int | str, count: int = 1000, offset: int = 0, fields: str = "") -> dict:
+    async def get_members(self, group_id: Union[int, str], count: int = 1000, offset: int = 0, fields: str = "") -> dict:
         params: dict[str, Any] = {
             "group_id": group_id,
             "count": count,
@@ -49,7 +49,7 @@ class GroupsService:
             params["filter"] = filter_
         return await self._client.call("groups.get", **params)
 
-    async def is_member(self, group_id: int | str, user_ids: list[int]) -> list[dict]:
+    async def is_member(self, group_id: Union[int, str], user_ids: list[int]) -> list[dict]:
         return await self._client.call(
             "groups.isMember",
             group_id=group_id,
