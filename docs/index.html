@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VK Ads Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #5b8cff;
+    --accent-hover: #7aa3ff;
+    --text: #e2e6f3;
+    --text-dim: #8892b0;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --radius: 8px;
+    --sidebar: 220px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .topbar h1 { font-size: 16px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .topbar-sep { flex: 1; }
+  .topbar label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+  .topbar input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 5px 10px;
+    font-size: 13px;
+    outline: none;
+    width: 220px;
+  }
+  .topbar input:focus { border-color: var(--accent); }
+  #api-url { width: 280px; }
+  .btn {
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
+  .btn-danger:hover { background: var(--red); color: #fff; }
+  .btn-sm { padding: 3px 8px; font-size: 12px; }
+
+  /* LAYOUT */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: var(--sidebar);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-section {
+    padding: 12px 8px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: var(--radius);
+    margin: 1px 4px;
+    font-size: 13px;
+    color: var(--text-dim);
+    transition: all 0.1s;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--surface2); color: var(--accent); border-color: var(--border); }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+
+  /* MAIN */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* PANEL */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .panel-title { font-size: 14px; font-weight: 600; flex: 1; }
+  .panel-body { padding: 16px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .clickable-row { cursor: pointer; }
+
+  /* BADGES */
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-green { background: rgba(74,222,128,0.15); color: var(--green); }
+  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .badge-blue { background: rgba(91,140,255,0.15); color: var(--accent); }
+  .badge-gray { background: rgba(136,146,176,0.15); color: var(--text-dim); }
+
+  /* FORM */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+  .form-input, .form-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 13px;
+    outline: none;
+    width: 100%;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .form-select option { background: var(--surface2); }
+  .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .stat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 700; }
+
+  /* EMPTY / LOADING */
+  .empty { text-align: center; padding: 40px; color: var(--text-dim); font-size: 13px; }
+  .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px; color: var(--text-dim); font-size: 13px; }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* TOAST */
+  #toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    max-width: 320px;
+    animation: fadeIn 0.2s ease;
+    border: 1px solid;
+  }
+  .toast-success { background: rgba(74,222,128,0.1); border-color: var(--green); color: var(--green); }
+  .toast-error { background: rgba(248,113,113,0.1); border-color: var(--red); color: var(--red); }
+  .toast-info { background: rgba(91,140,255,0.1); border-color: var(--accent); color: var(--accent); }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 480px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .modal-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 20px; line-height: 1; }
+  .modal-body { padding: 20px; }
+
+  /* BREADCRUMB */
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+  .breadcrumb span { color: var(--text); }
+  .breadcrumb .sep { color: var(--border); }
+  .breadcrumb a { color: var(--accent); cursor: pointer; }
+  .breadcrumb a:hover { text-decoration: underline; }
+
+  /* DATE FILTER */
+  .date-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .date-filter label { font-size: 12px; color: var(--text-dim); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <h1>VK Ads</h1>
+  <label for="api-url">API:</label>
+  <input type="text" id="api-url" placeholder="http://localhost:8000" value="http://localhost:8000">
+  <label for="vk-token">Токен:</label>
+  <input type="password" id="vk-token" placeholder="vk1.a.xxx...">
+  <button class="btn btn-primary" onclick="App.connect()">Подключить</button>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-section">Обзор</div>
+    <div class="nav-item active" data-view="accounts" onclick="App.navigate('accounts')">
+      <span class="nav-icon">🏦</span> Кабинеты
+    </div>
+    <div class="nav-item" data-view="campaigns" onclick="App.navigate('campaigns')">
+      <span class="nav-icon">📣</span> Кампании
+    </div>
+    <div class="nav-item" data-view="ads" onclick="App.navigate('ads')">
+      <span class="nav-icon">🎯</span> Объявления
+    </div>
+    <div class="nav-item" data-view="stats" onclick="App.navigate('stats')">
+      <span class="nav-icon">📊</span> Статистика
+    </div>
+    <div class="sidebar-section">Аудитория</div>
+    <div class="nav-item" data-view="retargeting" onclick="App.navigate('retargeting')">
+      <span class="nav-icon">🔁</span> Ретаргетинг
+    </div>
+    <div class="sidebar-section">Контент</div>
+    <div class="nav-item" data-view="wall" onclick="App.navigate('wall')">
+      <span class="nav-icon">📝</span> Стена
+    </div>
+    <div class="nav-item" data-view="groups" onclick="App.navigate('groups')">
+      <span class="nav-icon">👥</span> Группы
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main" id="main-content">
+    <div class="panel">
+      <div class="panel-body">
+        <div class="empty">Введите API URL и VK токен, затем нажмите <strong>Подключить</strong></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)App.closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Форма</span>
+      <button class="modal-close" onclick="App.closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toast-container"></div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const State = {
+  apiUrl: 'http://localhost:8000',
+  token: '',
+  accounts: [],
+  selectedAccount: null,
+  campaigns: [],
+  selectedCampaign: null,
+  ads: [],
+  currentView: 'accounts',
+};
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+const api = {
+  async req(method, path, body = null, params = {}) {
+    const url = new URL(State.apiUrl + path);
+    Object.entries(params).forEach(([k, v]) => { if (v !== null && v !== undefined && v !== '') url.searchParams.set(k, v); });
+    const opts = {
+      method,
+      headers: { 'X-Vk-Token': State.token, 'Accept': 'application/json' },
+    };
+    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    const res = await fetch(url, opts);
+    const data = await res.json().catch(() => ({ detail: res.statusText }));
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+    return data;
+  },
+  get: (p, params) => api.req('GET', p, null, params),
+  post: (p, b, params) => api.req('POST', p, b, params),
+  patch: (p, b) => api.req('PATCH', p, b),
+  delete: (p, params) => api.req('DELETE', p, null, params),
+};
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ─── RENDER HELPERS ───────────────────────────────────────────────────────────
+function loading() {
+  return `<div class="loading"><div class="spinner"></div> Загрузка...</div>`;
+}
+function empty(msg = 'Нет данных') {
+  return `<div class="empty">${msg}</div>`;
+}
+function statusBadge(status) {
+  const map = { 0: ['badge-red', 'Остановлен'], 1: ['badge-green', 'Активен'], 2: ['badge-gray', 'Удалён'] };
+  const [cls, label] = map[status] ?? ['badge-gray', status];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function fmtNum(v) { return v != null ? Number(v).toLocaleString('ru') : '—'; }
+function fmtMoney(v) { return v != null ? Number(v).toLocaleString('ru', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }) : '—'; }
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+const App = {
+  async connect() {
+    State.apiUrl = document.getElementById('api-url').value.replace(/\/$/, '');
+    State.token = document.getElementById('vk-token').value.trim();
+    if (!State.token) { toast('Введите VK токен', 'error'); return; }
+    // save to localStorage
+    localStorage.setItem('vk_api_url', State.apiUrl);
+    localStorage.setItem('vk_token', State.token);
+    await this.navigate('accounts');
+  },
+
+  navigate(view) {
+    State.currentView = view;
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === view);
+    });
+    const views = { accounts: Views.accounts, campaigns: Views.campaigns, ads: Views.ads, stats: Views.stats, retargeting: Views.retargeting, wall: Views.wall, groups: Views.groups };
+    if (views[view]) views[view]();
+    else render(`<div class="empty">Раздел в разработке</div>`);
+  },
+
+  openModal(title, bodyHtml) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = bodyHtml;
+    document.getElementById('modal-overlay').classList.add('open');
+  },
+
+  closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  },
+};
+
+function render(html) {
+  document.getElementById('main-content').innerHTML = html;
+}
+
+// ─── VIEWS ────────────────────────────────────────────────────────────────────
+const Views = {
+
+  // ── ACCOUNTS ──────────────────────────────────────────────────────────────
+  async accounts() {
+    render(`<div class="panel"><div class="panel-header"><span class="panel-title">Рекламные кабинеты</span></div><div class="panel-body">${loading()}</div></div>`);
+    try {
+      const data = await api.get('/api/v1/accounts/');
+      State.accounts = data.response ?? data ?? [];
+      const rows = State.accounts.map(a => `
+        <tr class="clickable-row" onclick="App._selectAccount(${a.account_id})">
+          <td><strong>${a.account_id}</strong></td>
+          <td>${a.account_name ?? '—'}</td>
+          <td><span class="badge badge-blue">${a.account_type ?? '—'}</span></td>
+          <td>${statusBadge(a.account_status)}</td>
+          <td>${a.access_role ?? '—'}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();Views._accountBudget(${a.account_id})">Бюджет</button>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();App._goToCampaigns(${a.account_id})">Кампании →</button>
+          </td>
+        </tr>`).join('');
+      render(`
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Рекламные кабинеты (${State.accounts.length})</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Название</th><th>Тип</th><th>Статус</th><th>Роль</th><th>Действия</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="6">${empty()}</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>`);
+    } catch(e) { render(`<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`); toast(e.message, 'error'); }
+  },
+
+  async _accountBudget(accountId) {
+    try {
+      const d = await api.get(`/api/v1/accounts/${accountId}/budget`);
+      const budget = d.response ?? d.budget ?? JSON.stringify(d);
+      toast(`Бюджет кабинета ${accountId}: ${fmtMoney(budget)}`, 'info');
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  // ── CAMPAIGNS ─────────────────────────────────────────────────────────────
+  async campaigns(accountId) {
+    if (accountId) State.selectedAccount = accountId;
+    if (!State.selectedAccount && State.accounts.length > 0) State.selectedAccount = State.accounts[0].account_id;
+    if (!State.selectedAccount) {
+      render(`<div class="panel"><div class="panel-body">${empty('Сначала выберите рекламный кабинет')}</div></div>`);
+      return;
+    }
+    const accId = State.selectedAccount;
+    const accName = State.accounts.find(a => a.account_id === accId)?.account_name ?? accId;
+    render(`
+      <div class="breadcrumb"><a onclick="App.navigate('accounts')">Кабинеты</a><span class="sep">›</span><span>${accName}</span></div>
+      <div class="panel"><div class="panel-header"><span class="panel-title">Кампании</span></div><div class="panel-body">${loading()}</div></div>`);
+    try {
+      const data = await api.get(`/api/v1/accounts/${accId}/campaigns/`);
+      State.campaigns = data.response ?? data ?? [];
+      const rows = State.campaigns.map(c => `
+        <tr class="clickable-row" onclick="App._goToAds(${c.id})">
+          <td><strong>${c.id}</strong></td>
+          <td>${c.name ?? '—'}</td>
+          <td><span class="badge badge-blue">${c.type ?? '—'}</span></td>
+          <td>${statusBadge(c.status)}</td>
+          <td>${fmtMoney(c.day_limit)}</td>
+          <td>${fmtMoney(c.lifetime_limit)}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();Views._editCampaign(${c.id})">Изменить</button>
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();Views._deleteCampaign(${accId},${c.id})">Удалить</button>
+          </td>
+        </tr>`).join('');
+      render(`
+        <div class="breadcrumb"><a onclick="App.navigate('accounts')">Кабинеты</a><span class="sep">›</span><span>${accName}</span></div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Кампании (${State.campaigns.length})</span>
+            <button class="btn btn-primary btn-sm" onclick="Views._createCampaign(${accId})">+ Создать</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Название</th><th>Тип</th><th>Статус</th><th>Дн. лимит</th><th>Общий лимит</th><th>Действия</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="7">${empty()}</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>`);
+    } catch(e) { render(`<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`); toast(e.message, 'error'); }
+  },
+
+  _createCampaign(accId) {
+    App.openModal('Создать кампанию', `
+      <div class="form-grid">
+        <div class="form-group full"><label class="form-label">Название *</label><input class="form-input" id="fc-name" placeholder="Моя кампания"></div>
+        <div class="form-group"><label class="form-label">Тип</label>
+          <select class="form-select" id="fc-type">
+            <option value="normal">Обычная</option>
+            <option value="mobile_apps">Мобильные приложения</option>
+            <option value="promoted_posts">Продвижение записей</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Дневной лимит (руб.)</label><input class="form-input" id="fc-day" type="number" value="0"></div>
+        <div class="form-group"><label class="form-label">Общий лимит (руб.)</label><input class="form-input" id="fc-life" type="number" value="0"></div>
+        <div class="form-actions full">
+          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="Views._submitCreateCampaign(${accId})">Создать</button>
+        </div>
+      </div>`);
+  },
+
+  async _submitCreateCampaign(accId) {
+    const name = document.getElementById('fc-name').value.trim();
+    if (!name) { toast('Введите название', 'error'); return; }
+    try {
+      await api.post(`/api/v1/accounts/${accId}/campaigns/`, {
+        name,
+        type: document.getElementById('fc-type').value,
+        day_limit: String(document.getElementById('fc-day').value || 0),
+        lifetime_limit: String(document.getElementById('fc-life').value || 0),
+      });
+      App.closeModal(); toast('Кампания создана', 'success');
+      Views.campaigns(accId);
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  _editCampaign(campaignId) {
+    const c = State.campaigns.find(x => x.id === campaignId);
+    if (!c) return;
+    App.openModal('Изменить кампанию', `
+      <div class="form-grid">
+        <div class="form-group full"><label class="form-label">Название</label><input class="form-input" id="ec-name" value="${c.name ?? ''}"></div>
+        <div class="form-group"><label class="form-label">Статус</label>
+          <select class="form-select" id="ec-status">
+            <option value="" ${c.status == null ? 'selected' : ''}>Не менять</option>
+            <option value="0" ${c.status === 0 ? 'selected' : ''}>Остановить</option>
+            <option value="1" ${c.status === 1 ? 'selected' : ''}>Запустить</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Дневной лимит (руб.)</label><input class="form-input" id="ec-day" type="number" value="${c.day_limit ?? 0}"></div>
+        <div class="form-actions full">
+          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="Views._submitEditCampaign(${State.selectedAccount},${campaignId})">Сохранить</button>
+        </div>
+      </div>`);
+  },
+
+  async _submitEditCampaign(accId, campaignId) {
+    const body = { campaign_id: campaignId };
+    const name = document.getElementById('ec-name').value.trim();
+    const status = document.getElementById('ec-status').value;
+    const day = document.getElementById('ec-day').value;
+    if (name) body.name = name;
+    if (status !== '') body.status = Number(status);
+    if (day !== '') body.day_limit = String(day);
+    try {
+      await api.patch(`/api/v1/accounts/${accId}/campaigns/${campaignId}`, body);
+      App.closeModal(); toast('Кампания обновлена', 'success');
+      Views.campaigns(accId);
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  async _deleteCampaign(accId, campaignId) {
+    if (!confirm(`Удалить кампанию ${campaignId}?`)) return;
+    try {
+      await api.delete(`/api/v1/accounts/${accId}/campaigns/${campaignId}`);
+      toast('Кампания удалена', 'success');
+      Views.campaigns(accId);
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  // ── ADS ───────────────────────────────────────────────────────────────────
+  async ads(campaignId) {
+    if (campaignId) State.selectedCampaign = campaignId;
+    const accId = State.selectedAccount;
+    if (!accId) { render(`<div class="panel"><div class="panel-body">${empty('Сначала выберите кабинет и кампанию')}</div></div>`); return; }
+    const accName = State.accounts.find(a => a.account_id === accId)?.account_name ?? accId;
+    const camp = State.campaigns.find(c => c.id === State.selectedCampaign);
+    const campName = camp?.name ?? State.selectedCampaign ?? 'Все';
+    render(`
+      <div class="breadcrumb"><a onclick="App.navigate('accounts')">Кабинеты</a><span class="sep">›</span><a onclick="App.navigate('campaigns')">${accName}</a><span class="sep">›</span><span>${campName}</span></div>
+      <div class="panel"><div class="panel-body">${loading()}</div></div>`);
+    try {
+      const params = {};
+      if (State.selectedCampaign) params.campaign_ids = String(State.selectedCampaign);
+      const data = await api.get(`/api/v1/accounts/${accId}/ads/`, params);
+      State.ads = data.response ?? data ?? [];
+      const costMap = { 0: 'CPC', 1: 'CPM', 3: 'oCPM' };
+      const rows = State.ads.map(ad => `
+        <tr>
+          <td><strong>${ad.id}</strong></td>
+          <td>${ad.name ?? '—'}</td>
+          <td>${statusBadge(ad.status)}</td>
+          <td><span class="badge badge-blue">${costMap[ad.cost_type] ?? ad.cost_type}</span></td>
+          <td>${ad.cpc ? fmtMoney(ad.cpc) : ad.cpm ? fmtMoney(ad.cpm) : ad.ocpm ? fmtMoney(ad.ocpm) : '—'}</td>
+          <td>${ad.campaign_id}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="Views._editAd(${ad.id})">Изменить</button>
+            <button class="btn btn-danger btn-sm" onclick="Views._deleteAd(${accId},${ad.id})">Удалить</button>
+          </td>
+        </tr>`).join('');
+      render(`
+        <div class="breadcrumb"><a onclick="App.navigate('accounts')">Кабинеты</a><span class="sep">›</span><a onclick="App.navigate('campaigns')">${accName}</a><span class="sep">›</span><span>${campName}</span></div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Объявления (${State.ads.length})</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Тип</th><th>Ставка</th><th>Кампания</th><th>Действия</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="7">${empty()}</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>`);
+    } catch(e) { render(`<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`); toast(e.message, 'error'); }
+  },
+
+  _editAd(adId) {
+    const ad = State.ads.find(x => x.id === adId);
+    if (!ad) return;
+    App.openModal('Изменить объявление', `
+      <div class="form-grid">
+        <div class="form-group full"><label class="form-label">Название</label><input class="form-input" id="ea-name" value="${ad.name ?? ''}"></div>
+        <div class="form-group"><label class="form-label">Статус</label>
+          <select class="form-select" id="ea-status">
+            <option value="">Не менять</option>
+            <option value="0">Остановить</option>
+            <option value="1">Запустить</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">CPC (руб.)</label><input class="form-input" id="ea-cpc" value="${ad.cpc ?? ''}"></div>
+        <div class="form-group"><label class="form-label">CPM (руб.)</label><input class="form-input" id="ea-cpm" value="${ad.cpm ?? ''}"></div>
+        <div class="form-actions full">
+          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="Views._submitEditAd(${State.selectedAccount},${adId})">Сохранить</button>
+        </div>
+      </div>`);
+  },
+
+  async _submitEditAd(accId, adId) {
+    const body = { ad_id: adId };
+    const name = document.getElementById('ea-name').value.trim();
+    const status = document.getElementById('ea-status').value;
+    const cpc = document.getElementById('ea-cpc').value.trim();
+    const cpm = document.getElementById('ea-cpm').value.trim();
+    if (name) body.name = name;
+    if (status !== '') body.status = Number(status);
+    if (cpc) body.cpc = cpc;
+    if (cpm) body.cpm = cpm;
+    try {
+      await api.patch(`/api/v1/accounts/${accId}/ads/${adId}`, body);
+      App.closeModal(); toast('Объявление обновлено', 'success');
+      Views.ads();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  async _deleteAd(accId, adId) {
+    if (!confirm(`Удалить объявление ${adId}?`)) return;
+    try {
+      await api.delete(`/api/v1/accounts/${accId}/ads/${adId}`);
+      toast('Объявление удалено', 'success');
+      Views.ads();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  // ── STATS ─────────────────────────────────────────────────────────────────
+  stats() {
+    const accId = State.selectedAccount;
+    const campOptions = State.campaigns.map(c => `<option value="${c.id}">${c.name ?? c.id}</option>`).join('');
+    render(`
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Статистика кампаний</span></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label class="form-label">Кампании (выберите одну или несколько)</label>
+              <select class="form-select" id="stat-campaigns" multiple size="5">
+                ${campOptions || '<option disabled>Нет кампаний — сначала перейдите в раздел "Кампании"</option>'}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Период</label>
+              <select class="form-select" id="stat-period">
+                <option value="day">День</option>
+                <option value="month">Месяц</option>
+                <option value="overall">Всего</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Дата от (YYYY-MM-DD или 0)</label>
+              <input class="form-input" id="stat-from" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Дата до (YYYY-MM-DD или 0)</label>
+              <input class="form-input" id="stat-to" value="0">
+            </div>
+            <div class="form-actions full">
+              <button class="btn btn-primary" onclick="Views._loadStats('campaigns',${accId})">Загрузить статистику</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="stats-result"></div>`);
+  },
+
+  async _loadStats(type, accId) {
+    const sel = document.getElementById('stat-campaigns');
+    const ids = Array.from(sel.selectedOptions).map(o => Number(o.value));
+    if (!ids.length) { toast('Выберите хотя бы одну кампанию', 'error'); return; }
+    const period = document.getElementById('stat-period').value;
+    const date_from = document.getElementById('stat-from').value.trim() || '0';
+    const date_to = document.getElementById('stat-to').value.trim() || '0';
+    document.getElementById('stats-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
+    try {
+      const data = await api.post(`/api/v1/accounts/${accId}/campaigns/stats`, { ids, period, date_from, date_to });
+      const rows = (data.response ?? data ?? []).flatMap(item =>
+        (item.stats ?? [{ impressions: item.impressions, clicks: item.clicks, spent: item.spent }]).map(s => `
+          <tr>
+            <td>${item.id}</td>
+            <td>${State.campaigns.find(c=>c.id===item.id)?.name ?? '—'}</td>
+            <td>${s.day ?? s.month ?? '—'}</td>
+            <td>${fmtNum(s.impressions)}</td>
+            <td>${fmtNum(s.clicks)}</td>
+            <td>${s.clicks && s.impressions ? (s.clicks/s.impressions*100).toFixed(2)+'%' : '—'}</td>
+            <td>${fmtMoney(s.spent)}</td>
+            <td>${s.clicks && s.spent ? fmtMoney(s.spent/s.clicks) : '—'}</td>
+          </tr>`)
+      ).join('');
+      document.getElementById('stats-result').innerHTML = `
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Результаты</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Кампания</th><th>Дата</th><th>Показы</th><th>Клики</th><th>CTR</th><th>Расход</th><th>CPC</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="8">${empty('Нет данных за период')}</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>`;
+    } catch(e) {
+      document.getElementById('stats-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`;
+      toast(e.message, 'error');
+    }
+  },
+
+  // ── RETARGETING ───────────────────────────────────────────────────────────
+  async retargeting() {
+    const accId = State.selectedAccount;
+    if (!accId) {
+      render(`<div class="panel"><div class="panel-body">${empty('Сначала выберите рекламный кабинет в разделе "Кабинеты"')}</div></div>`);
+      return;
+    }
+    render(`<div class="panel"><div class="panel-header"><span class="panel-title">Ретаргетинг</span></div><div class="panel-body">${loading()}</div></div>`);
+    try {
+      const data = await api.get(`/api/v1/accounts/${accId}/targeting/retargeting`);
+      const groups = data.response ?? data ?? [];
+      const rows = groups.map(g => `
+        <tr>
+          <td>${g.id}</td>
+          <td>${g.name ?? '—'}</td>
+          <td>${fmtNum(g.audience_count)}</td>
+          <td>${g.lifetime ?? '—'} дн.</td>
+          <td><button class="btn btn-danger btn-sm" onclick="Views._deleteRetargeting(${accId},${g.id})">Удалить</button></td>
+        </tr>`).join('');
+      render(`
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Группы ретаргетинга (${groups.length})</span>
+            <button class="btn btn-primary btn-sm" onclick="Views._createRetargeting(${accId})">+ Создать</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Название</th><th>Аудитория</th><th>Срок хранения</th><th>Действия</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="5">${empty()}</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>`);
+    } catch(e) { render(`<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`); toast(e.message, 'error'); }
+  },
+
+  _createRetargeting(accId) {
+    App.openModal('Создать группу ретаргетинга', `
+      <div class="form-grid">
+        <div class="form-group full"><label class="form-label">Название *</label><input class="form-input" id="rt-name" placeholder="Посетители сайта"></div>
+        <div class="form-group full"><label class="form-label">Срок хранения (дней)</label><input class="form-input" id="rt-life" type="number" value="30" min="1" max="720"></div>
+        <div class="form-actions full">
+          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="Views._submitCreateRetargeting(${accId})">Создать</button>
+        </div>
+      </div>`);
+  },
+
+  async _submitCreateRetargeting(accId) {
+    const name = document.getElementById('rt-name').value.trim();
+    if (!name) { toast('Введите название', 'error'); return; }
+    const lifetime = Number(document.getElementById('rt-life').value) || 30;
+    try {
+      await api.post(`/api/v1/accounts/${accId}/targeting/retargeting`, { name, lifetime });
+      App.closeModal(); toast('Группа создана', 'success');
+      Views.retargeting();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  async _deleteRetargeting(accId, groupId) {
+    if (!confirm(`Удалить группу ${groupId}?`)) return;
+    try {
+      await api.delete(`/api/v1/accounts/${accId}/targeting/retargeting/${groupId}`);
+      toast('Группа удалена', 'success');
+      Views.retargeting();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  // ── WALL ──────────────────────────────────────────────────────────────────
+  wall() {
+    render(`
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Стена / Посты</span></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label">ID владельца (owner_id) *</label><input class="form-input" id="wall-owner" placeholder="-123456 для группы"></div>
+            <div class="form-group"><label class="form-label">Количество (макс. 100)</label><input class="form-input" id="wall-count" type="number" value="20" min="1" max="100"></div>
+            <div class="form-group"><label class="form-label">Смещение</label><input class="form-input" id="wall-offset" type="number" value="0" min="0"></div>
+            <div class="form-group"><label class="form-label">Фильтр</label>
+              <select class="form-select" id="wall-filter">
+                <option value="all">Все</option>
+                <option value="owner">Свои</option>
+                <option value="others">Чужие</option>
+                <option value="postponed">Отложенные</option>
+              </select>
+            </div>
+            <div class="form-actions full">
+              <button class="btn btn-primary" onclick="Views._loadWall()">Загрузить</button>
+              <button class="btn btn-secondary" onclick="Views._createPost()">+ Новый пост</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="wall-result"></div>`);
+  },
+
+  async _loadWall() {
+    const owner_id = document.getElementById('wall-owner').value.trim();
+    if (!owner_id) { toast('Введите owner_id', 'error'); return; }
+    const count = document.getElementById('wall-count').value;
+    const offset = document.getElementById('wall-offset').value;
+    const filter = document.getElementById('wall-filter').value;
+    document.getElementById('wall-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
+    try {
+      const data = await api.get('/api/v1/wall/', { owner_id, count, offset, filter });
+      const posts = data.response?.items ?? data.items ?? data ?? [];
+      const rows = posts.map(p => {
+        const text = (p.text ?? '').slice(0, 80) + ((p.text ?? '').length > 80 ? '…' : '');
+        const date = p.date ? new Date(p.date * 1000).toLocaleString('ru') : '—';
+        return `<tr>
+          <td>${p.id}</td>
+          <td>${date}</td>
+          <td style="max-width:300px;word-break:break-word">${text || '<em>нет текста</em>'}</td>
+          <td>${fmtNum(p.likes?.count)} / ${fmtNum(p.reposts?.count)} / ${fmtNum(p.comments?.count)}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="Views._pinPost('${owner_id}',${p.id})">📌 Закрепить</button>
+            <button class="btn btn-danger btn-sm" onclick="Views._deletePost('${owner_id}',${p.id})">Удалить</button>
+          </td>
+        </tr>`;
+      }).join('');
+      document.getElementById('wall-result').innerHTML = `
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Посты (${posts.length})</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Дата</th><th>Текст</th><th>❤️ / 🔁 / 💬</th><th>Действия</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="5">${empty()}</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>`;
+    } catch(e) {
+      document.getElementById('wall-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`;
+      toast(e.message, 'error');
+    }
+  },
+
+  _createPost() {
+    App.openModal('Новый пост', `
+      <div class="form-grid">
+        <div class="form-group full"><label class="form-label">ID владельца (owner_id, пусто = текущий пользователь)</label><input class="form-input" id="cp-owner" placeholder="-123456"></div>
+        <div class="form-group full"><label class="form-label">Текст</label><textarea class="form-input" id="cp-text" rows="4" placeholder="Текст поста..."></textarea></div>
+        <div class="form-group full"><label class="form-label">Вложения (через запятую: photo123_456, video...)</label><input class="form-input" id="cp-attach" placeholder=""></div>
+        <div class="form-group"><label class="form-label">Дата публикации (unix timestamp, пусто = сейчас)</label><input class="form-input" id="cp-date" placeholder=""></div>
+        <div class="form-group"><label class="form-label">От имени группы</label>
+          <select class="form-select" id="cp-fromgroup"><option value="0">Нет</option><option value="1">Да</option></select>
+        </div>
+        <div class="form-actions full">
+          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="Views._submitCreatePost()">Опубликовать</button>
+        </div>
+      </div>`);
+  },
+
+  async _submitCreatePost() {
+    const body = {
+      message: document.getElementById('cp-text').value,
+      attachments: document.getElementById('cp-attach').value.trim(),
+      from_group: Number(document.getElementById('cp-fromgroup').value),
+    };
+    const owner = document.getElementById('cp-owner').value.trim();
+    const date = document.getElementById('cp-date').value.trim();
+    if (owner) body.owner_id = Number(owner);
+    if (date) body.publish_date = Number(date);
+    try {
+      await api.post('/api/v1/wall/', body);
+      App.closeModal(); toast('Пост опубликован', 'success');
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  async _pinPost(ownerId, postId) {
+    try {
+      await api.post(`/api/v1/wall/${postId}/pin`, null, { owner_id: ownerId });
+      toast('Пост закреплён', 'success');
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  async _deletePost(ownerId, postId) {
+    if (!confirm(`Удалить пост ${postId}?`)) return;
+    try {
+      await api.delete(`/api/v1/wall/${postId}`, { owner_id: ownerId });
+      toast('Пост удалён', 'success');
+      Views._loadWall();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  // ── GROUPS ────────────────────────────────────────────────────────────────
+  groups() {
+    render(`
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Группы ВКонтакте</span></div>
+        <div class="panel-body">
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button class="btn ${Views._groupTab==='my'?'btn-primary':'btn-secondary'}" id="gtab-my" onclick="Views._switchGroupTab('my')">Мои группы</button>
+            <button class="btn btn-secondary" id="gtab-search" onclick="Views._switchGroupTab('search')">Поиск</button>
+            <button class="btn btn-secondary" id="gtab-id" onclick="Views._switchGroupTab('id')">По ID</button>
+          </div>
+          <div id="groups-form"></div>
+        </div>
+      </div>
+      <div id="groups-result"></div>`);
+    Views._groupTab = 'my';
+    Views._switchGroupTab('my');
+  },
+  _groupTab: 'my',
+
+  _switchGroupTab(tab) {
+    Views._groupTab = tab;
+    ['my','search','id'].forEach(t => {
+      const btn = document.getElementById(`gtab-${t}`);
+      if (btn) btn.className = `btn ${t===tab?'btn-primary':'btn-secondary'}`;
+    });
+    const forms = {
+      my: `<div class="form-grid">
+        <div class="form-group"><label class="form-label">user_id (пусто = текущий)</label><input class="form-input" id="g-uid" placeholder=""></div>
+        <div class="form-group"><label class="form-label">Фильтр</label>
+          <select class="form-select" id="g-filter"><option value="">Все</option><option value="admin">Администратор</option><option value="editor">Редактор</option><option value="moder">Модератор</option></select>
+        </div>
+        <div class="form-actions full"><button class="btn btn-primary" onclick="Views._loadMyGroups()">Загрузить</button></div>
+      </div>`,
+      search: `<div class="form-grid">
+        <div class="form-group full"><label class="form-label">Поисковый запрос *</label><input class="form-input" id="g-q" placeholder="ВКонтакте"></div>
+        <div class="form-group"><label class="form-label">Количество</label><input class="form-input" id="g-count" type="number" value="20" min="1" max="1000"></div>
+        <div class="form-actions full"><button class="btn btn-primary" onclick="Views._searchGroups()">Найти</button></div>
+      </div>`,
+      id: `<div class="form-grid">
+        <div class="form-group full"><label class="form-label">ID или короткие имена (через запятую)</label><input class="form-input" id="g-ids" placeholder="1,vkteam,club2"></div>
+        <div class="form-actions full"><button class="btn btn-primary" onclick="Views._loadGroupsById()">Загрузить</button></div>
+      </div>`,
+    };
+    document.getElementById('groups-form').innerHTML = forms[tab] ?? '';
+  },
+
+  async _loadMyGroups() {
+    document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
+    const uid = document.getElementById('g-uid').value.trim();
+    const filter = document.getElementById('g-filter').value;
+    try {
+      const data = await api.get('/api/v1/groups/my', { user_id: uid || undefined, extended: true, filter: filter || undefined });
+      Views._renderGroups(data.response?.items ?? data.items ?? data ?? []);
+    } catch(e) { document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`; toast(e.message, 'error'); }
+  },
+
+  async _searchGroups() {
+    const q = document.getElementById('g-q').value.trim();
+    if (!q) { toast('Введите запрос', 'error'); return; }
+    const count = document.getElementById('g-count').value;
+    document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
+    try {
+      const data = await api.get('/api/v1/groups/search', { q, count });
+      Views._renderGroups(data.response?.items ?? data.items ?? data ?? []);
+    } catch(e) { document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`; toast(e.message, 'error'); }
+  },
+
+  async _loadGroupsById() {
+    const ids = document.getElementById('g-ids').value.trim();
+    if (!ids) { toast('Введите ID', 'error'); return; }
+    document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
+    try {
+      const data = await api.get('/api/v1/groups/', { group_ids: ids });
+      Views._renderGroups(data.response ?? data ?? []);
+    } catch(e) { document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`; toast(e.message, 'error'); }
+  },
+
+  _renderGroups(groups) {
+    const rows = groups.map(g => `
+      <tr>
+        <td>${g.id}</td>
+        <td>${g.screen_name ? `<a href="https://vk.com/${g.screen_name}" target="_blank" style="color:var(--accent)">@${g.screen_name}</a>` : '—'}</td>
+        <td>${g.name ?? '—'}</td>
+        <td><span class="badge badge-blue">${g.type ?? '—'}</span></td>
+        <td>${g.is_closed != null ? (g.is_closed ? '<span class="badge badge-gray">Закрытая</span>' : '<span class="badge badge-green">Открытая</span>') : '—'}</td>
+        <td>${fmtNum(g.members_count)}</td>
+      </tr>`).join('');
+    document.getElementById('groups-result').innerHTML = `
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Группы (${groups.length})</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Адрес</th><th>Название</th><th>Тип</th><th>Тип доступа</th><th>Участников</th></tr></thead>
+            <tbody>${rows || `<tr><td colspan="6">${empty()}</td></tr>`}</tbody>
+          </table>
+        </div>
+      </div>`;
+  },
+};
+
+// ─── NAVIGATION HELPERS ───────────────────────────────────────────────────────
+App._selectAccount = function(accId) {
+  State.selectedAccount = accId;
+  App._goToCampaigns(accId);
+};
+
+App._goToCampaigns = function(accId) {
+  State.selectedAccount = accId;
+  State.selectedCampaign = null;
+  App.navigate('campaigns');
+};
+
+App._goToAds = function(campaignId) {
+  State.selectedCampaign = campaignId;
+  App.navigate('ads');
+};
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(function init() {
+  const savedUrl = localStorage.getItem('vk_api_url');
+  const savedToken = localStorage.getItem('vk_token');
+  if (savedUrl) { document.getElementById('api-url').value = savedUrl; State.apiUrl = savedUrl; }
+  if (savedToken) { document.getElementById('vk-token').value = savedToken; State.token = savedToken; }
+})();
+</script>
+</body>
+</html>
