@@ -1,8 +1,8 @@
 import hashlib
 import base64
 import logging
-import os
 import secrets
+from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -47,7 +47,7 @@ class VKOAuthService:
         }
         return f"{self.VK_ID_AUTH_URL}?{urlencode(params)}"
 
-    async def exchange_code(self, code: str, state: str | None = None) -> dict:
+    async def exchange_code(self, code: str, state: Optional[str] = None) -> dict:
         code_verifier = _pkce_store.pop(state, None) if state else None
 
         data: dict = {
