@@ -348,7 +348,7 @@
     <span class="dot"></span> Demo
   </div>
 </div>
-<div class="demo-banner" id="demo-banner">Demo-режим: данные выдуманные, запросы к API не отправляются. Все изменения сохраняются локально в сессии.</div>
+<div id="demo-banner"></div>
 
 <!-- LAYOUT -->
 <div class="layout">
@@ -1053,18 +1053,21 @@ const Views = {
   stats() {
     const accId = State.selectedAccount;
     const campOptions = State.campaigns.map(c => `<option value="${c.id}">${c.name ?? c.id}</option>`).join('');
+    const today = new Date();
+    const dateTo = today.toISOString().slice(0, 10);
+    const dateFrom = new Date(today - 6 * 86400000).toISOString().slice(0, 10);
     render(`
       <div class="panel">
         <div class="panel-header"><span class="panel-title">Статистика кампаний</span></div>
         <div class="panel-body">
-          <div class="form-grid">
-            <div class="form-group full">
-              <label class="form-label">Кампании (выберите одну или несколько)</label>
-              <select class="form-select" id="stat-campaigns" multiple size="5">
-                ${campOptions || '<option disabled>Нет кампаний — сначала перейдите в раздел "Кампании"</option>'}
-              </select>
-            </div>
-            <div class="form-group">
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">Кампании (выберите одну или несколько)</label>
+            <select class="form-select" id="stat-campaigns" multiple size="4">
+              ${campOptions || '<option disabled>Нет кампаний — сначала перейдите в раздел "Кампании"</option>'}
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+            <div class="form-group" style="min-width:130px">
               <label class="form-label">Период</label>
               <select class="form-select" id="stat-period">
                 <option value="day">День</option>
@@ -1072,17 +1075,15 @@ const Views = {
                 <option value="overall">Всего</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">Дата от (YYYY-MM-DD или 0)</label>
-              <input class="form-input" id="stat-from" value="0">
+            <div class="form-group" style="min-width:140px">
+              <label class="form-label">Дата от</label>
+              <input class="form-input" id="stat-from" value="${dateFrom}">
             </div>
-            <div class="form-group">
-              <label class="form-label">Дата до (YYYY-MM-DD или 0)</label>
-              <input class="form-input" id="stat-to" value="0">
+            <div class="form-group" style="min-width:140px">
+              <label class="form-label">Дата до</label>
+              <input class="form-input" id="stat-to" value="${dateTo}">
             </div>
-            <div class="form-actions full">
-              <button class="btn btn-primary" onclick="Views._loadStats('campaigns',${accId})">Загрузить статистику</button>
-            </div>
+            <button class="btn btn-primary" style="margin-bottom:1px" onclick="Views._loadStats('campaigns',${accId})">Загрузить</button>
           </div>
         </div>
       </div>
