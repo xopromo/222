@@ -29,8 +29,8 @@
 }
 html, body { height: 100%; }
 body {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
-  background: var(--bg); color: var(--text); font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text); font-size: 12px;
   display: flex; flex-direction: column; overflow: hidden;
 }
 
@@ -40,7 +40,7 @@ body {
   padding: 5px 12px; background: var(--bg1);
   border-bottom: 1px solid var(--border); flex-shrink: 0; height: 34px;
 }
-.topbar-logo { color: var(--cyan); font-weight: 700; font-size: 12px; letter-spacing: .05em; }
+.topbar-logo { color: var(--cyan); font-weight: 700; font-size: 13px; letter-spacing: .02em; }
 .topbar-sep { width: 1px; height: 18px; background: var(--border2); }
 .topbar-label { color: var(--dim); font-size: 10px; }
 .t-input {
@@ -64,7 +64,7 @@ body {
 
 /* ── CHART AREA ── */
 .chart-area {
-  height: 110px; background: var(--bg1); border-bottom: 1px solid var(--border);
+  height: 220px; background: var(--bg1); border-top: 1px solid var(--border);
   flex-shrink: 0; position: relative; overflow: hidden;
 }
 .chart-area canvas { display: block; width: 100%; height: 100%; }
@@ -128,7 +128,7 @@ body {
 .ckbox:hover { color: var(--text); }
 
 /* ── LAYOUT ── */
-.body-area { flex: 1; display: flex; overflow: hidden; }
+.body-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ── TABLE ── */
 .table-wrap {
@@ -197,69 +197,6 @@ body {
 .tog input:checked + .tog-sl { background: var(--cyan); }
 .tog input:checked + .tog-sl::before { transform: translateX(13px); }
 
-/* ── SIDE PANEL ── */
-.side-panel {
-  width: 360px; flex-shrink: 0; background: var(--bg1);
-  border-left: 1px solid var(--border); display: flex; flex-direction: column;
-  overflow: hidden; transition: width .18s ease;
-}
-.side-panel.collapsed { width: 0; }
-.sp-header {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 10px; border-bottom: 1px solid var(--border);
-  background: var(--bg2); flex-shrink: 0;
-}
-.sp-title { color: var(--cyan); font-size: 11px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sp-close { background: none; border: none; color: var(--dim); cursor: pointer; font-size: 14px; padding: 0 2px; }
-.sp-close:hover { color: var(--red); }
-.sp-body { flex: 1; overflow-y: auto; padding: 10px; }
-.sp-body::-webkit-scrollbar { width: 4px; }
-.sp-body::-webkit-scrollbar-thumb { background: var(--border2); }
-
-.sp-section { margin-bottom: 12px; }
-.sp-section-title {
-  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-  color: var(--dim); border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 8px;
-  display: flex; align-items: center; gap: 6px;
-}
-.sp-section-title::before { content: '▸'; color: var(--cyan); }
-.sp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-.sp-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 6px 8px; }
-.sp-card-label { font-size: 9px; color: var(--dim); text-transform: uppercase; margin-bottom: 3px; letter-spacing: .04em; }
-.sp-card-value { font-size: 16px; font-weight: 700; }
-.sp-card-sub { font-size: 9px; color: var(--dim); margin-top: 1px; }
-.sp-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
-.sp-row:last-child { border-bottom: none; }
-.sp-row-label { color: var(--dim); }
-.sp-row-value { font-weight: 600; }
-.sp-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
-.sp-action-btn {
-  padding: 5px 8px; border-radius: var(--r); border: 1px solid; cursor: pointer;
-  font-size: 10px; font-family: inherit; font-weight: 600; text-align: center; transition: all .12s;
-}
-.spa-green { border-color: var(--green); color: var(--green); background: transparent; }
-.spa-green:hover { background: var(--green); color: var(--bg); }
-.spa-red { border-color: var(--red); color: var(--red); background: transparent; }
-.spa-red:hover { background: var(--red); color: var(--bg); }
-.spa-cyan { border-color: var(--cyan); color: var(--cyan); background: transparent; }
-.spa-cyan:hover { background: var(--cyan); color: var(--bg); }
-.spa-purple { border-color: var(--purple); color: var(--purple); background: transparent; }
-.spa-purple:hover { background: var(--purple); color: var(--bg); }
-.spa-full { grid-column: 1/-1; border-color: var(--border2); color: var(--dim); background: transparent; }
-.spa-full:hover { border-color: var(--text); color: var(--text); }
-
-.sp-sparkline { height: 40px; width: 100%; margin: 4px 0; }
-.sp-edit-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.sp-edit-label { color: var(--dim); font-size: 10px; width: 100px; }
-.sp-edit-input {
-  flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r);
-  color: var(--text); padding: 3px 6px; font-size: 11px; font-family: inherit; outline: none;
-}
-.sp-edit-input:focus { border-color: var(--cyan); }
-.sp-edit-select {
-  flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r);
-  color: var(--text); padding: 3px 6px; font-size: 11px; font-family: inherit; outline: none;
-}
 
 /* ── MISC ── */
 .sort-arrow { font-size: 8px; margin-left: 2px; }
@@ -296,33 +233,6 @@ input[type=checkbox] { accent-color: var(--cyan); cursor: pointer; }
   <label class="ckbox"><input type="checkbox" id="t-demo" onchange="Pro.toggleDemo(this.checked)"> DEMO</label>
   <div class="topbar-sep"></div>
   <a class="back-link" href="index.html">← Обычный интерфейс</a>
-</div>
-
-<!-- CHART -->
-<div class="chart-area">
-  <canvas id="main-chart"></canvas>
-  <div class="chart-overlay">
-    <div class="chart-stat">
-      <span class="chart-stat-label">Расход</span>
-      <span class="chart-stat-value v-ok" id="cstat-spend">—</span>
-    </div>
-    <div class="chart-stat">
-      <span class="chart-stat-label">Показы</span>
-      <span class="chart-stat-value" id="cstat-imp" style="color:var(--blue)">—</span>
-    </div>
-    <div class="chart-stat">
-      <span class="chart-stat-label">Клики</span>
-      <span class="chart-stat-value" id="cstat-clicks" style="color:var(--purple)">—</span>
-    </div>
-    <div class="chart-stat">
-      <span class="chart-stat-label">CTR</span>
-      <span class="chart-stat-value" id="cstat-ctr" style="color:var(--yellow)">—</span>
-    </div>
-    <div class="chart-stat">
-      <span class="chart-stat-label">CPC ср.</span>
-      <span class="chart-stat-value" id="cstat-cpc" style="color:var(--orange)">—</span>
-    </div>
-  </div>
 </div>
 
 <!-- STATS BAR -->
@@ -384,7 +294,7 @@ input[type=checkbox] { accent-color: var(--cyan); cursor: pointer; }
 <!-- BODY -->
 <div class="body-area">
   <div class="table-wrap">
-    <table class="dtable" id="main-table">
+    <table class="dtable" id="main-table" style="table-layout:fixed">
       <thead>
         <tr class="hdr-row" id="hdr-row">
           <th style="width:24px" class="td-check"><input type="checkbox" id="chk-all" onchange="Pro.selectAll(this.checked)"></th>
@@ -419,13 +329,31 @@ input[type=checkbox] { accent-color: var(--cyan); cursor: pointer; }
     </table>
   </div>
 
-  <!-- SIDE PANEL -->
-  <div class="side-panel collapsed" id="side-panel">
-    <div class="sp-header">
-      <span class="sp-title" id="sp-title">—</span>
-      <button class="sp-close" onclick="Pro.closePanel()">✕</button>
+  <!-- CHART -->
+  <div class="chart-area">
+    <canvas id="main-chart"></canvas>
+    <div class="chart-overlay">
+      <div class="chart-stat">
+        <span class="chart-stat-label">Расход</span>
+        <span class="chart-stat-value v-ok" id="cstat-spend">—</span>
+      </div>
+      <div class="chart-stat">
+        <span class="chart-stat-label">Показы</span>
+        <span class="chart-stat-value" id="cstat-imp" style="color:var(--blue)">—</span>
+      </div>
+      <div class="chart-stat">
+        <span class="chart-stat-label">Клики</span>
+        <span class="chart-stat-value" id="cstat-clicks" style="color:var(--purple)">—</span>
+      </div>
+      <div class="chart-stat">
+        <span class="chart-stat-label">CTR</span>
+        <span class="chart-stat-value" id="cstat-ctr" style="color:var(--yellow)">—</span>
+      </div>
+      <div class="chart-stat">
+        <span class="chart-stat-label">CPC ср.</span>
+        <span class="chart-stat-value" id="cstat-cpc" style="color:var(--orange)">—</span>
+      </div>
     </div>
-    <div class="sp-body" id="sp-body"></div>
   </div>
 </div>
 
@@ -475,7 +403,6 @@ const S = {
   stats: [],          // per-day aggregates
   selected: new Set(), starred: new Set(),
   sortCol: 'spent', sortDir: 'desc',
-  activeCampId: null,
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -626,24 +553,6 @@ function drawChart(stats) {
     ctx.beginPath(); ctx.arc(xPos(i), ySpend(s.spent), 3, 0, Math.PI*2);
     ctx.fillStyle = '#00d4aa'; ctx.fill();
   });
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// SPARKLINE
-// ══════════════════════════════════════════════════════════════════════════════
-function drawSparkline(canvasId, values, color = '#00d4aa') {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas || !values.length) return;
-  const W = canvas.offsetWidth || 320, H = 40;
-  canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio;
-  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-  const ctx = canvas.getContext('2d'); ctx.scale(devicePixelRatio, devicePixelRatio);
-  const min = Math.min(...values), max = Math.max(...values) || 1;
-  const xP = i => (i / (values.length - 1)) * W;
-  const yP = v => H - 4 - ((v - min) / (max - min || 1)) * (H - 8);
-  ctx.beginPath();
-  values.forEach((v, i) => i === 0 ? ctx.moveTo(xP(i), yP(v)) : ctx.lineTo(xP(i), yP(v)));
-  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -831,7 +740,7 @@ const Pro = {
       const starred = S.starred.has(c.id);
       const sel = S.selected.has(c.id);
       const active = S.activeCampId === c.id;
-      return `<tr class="${active ? 'active' : ''} ${sel ? 'sel' : ''}" data-id="${c.id}" onclick="Pro.openPanel(${c.id})">
+      return `<tr class="${sel ? 'sel' : ''}" data-id="${c.id}" onclick="Pro.toggleSel(${c.id},${!sel})">
         <td class="td-check" onclick="event.stopPropagation()">
           <input type="checkbox" ${sel ? 'checked' : ''} onchange="Pro.toggleSel(${c.id},this.checked)">
         </td>
@@ -912,7 +821,6 @@ const Pro = {
       this._updateStatsBar();
       this.applyFilters();
       toast(checked ? `▶ Кампания ${id} запущена` : `⏸ Кампания ${id} остановлена`);
-      if (S.activeCampId === id) this.openPanel(id);
     } catch(e) { toast(e.message, 'err'); this.renderTable(); }
   },
 
@@ -933,126 +841,6 @@ const Pro = {
     this.applyFilters();
   },
 
-  openPanel(id) {
-    S.activeCampId = id;
-    this.renderTable();
-    const c = S.allCampaigns.find(x => x.id === id);
-    if (!c) return;
-    document.getElementById('side-panel').classList.remove('collapsed');
-    document.getElementById('sp-title').textContent = c.name;
-    const ct = ctr(c), cp = cpc(c), ut = util(c);
-    const accId = S.selectedAccount;
-    const sparkId = 'sp-spark-' + id;
-    document.getElementById('sp-body').innerHTML = `
-      <div class="sp-section">
-        <div class="sp-section-title">Метрики</div>
-        <div class="sp-grid">
-          <div class="sp-card"><div class="sp-card-label">Расход</div><div class="sp-card-value v-ok">${fmt.money(c.spent)}</div><div class="sp-card-sub">₽</div></div>
-          <div class="sp-card"><div class="sp-card-label">Показы</div><div class="sp-card-value">${fmt.short(c.impressions)}</div></div>
-          <div class="sp-card"><div class="sp-card-label">Клики</div><div class="sp-card-value">${fmt.short(c.clicks)}</div></div>
-          <div class="sp-card"><div class="sp-card-label">CTR</div><div class="sp-card-value ${ct > 1 ? 'v-pos' : ct > 0.3 ? 'v-warn' : 'v-neg'}">${fmt.pct(ct)}</div></div>
-          <div class="sp-card"><div class="sp-card-label">CPC</div><div class="sp-card-value">${cp > 0 ? fmt.money(cp) : '—'}</div><div class="sp-card-sub">₽</div></div>
-          <div class="sp-card"><div class="sp-card-label">Рез-т</div><div class="sp-card-value ${c.results > 0 ? 'v-pos' : 'v-dim'}">${c.results}</div></div>
-        </div>
-        ${c.cpr > 0 ? `<div class="sp-row" style="margin-top:6px"><span class="sp-row-label">CPR</span><span class="sp-row-value v-yellow">${fmt.money(c.cpr)} ₽</span></div>` : ''}
-        ${ut != null ? `<div class="sp-row"><span class="sp-row-label">Утилизация бюджета</span><span class="sp-row-value">${fmt.pct(ut)}</span></div>` : ''}
-      </div>
-
-      <div class="sp-section">
-        <div class="sp-section-title">Динамика расхода</div>
-        <canvas id="${sparkId}" class="sp-sparkline" width="320" height="40"></canvas>
-      </div>
-
-      <div class="sp-section">
-        <div class="sp-section-title">Параметры кампании</div>
-        <div class="sp-edit-row"><span class="sp-edit-label">Название</span><input class="sp-edit-input" id="sp-name" value="${c.name}"></div>
-        <div class="sp-edit-row"><span class="sp-edit-label">Статус</span>
-          <select class="sp-edit-select" id="sp-status">
-            <option value="1" ${c.status===1?'selected':''}>▶ Активна</option>
-            <option value="0" ${c.status===0?'selected':''}>⏸ Остановлена</option>
-          </select>
-        </div>
-        <div class="sp-edit-row"><span class="sp-edit-label">Дневной лимит ₽</span><input class="sp-edit-input" id="sp-day" type="number" value="${c.day_limit||0}"></div>
-        <div class="sp-edit-row"><span class="sp-edit-label">Тип</span><input class="sp-edit-input" value="${c.type}" disabled style="opacity:.5"></div>
-      </div>
-
-      <div class="sp-section">
-        <div class="sp-section-title">Действия</div>
-        <div class="sp-actions">
-          <button class="sp-action-btn spa-green" onclick="Pro._spSave(${id},${accId})">💾 Сохранить</button>
-          <button class="sp-action-btn spa-cyan" onclick="Pro._spDup(${id})">⧉ Дублировать</button>
-          <button class="sp-action-btn ${c.status===1?'spa-red':'spa-green'}" onclick="Pro.toggleStatus(${id},${c.status===0})">
-            ${c.status===1 ? '⏸ Остановить' : '▶ Запустить'}
-          </button>
-          <button class="sp-action-btn spa-purple" onclick="Pro._spStats(${id},${accId})">📊 Статистика</button>
-        </div>
-      </div>
-
-      <div class="sp-section" id="sp-stats-section" style="display:none">
-        <div class="sp-section-title">Статистика по дням</div>
-        <div id="sp-stats-table"></div>
-      </div>`;
-
-    // draw sparkline from global stats (proportional allocation by campaign share)
-    const spends = S.stats.map(d => d.spent);
-    drawSparkline(sparkId, spends, '#00d4aa');
-  },
-
-  async _spSave(id, accId) {
-    const body = {
-      campaign_id: id,
-      name: document.getElementById('sp-name').value.trim(),
-      status: +document.getElementById('sp-status').value,
-      day_limit: String(document.getElementById('sp-day').value),
-    };
-    try {
-      await api.patch(`/api/v1/accounts/${accId}/campaigns/${id}`, body);
-      const c = S.allCampaigns.find(x => x.id === id);
-      if (c) Object.assign(c, body);
-      toast('✓ Сохранено');
-      this._updateStatsBar();
-      this.applyFilters();
-      this.openPanel(id);
-    } catch(e) { toast(e.message, 'err'); }
-  },
-
-  _spDup(id) {
-    const c = S.allCampaigns.find(x => x.id === id);
-    if (!c) return;
-    const nc = { ...c, id: 90000 + Math.floor(Math.random()*9999), name: 'Копия / ' + c.name, status: 0, spent: 0, impressions: 0, clicks: 0, results: 0, cpr: 0 };
-    S.allCampaigns.push(nc);
-    DEMO.campaigns.push(nc);
-    this.applyFilters();
-    toast('⧉ Продублировано (demo)');
-  },
-
-  async _spStats(id, accId) {
-    const sec = document.getElementById('sp-stats-section');
-    sec.style.display = 'block';
-    document.getElementById('sp-stats-table').innerHTML = '<span style="color:var(--dim)">Загрузка...</span>';
-    try {
-      const data = await api.post(`/api/v1/accounts/${accId}/campaigns/stats`, { ids: [id], period: 'day', date_from: '0', date_to: '0' });
-      const stats = (data.response ?? data ?? [])[0]?.stats ?? [];
-      if (!stats.length) { document.getElementById('sp-stats-table').innerHTML = '<span style="color:var(--dim)">Нет данных</span>'; return; }
-      const rows = stats.map(s => {
-        const ct = s.impressions ? (s.clicks / s.impressions * 100) : 0;
-        const cp = s.clicks ? (+s.spent / s.clicks) : 0;
-        return `<div class="sp-row">
-          <span class="sp-row-label">${s.day}</span>
-          <span>${fmt.short(s.impressions)} показов</span>
-          <span class="${ct > 1 ? 'v-pos' : 'v-dim'}">${fmt.pct(ct)}</span>
-          <span class="v-ok">${fmt.money(+s.spent)} ₽</span>
-        </div>`;
-      }).join('');
-      document.getElementById('sp-stats-table').innerHTML = rows;
-    } catch(e) { toast(e.message, 'err'); }
-  },
-
-  closePanel() {
-    document.getElementById('side-panel').classList.add('collapsed');
-    S.activeCampId = null;
-    this.renderTable();
-  },
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
