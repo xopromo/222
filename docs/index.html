@@ -5,399 +5,391 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VK Ads Dashboard</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface2: #f0f2f8;
+  --border: #e0e4ef;
+  --accent: #2688eb;
+  --accent-hover: #1a73d3;
+  --text: #1a1a2e;
+  --text-dim: #6b7280;
+  --green: #12b76a;
+  --red: #f04438;
+  --yellow: #f79009;
+  --radius: 8px;
+  --sidebar: 200px;
+  --panel-w: 480px;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-size: 13px; }
 
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3350;
-    --accent: #5b8cff;
-    --accent-hover: #7aa3ff;
-    --text: #e2e6f3;
-    --text-dim: #8892b0;
-    --green: #4ade80;
-    --red: #f87171;
-    --yellow: #fbbf24;
-    --radius: 8px;
-    --sidebar: 220px;
-  }
+/* ── TOPBAR ── */
+.topbar {
+  display: flex; align-items: center; gap: 0;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; height: 52px;
+}
+.topbar-logo {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 20px; border-right: 1px solid var(--border);
+  height: 100%; font-weight: 700; font-size: 15px; color: var(--accent);
+  white-space: nowrap; min-width: var(--sidebar);
+}
+.topbar-logo svg { width: 24px; height: 24px; }
+.topbar-center { flex: 1; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+.topbar-input {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); padding: 6px 10px;
+  font-size: 13px; outline: none; width: 260px;
+}
+.topbar-input:focus { border-color: var(--accent); }
+#api-url { width: 220px; }
+.topbar-label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.topbar-right { display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+.btn {
+  padding: 7px 14px; border-radius: var(--radius); border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; transition: background 0.15s, color 0.15s; white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
+.btn-danger:hover { background: var(--red); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-xs { padding: 2px 7px; font-size: 11px; }
+.btn-icon { padding: 6px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; color: var(--text-dim); font-size: 15px; display: flex; align-items: center; }
+.btn-icon:hover { color: var(--accent); border-color: var(--accent); }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+/* ── DEMO TOGGLE ── */
+.demo-toggle {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--surface);
+  cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-dim);
+  transition: all 0.15s; white-space: nowrap; user-select: none;
+}
+.demo-toggle:hover { border-color: var(--yellow); color: var(--yellow); }
+.demo-toggle.on { border-color: var(--yellow); color: var(--yellow); background: rgba(247,144,9,0.06); }
+.demo-toggle .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); transition: background 0.15s; }
+.demo-toggle.on .dot { background: var(--yellow); }
 
-  /* TOP BAR */
-  .topbar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 20px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .topbar h1 { font-size: 16px; font-weight: 700; color: var(--accent); white-space: nowrap; }
-  .topbar-sep { flex: 1; }
-  .topbar label { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
-  .topbar input {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    padding: 5px 10px;
-    font-size: 13px;
-    outline: none;
-    width: 220px;
-  }
-  .topbar input:focus { border-color: var(--accent); }
-  #api-url { width: 280px; }
-  .btn {
-    padding: 6px 14px;
-    border-radius: var(--radius);
-    border: none;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    transition: background 0.15s;
-  }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: var(--accent-hover); }
-  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
-  .btn-danger:hover { background: var(--red); color: #fff; }
-  .btn-sm { padding: 3px 8px; font-size: 12px; }
+/* ── LAYOUT ── */
+.layout { display: flex; flex: 1; overflow: hidden; }
 
-  /* LAYOUT */
-  .layout {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar); background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+  padding: 8px 0;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 16px; cursor: pointer;
+  font-size: 13px; color: var(--text-dim);
+  transition: all 0.1s; border-left: 3px solid transparent;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: #e8f0fd; color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+.nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+.nav-sep { height: 1px; background: var(--border); margin: 6px 12px; }
 
-  /* SIDEBAR */
-  .sidebar {
-    width: var(--sidebar);
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    overflow-y: auto;
-  }
-  .sidebar-section {
-    padding: 12px 8px 4px;
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    cursor: pointer;
-    border-radius: var(--radius);
-    margin: 1px 4px;
-    font-size: 13px;
-    color: var(--text-dim);
-    transition: all 0.1s;
-    border: 1px solid transparent;
-  }
-  .nav-item:hover { background: var(--surface2); color: var(--text); }
-  .nav-item.active { background: var(--surface2); color: var(--accent); border-color: var(--border); }
-  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+/* ── MAIN ── */
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; position: relative; }
 
-  /* MAIN */
-  .main {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
+/* ── ACCOUNT BAR ── */
+.account-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.account-select {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  transition: border-color 0.15s;
+}
+.account-select:hover { border-color: var(--accent); }
+.account-select select {
+  background: transparent; border: none; outline: none;
+  font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer;
+  max-width: 220px;
+}
+.account-balance { font-size: 13px; color: var(--text-dim); }
+.account-balance strong { color: var(--text); font-weight: 600; }
+.ab-sep { flex: 1; }
+.account-bar .date-range {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 12px; color: var(--text-dim); cursor: pointer;
+}
+.account-bar .date-range input[type=date] {
+  background: transparent; border: none; outline: none;
+  font-size: 12px; color: var(--text); cursor: pointer;
+}
 
-  /* PANEL */
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .panel-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface2);
-  }
-  .panel-title { font-size: 14px; font-weight: 600; flex: 1; }
-  .panel-body { padding: 16px; }
+/* ── TABS ── */
+.tabs-bar {
+  display: flex; align-items: center;
+  padding: 0 20px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.tab {
+  padding: 12px 16px; cursor: pointer; font-size: 13px;
+  color: var(--text-dim); border-bottom: 2px solid transparent;
+  margin-bottom: -1px; font-weight: 500; transition: all 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 
-  /* TABLE */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th {
-    text-align: left;
-    padding: 8px 12px;
-    color: var(--text-dim);
-    font-weight: 600;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--border);
-  }
-  td {
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface2); }
-  .clickable-row { cursor: pointer; }
+/* ── TOOLBAR ── */
+.toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.toolbar-sep { flex: 1; }
+.search-input {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 10px;
+}
+.search-input input {
+  background: transparent; border: none; outline: none;
+  font-size: 13px; color: var(--text); width: 180px;
+}
+.search-input input::placeholder { color: var(--text-dim); }
+.dropdown { position: relative; display: inline-block; }
+.dropdown-menu {
+  display: none; position: absolute; top: calc(100% + 4px); left: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  z-index: 200; min-width: 180px; overflow: hidden;
+}
+.dropdown-menu.open { display: block; }
+.dropdown-item {
+  padding: 9px 14px; cursor: pointer; font-size: 13px;
+  color: var(--text); transition: background 0.1s;
+}
+.dropdown-item:hover { background: var(--surface2); }
+.dropdown-item.danger { color: var(--red); }
 
-  /* BADGES */
-  .badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .badge-green { background: rgba(74,222,128,0.15); color: var(--green); }
-  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
-  .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
-  .badge-blue { background: rgba(91,140,255,0.15); color: var(--accent); }
-  .badge-gray { background: rgba(136,146,176,0.15); color: var(--text-dim); }
+/* ── TABLE AREA ── */
+.table-area { flex: 1; overflow-y: auto; padding: 0; }
 
-  /* FORM */
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-group { display: flex; flex-direction: column; gap: 4px; }
-  .form-group.full { grid-column: 1 / -1; }
-  .form-label { font-size: 12px; color: var(--text-dim); font-weight: 500; }
-  .form-input, .form-select {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    padding: 8px 10px;
-    font-size: 13px;
-    outline: none;
-    width: 100%;
-  }
-  .form-input:focus, .form-select:focus { border-color: var(--accent); }
-  .form-select option { background: var(--surface2); }
-  .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+/* ── TABLE ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table thead th {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--surface2); padding: 9px 12px;
+  text-align: left; font-size: 11px; font-weight: 600;
+  color: var(--text-dim); text-transform: uppercase;
+  letter-spacing: 0.04em; border-bottom: 1px solid var(--border);
+  white-space: nowrap; cursor: default; user-select: none;
+}
+.data-table thead th.sortable { cursor: pointer; }
+.data-table thead th.sortable:hover { color: var(--accent); }
+.data-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s; cursor: pointer;
+}
+.data-table tbody tr:hover { background: var(--surface2); }
+.data-table tbody tr.selected { background: #e8f0fd; }
+.data-table td { padding: 10px 12px; vertical-align: middle; }
+.data-table tfoot td {
+  padding: 10px 12px; background: var(--surface);
+  border-top: 2px solid var(--border); font-weight: 600;
+  font-size: 12px; color: var(--text-dim); position: sticky; bottom: 0;
+}
+.col-check { width: 36px; text-align: center; }
+.col-toggle { width: 52px; }
+.col-name { min-width: 200px; max-width: 320px; }
+.col-status { width: 120px; }
+.col-budget { width: 120px; text-align: right; }
+.col-result { width: 90px; text-align: right; }
+.col-cpr { width: 130px; text-align: right; }
+.col-spend { width: 130px; text-align: right; }
+.col-actions { width: 36px; text-align: center; }
+.cell-name { font-weight: 500; color: var(--accent); cursor: pointer; }
+.cell-name:hover { text-decoration: underline; }
+.cell-dim { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+.cell-right { text-align: right; }
 
-  /* STATS GRID */
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-  .stat-card {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px;
-  }
-  .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .stat-value { font-size: 22px; font-weight: 700; }
+/* ── TOGGLE SWITCH ── */
+.toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle input { display: none; }
+.toggle-slider {
+  position: absolute; inset: 0; background: #ccc;
+  border-radius: 20px; cursor: pointer; transition: background 0.2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute; width: 14px; height: 14px;
+  background: #fff; border-radius: 50%; top: 3px; left: 3px;
+  transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
 
-  /* EMPTY / LOADING */
-  .empty { text-align: center; padding: 40px; color: var(--text-dim); font-size: 13px; }
-  .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px; color: var(--text-dim); font-size: 13px; }
-  .spinner {
-    width: 18px; height: 18px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── STATUS TEXT ── */
+.status-text { font-size: 12px; }
+.status-active { color: var(--green); }
+.status-stopped { color: var(--text-dim); }
+.status-deleted { color: var(--red); }
 
-  /* TOAST */
-  #toast-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .toast {
-    padding: 10px 16px;
-    border-radius: var(--radius);
-    font-size: 13px;
-    font-weight: 500;
-    max-width: 320px;
-    animation: fadeIn 0.2s ease;
-    border: 1px solid;
-  }
-  .toast-success { background: rgba(74,222,128,0.1); border-color: var(--green); color: var(--green); }
-  .toast-error { background: rgba(248,113,113,0.1); border-color: var(--red); color: var(--red); }
-  .toast-info { background: rgba(91,140,255,0.1); border-color: var(--accent); color: var(--accent); }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+/* ── BADGES ── */
+.badge { display: inline-block; padding: 2px 7px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+.badge-green { background: rgba(18,183,106,0.1); color: var(--green); }
+.badge-red { background: rgba(240,68,56,0.1); color: var(--red); }
+.badge-blue { background: rgba(38,136,235,0.1); color: var(--accent); }
+.badge-gray { background: rgba(107,114,128,0.1); color: var(--text-dim); }
+.badge-yellow { background: rgba(247,144,9,0.1); color: var(--yellow); }
 
-  /* MODAL */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    width: 480px;
-    max-width: 95vw;
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-  .modal-header {
-    display: flex;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  .modal-title { font-size: 15px; font-weight: 600; flex: 1; }
-  .modal-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 20px; line-height: 1; }
-  .modal-body { padding: 20px; }
+/* ── CHECKBOX ── */
+input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
 
-  /* BREADCRUMB */
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
-  .breadcrumb span { color: var(--text); }
-  .breadcrumb .sep { color: var(--border); }
-  .breadcrumb a { color: var(--accent); cursor: pointer; }
-  .breadcrumb a:hover { text-decoration: underline; }
+/* ── THREE-DOT MENU ── */
+.row-menu-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-dim); padding: 4px 6px; border-radius: 4px;
+  font-size: 16px; line-height: 1; opacity: 0;
+  transition: opacity 0.1s;
+}
+tr:hover .row-menu-btn { opacity: 1; }
+.row-menu-btn:hover { background: var(--surface2); color: var(--text); }
 
-  /* DATE FILTER */
-  .date-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .date-filter label { font-size: 12px; color: var(--text-dim); }
+/* ── SIDE PANEL ── */
+.side-panel {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: var(--panel-w); background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform 0.22s ease;
+  z-index: 100; box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+}
+.side-panel.open { transform: translateX(0); }
+.panel-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface2); flex-shrink: 0;
+}
+.panel-title { font-size: 14px; font-weight: 600; flex: 1; }
+.panel-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 20px; line-height: 1; }
+.panel-body { flex: 1; overflow-y: auto; padding: 20px; }
+.panel-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; background: var(--surface); }
 
-  /* DEMO TOGGLE */
-  .demo-toggle {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 5px 12px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-dim);
-    transition: all 0.15s;
-    white-space: nowrap;
-    user-select: none;
-  }
-  .demo-toggle:hover { border-color: var(--yellow); color: var(--yellow); }
-  .demo-toggle.on { border-color: var(--yellow); color: var(--yellow); background: rgba(251,191,36,0.08); }
-  .demo-toggle .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--text-dim);
-    transition: background 0.15s;
-  }
-  .demo-toggle.on .dot { background: var(--yellow); }
+/* ── FORM ── */
+.form-section { margin-bottom: 20px; }
+.form-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em; margin-bottom: 10px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-row.single { grid-template-columns: 1fr; }
+.form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-label { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+.form-input, .form-select, .form-textarea {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); padding: 8px 10px;
+  font-size: 13px; outline: none; width: 100%;
+}
+.form-textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+.form-select option { background: var(--surface); }
 
-  .demo-banner {
-    display: none;
-    background: rgba(251,191,36,0.08);
-    border-bottom: 1px solid rgba(251,191,36,0.3);
-    padding: 6px 20px;
-    font-size: 12px;
-    color: var(--yellow);
-    flex-shrink: 0;
-  }
-  .demo-banner.visible { display: block; }
+/* ── STAT CARDS ── */
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.stat-value { font-size: 22px; font-weight: 700; color: var(--text); }
+.stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+/* ── EMPTY / LOADING ── */
+.empty { text-align: center; padding: 60px 20px; color: var(--text-dim); font-size: 13px; }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.loading-row td { text-align: center; padding: 50px; color: var(--text-dim); }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TOAST ── */
+#toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast { padding: 10px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500; max-width: 320px; animation: fadeUp 0.2s ease; border: 1px solid; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.toast-success { background: #f0fdf4; border-color: #a7f3d0; color: #065f46; }
+.toast-error { background: #fff1f0; border-color: #fca5a5; color: #7f1d1d; }
+.toast-info { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #b0b8cc; }
+
+/* ── PANELS CONTENT AREA ── */
+.content-area { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.panel-surface { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+.padded { padding: 20px; }
+
+/* ── STATS VIEW ── */
+.stats-filter { display: flex; align-items: flex-end; gap: 10px; padding: 16px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.stats-campaigns-select { min-width: 220px; max-width: 320px; }
+.stats-campaigns-select select { height: 80px; }
 </style>
 </head>
 <body>
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <h1>VK Ads</h1>
-  <label for="api-url">API:</label>
-  <input type="text" id="api-url" placeholder="http://localhost:8000" value="http://localhost:8000">
-  <label for="vk-token">Токен:</label>
-  <input type="password" id="vk-token" placeholder="vk1.a.xxx...">
-  <button class="btn btn-primary" onclick="App.connect()">Подключить</button>
-  <div class="topbar-sep"></div>
-  <div class="demo-toggle" id="demo-toggle" onclick="Demo.toggle()">
-    <span class="dot"></span> Demo
+  <div class="topbar-logo">
+    <svg viewBox="0 0 24 24" fill="var(--accent)"><path d="M2 5a3 3 0 013-3h14a3 3 0 013 3v14a3 3 0 01-3 3H5a3 3 0 01-3-3V5zm9.5 10.5h1.7c.1 0 .2-.1.2-.2 0 0 .1-1 .6-1.4.5-.4 1.3.4 2 1.3.5.6.9.9.9.9l1.7-.1s.9 0 .5-.7c-.1-.1-.4-.5-.9-1.1-.8-.9-1.7-2-1-3 .6-.8 2-2 2-2l-1.7-.1s-.1 0-.2.1l-.1.1c-.2.4-1.4 1.8-1.9 1.9-.5.1-.5-.6-.5-.6V8.4c0-.1-.1-.2-.2-.2H13c-.1 0-.3.2-.3.2s.3.2.3 2.2v.4c-.1.5-.6.5-.6.5-.7 0-1.7-1.3-2.4-2.6-.2-.4-.3-.6-.3-.6L8.1 8s-.2 0-.3.2c0 0-1.3 3-2.7 4.4l-.1.1c-.4.3-.7.5-.7.5l1.5.1s.2 0 .4-.3c.1-.1.2-.2.2-.2.4-.5 1-1.3 1.4-2.1 0 0 .8 1.8 1.5 2.7.3.4.7.7 1.2.8H11.5z"/></svg>
+    VK Реклама
+  </div>
+  <div class="topbar-center">
+    <span class="topbar-label">API:</span>
+    <input type="text" class="topbar-input" id="api-url" placeholder="http://localhost:8000" value="http://localhost:8000">
+    <span class="topbar-label">Токен:</span>
+    <input type="password" class="topbar-input" id="vk-token" placeholder="vk1.a.xxx..." style="width:200px">
+    <button class="btn btn-primary btn-sm" onclick="App.connect()">Подключить</button>
+  </div>
+  <div class="topbar-right">
+    <div class="demo-toggle" id="demo-toggle" onclick="Demo.toggle()">
+      <span class="dot"></span> Demo
+    </div>
   </div>
 </div>
-<div id="demo-banner"></div>
 
 <!-- LAYOUT -->
 <div class="layout">
   <!-- SIDEBAR -->
   <nav class="sidebar" id="sidebar">
-    <div class="sidebar-section">Обзор</div>
-    <div class="nav-item active" data-view="accounts" onclick="App.navigate('accounts')">
-      <span class="nav-icon">🏦</span> Кабинеты
-    </div>
-    <div class="nav-item" data-view="campaigns" onclick="App.navigate('campaigns')">
+    <div class="nav-item active" data-view="campaigns" onclick="App.navigate('campaigns')">
       <span class="nav-icon">📣</span> Кампании
     </div>
-    <div class="nav-item" data-view="ads" onclick="App.navigate('ads')">
-      <span class="nav-icon">🎯</span> Объявления
+    <div class="nav-item" data-view="audiences" onclick="App.navigate('audiences')">
+      <span class="nav-icon">👥</span> Аудитории
     </div>
-    <div class="nav-item" data-view="stats" onclick="App.navigate('stats')">
-      <span class="nav-icon">📊</span> Статистика
-    </div>
-    <div class="sidebar-section">Аудитория</div>
-    <div class="nav-item" data-view="retargeting" onclick="App.navigate('retargeting')">
-      <span class="nav-icon">🔁</span> Ретаргетинг
-    </div>
-    <div class="sidebar-section">Контент</div>
+    <div class="nav-sep"></div>
     <div class="nav-item" data-view="wall" onclick="App.navigate('wall')">
-      <span class="nav-icon">📝</span> Стена
+      <span class="nav-icon">📝</span> Записи
     </div>
     <div class="nav-item" data-view="groups" onclick="App.navigate('groups')">
-      <span class="nav-icon">👥</span> Группы
+      <span class="nav-icon">🔍</span> Группы
+    </div>
+    <div class="nav-sep"></div>
+    <div class="nav-item" data-view="settings" onclick="App.navigate('settings')">
+      <span class="nav-icon">⚙️</span> Настройки
     </div>
   </nav>
 
-  <!-- MAIN -->
-  <main class="main" id="main-content">
-    <div class="panel">
-      <div class="panel-body">
-        <div class="empty">Введите API URL и VK токен, затем нажмите <strong>Подключить</strong></div>
-      </div>
+  <!-- MAIN CONTENT -->
+  <div class="main" id="main-content">
+    <div class="empty" style="margin:auto">
+      <div class="empty-icon">📡</div>
+      Введите API URL и токен, затем нажмите <strong>Подключить</strong><br>
+      или включите <strong>Demo</strong>-режим для тестирования
     </div>
-  </main>
-</div>
-
-<!-- MODAL -->
-<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)App.closeModal()">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" id="modal-title">Форма</span>
-      <button class="modal-close" onclick="App.closeModal()">×</button>
-    </div>
-    <div class="modal-body" id="modal-body"></div>
   </div>
 </div>
 
@@ -405,75 +397,72 @@
 <div id="toast-container"></div>
 
 <script>
-// ─── DEMO DATA ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// DEMO DATA
+// ══════════════════════════════════════════════════════════════════════════════
 const DemoData = {
   accounts: [
-    { account_id: 1001, account_name: 'ООО Ромашка — Основной', account_type: 'general', account_status: 1, access_role: 'admin' },
+    { account_id: 1001, account_name: 'ВКР ГМЛ, КК', account_type: 'general', account_status: 1, access_role: 'admin' },
     { account_id: 1002, account_name: 'ИП Соколов — Ретейл', account_type: 'agency', account_status: 1, access_role: 'manager' },
     { account_id: 1003, account_name: 'Архив 2023', account_type: 'general', account_status: 0, access_role: 'admin' },
   ],
-  budgets: { 1001: 84320.50, 1002: 12750.00, 1003: 0 },
+  budgets: { 1001: 15335.13, 1002: 12750.00, 1003: 0 },
   campaigns: {
     1001: [
-      { id: 2001, name: 'Лидогенерация — Москва', type: 'normal', status: 1, day_limit: '5000', lifetime_limit: '0' },
-      { id: 2002, name: 'Ретаргетинг — Корзина', type: 'normal', status: 1, day_limit: '2000', lifetime_limit: '0' },
-      { id: 2003, name: 'Look-alike — Март', type: 'promoted_posts', status: 0, day_limit: '3000', lifetime_limit: '30000' },
-      { id: 2004, name: 'Мобильное приложение', type: 'mobile_apps', status: 1, day_limit: '1500', lifetime_limit: '0' },
+      { id: 2001, name: 'Агоп / ГЕО / лид форма 1 / дубль', type: 'normal', status: 1, day_limit: '0', lifetime_limit: '0', spent: 1043.98, results: 0, cpr: 0 },
+      { id: 2002, name: 'Реклама по ГЕО', type: 'normal', status: 0, day_limit: '0', lifetime_limit: '0', spent: 0, results: 0, cpr: 0 },
+      { id: 2003, name: 'Агоп / Супер гео / пром 1 / лид ф...', type: 'promoted_posts', status: 0, day_limit: '0', lifetime_limit: '0', spent: 0, results: 0, cpr: 0 },
+      { id: 2004, name: 'Копия_1 Копия Агоп / пром 1 / ли...', type: 'normal', status: 0, day_limit: '0', lifetime_limit: '0', spent: 0, results: 0, cpr: 0 },
+      { id: 2005, name: 'Копия Агоп / пром 1 / лид форма ...', type: 'normal', status: 0, day_limit: '0', lifetime_limit: '0', spent: 0, results: 0, cpr: 0 },
+      { id: 2006, name: 'Топ пром / 2 крео / супер гео', type: 'normal', status: 0, day_limit: '5000', lifetime_limit: '0', spent: 0, results: 0, cpr: 0 },
     ],
     1002: [
-      { id: 2005, name: 'Бренд-awareness Q2', type: 'normal', status: 1, day_limit: '8000', lifetime_limit: '0' },
-      { id: 2006, name: 'Промо магазина', type: 'promoted_posts', status: 0, day_limit: '4000', lifetime_limit: '20000' },
+      { id: 2007, name: 'Бренд-awareness Q2', type: 'normal', status: 1, day_limit: '8000', lifetime_limit: '0', spent: 4210.50, results: 3, cpr: 1403.50 },
     ],
     1003: [],
   },
   ads: {
     2001: [
-      { id: 3001, name: 'Баннер 1 — Оффер скидка 20%', status: 1, cost_type: 0, cpc: '18.50', cpm: null, ocpm: null, campaign_id: 2001, ad_format: 2 },
-      { id: 3002, name: 'Карусель — Каталог', status: 1, cost_type: 1, cpc: null, cpm: '120.00', ocpm: null, campaign_id: 2001, ad_format: 9 },
-      { id: 3003, name: 'Видео 15 сек', status: 0, cost_type: 3, cpc: null, cpm: null, ocpm: '250.00', campaign_id: 2001, ad_format: 4 },
+      { id: 3001, name: 'Пахра /Фото РАБКР', status: 1, cost_type: 1, cpc: null, cpm: '92.96', ocpm: null, campaign_id: 2001, ad_format: 9, spent: 92.96, results: 0, cpr: 0 },
+      { id: 3002, name: 'Руднево /Фото РАБКР', status: 1, cost_type: 1, cpc: null, cpm: '195.42', ocpm: null, campaign_id: 2001, ad_format: 9, spent: 195.42, results: 0, cpr: 0 },
+      { id: 3003, name: 'Микрон /Фото РАБКР', status: 1, cost_type: 1, cpc: null, cpm: '189.03', ocpm: null, campaign_id: 2001, ad_format: 9, spent: 189.03, results: 0, cpr: 0 },
+      { id: 3004, name: 'Калуга /Фото РАБКР', status: 1, cost_type: 1, cpc: null, cpm: '189.93', ocpm: null, campaign_id: 2001, ad_format: 9, spent: 189.93, results: 0, cpr: 0 },
+      { id: 3005, name: 'Алабушево /Фото РАБКР', status: 1, cost_type: 1, cpc: null, cpm: '190.17', ocpm: null, campaign_id: 2001, ad_format: 9, spent: 190.17, results: 0, cpr: 0 },
+      { id: 3006, name: 'Печатники /Фото РАБКР', status: 1, cost_type: 1, cpc: null, cpm: '186.79', ocpm: null, campaign_id: 2001, ad_format: 9, spent: 186.79, results: 0, cpr: 0 },
     ],
     2002: [
-      { id: 3004, name: 'Напоминание о корзине', status: 1, cost_type: 0, cpc: '22.00', cpm: null, ocpm: null, campaign_id: 2002, ad_format: 1 },
+      { id: 3007, name: 'Реклама по ГЕО — баннер', status: 0, cost_type: 0, cpc: '22.00', cpm: null, ocpm: null, campaign_id: 2002, ad_format: 2, spent: 0, results: 0, cpr: 0 },
     ],
-    2003: [
-      { id: 3005, name: 'Пост — Кейс клиента', status: 0, cost_type: 1, cpc: null, cpm: '95.00', ocpm: null, campaign_id: 2003, ad_format: 4 },
+    2003: [],
+    2004: [],
+    2005: [],
+    2006: [
+      { id: 3008, name: 'Топ пром / Печатники', status: 0, cost_type: 1, cpc: null, cpm: '95.00', ocpm: null, campaign_id: 2006, ad_format: 4, spent: 0, results: 0, cpr: 0 },
+      { id: 3009, name: 'Топ пром / Алабушево', status: 0, cost_type: 1, cpc: null, cpm: '95.00', ocpm: null, campaign_id: 2006, ad_format: 4, spent: 0, results: 0, cpr: 0 },
     ],
-    2004: [
-      { id: 3006, name: 'App Install — Android', status: 1, cost_type: 0, cpc: '35.00', cpm: null, ocpm: null, campaign_id: 2004, ad_format: 9 },
-      { id: 3007, name: 'App Install — iOS', status: 1, cost_type: 0, cpc: '41.00', cpm: null, ocpm: null, campaign_id: 2004, ad_format: 9 },
+    2007: [
+      { id: 3010, name: 'Охватный баннер', status: 1, cost_type: 1, cpc: null, cpm: '85.00', ocpm: null, campaign_id: 2007, ad_format: 2, spent: 4210.50, results: 3, cpr: 1403.50 },
     ],
-    2005: [
-      { id: 3008, name: 'Охватный баннер', status: 1, cost_type: 1, cpc: null, cpm: '85.00', ocpm: null, campaign_id: 2005, ad_format: 2 },
-    ],
-    2006: [],
   },
   stats: {
     2001: [
-      { day: '2026-05-01', impressions: 84200, clicks: 1263, spent: '23364.00' },
-      { day: '2026-05-02', impressions: 91400, clicks: 1370, spent: '25345.00' },
-      { day: '2026-05-03', impressions: 78600, clicks: 1179, spent: '21823.50' },
-      { day: '2026-05-04', impressions: 88100, clicks: 1321, spent: '24438.50' },
-      { day: '2026-05-05', impressions: 53200, clicks: 798, spent: '14763.00' },
+      { day: '2026-04-29', impressions: 84200, clicks: 1263, spent: '23364.00' },
+      { day: '2026-04-30', impressions: 91400, clicks: 1370, spent: '25345.00' },
+      { day: '2026-05-01', impressions: 78600, clicks: 1179, spent: '21823.50' },
+      { day: '2026-05-02', impressions: 88100, clicks: 1321, spent: '24438.50' },
+      { day: '2026-05-03', impressions: 53200, clicks: 798, spent: '14763.00' },
+      { day: '2026-05-04', impressions: 61000, clicks: 915, spent: '16950.00' },
+      { day: '2026-05-05', impressions: 45000, clicks: 675, spent: '12375.00' },
     ],
-    2002: [
+    2006: [
       { day: '2026-05-01', impressions: 22100, clicks: 442, spent: '9724.00' },
       { day: '2026-05-02', impressions: 19800, clicks: 396, spent: '8712.00' },
-      { day: '2026-05-03', impressions: 21400, clicks: 428, spent: '9416.00' },
-      { day: '2026-05-04', impressions: 23700, clicks: 474, spent: '10428.00' },
-      { day: '2026-05-05', impressions: 14200, clicks: 284, spent: '6248.00' },
     ],
-    2003: [
-      { day: '2026-04-10', impressions: 120000, clicks: 960, spent: '11520.00' },
+    2007: [
+      { day: '2026-04-29', impressions: 210000, clicks: 1470, spent: '17850.00' },
+      { day: '2026-04-30', impressions: 198000, clicks: 1386, spent: '16830.00' },
+      { day: '2026-05-01', impressions: 205000, clicks: 1435, spent: '17395.00' },
     ],
-    2004: [
-      { day: '2026-05-01', impressions: 45000, clicks: 900, spent: '31500.00' },
-      { day: '2026-05-02', impressions: 47200, clicks: 944, spent: '33040.00' },
-    ],
-    2005: [
-      { day: '2026-05-01', impressions: 210000, clicks: 1470, spent: '17850.00' },
-      { day: '2026-05-02', impressions: 198000, clicks: 1386, spent: '16830.00' },
-    ],
-    2006: [],
   },
   retargeting: {
     1001: [
@@ -492,226 +481,164 @@ const DemoData = {
       { id: 101, date: 1746316800, text: 'Скидка 20% на весь ассортимент только сегодня! Переходите в каталог и выбирайте.', likes: { count: 342 }, reposts: { count: 87 }, comments: { count: 54 } },
       { id: 100, date: 1746230400, text: 'Наш новый продукт уже в продаже — встречайте линейку Summer 2026!', likes: { count: 521 }, reposts: { count: 134 }, comments: { count: 98 } },
       { id: 99, date: 1746144000, text: 'Кейс: как мы увеличили конверсию на 35% за месяц с помощью ретаргетинга.', likes: { count: 218 }, reposts: { count: 46 }, comments: { count: 31 } },
-      { id: 98, date: 1746057600, text: 'Вакансия: ищем таргетолога в команду. Удалёнка, хорошие условия.', likes: { count: 89 }, reposts: { count: 23 }, comments: { count: 17 } },
     ],
   },
   groups: [
     { id: 123456, screen_name: 'romashka_official', name: 'ООО Ромашка', type: 'page', is_closed: 0, members_count: 84200 },
     { id: 234567, screen_name: 'sokol_retail', name: 'Соколов Ретейл', type: 'group', is_closed: 0, members_count: 31400 },
     { id: 345678, screen_name: 'vk', name: 'ВКонтакте', type: 'page', is_closed: 0, members_count: 98400000 },
-    { id: 456789, screen_name: 'targetolog_pro', name: 'Таргетологи PRO', type: 'group', is_closed: 1, members_count: 12800 },
   ],
   _nextId: 9000,
   newId() { return ++this._nextId; },
 };
 
-// ─── DEMO LAYER ───────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// DEMO LAYER
+// ══════════════════════════════════════════════════════════════════════════════
 const Demo = {
   active: false,
-
+  delay(ms = 180) { return new Promise(r => setTimeout(r, ms + Math.random() * 80)); },
   toggle() {
     this.active = !this.active;
     localStorage.setItem('demo_mode', this.active ? '1' : '0');
-    document.getElementById('demo-toggle').classList.toggle('on', this.active);
-    document.getElementById('demo-banner').classList.toggle('visible', this.active);
-    const apiRow = document.getElementById('api-url');
-    const tokenRow = document.getElementById('vk-token');
+    const btn = document.getElementById('demo-toggle');
+    btn.classList.toggle('on', this.active);
+    const apiInput = document.getElementById('api-url');
+    const tokenInput = document.getElementById('vk-token');
     if (this.active) {
-      apiRow.disabled = true; tokenRow.disabled = true;
+      apiInput.disabled = true; tokenInput.disabled = true;
       State.token = 'demo';
       toast('Demo-режим включён', 'info');
-      App.navigate(State.currentView || 'accounts');
+      App.navigate(State.currentView || 'campaigns');
     } else {
-      apiRow.disabled = false; tokenRow.disabled = false;
-      State.token = tokenRow.value.trim();
+      apiInput.disabled = false; tokenInput.disabled = false;
+      State.token = tokenInput.value.trim();
       toast('Demo-режим выключен', 'info');
     }
   },
-
-  // Simulate network latency
-  delay(ms = 220) { return new Promise(r => setTimeout(r, ms + Math.random() * 100)); },
-
   async handle(method, path, body, params) {
     await this.delay();
-
-    // GET /api/v1/accounts/
     if (method === 'GET' && path === '/api/v1/accounts/') return DemoData.accounts;
-
-    // GET /api/v1/accounts/:id/budget
     const budgetM = path.match(/^\/api\/v1\/accounts\/(\d+)\/budget$/);
     if (budgetM) return { budget: DemoData.budgets[+budgetM[1]] ?? 0 };
-
-    // GET /api/v1/accounts/:id/campaigns/
     const campListM = path.match(/^\/api\/v1\/accounts\/(\d+)\/campaigns\/$/);
-    if (campListM && method === 'GET') {
-      const list = DemoData.campaigns[+campListM[1]] ?? [];
-      return list;
-    }
-
-    // POST /api/v1/accounts/:id/campaigns/
+    if (campListM && method === 'GET') return DemoData.campaigns[+campListM[1]] ?? [];
     if (method === 'POST' && path.match(/^\/api\/v1\/accounts\/(\d+)\/campaigns\/$/)) {
       const accId = +path.match(/\/accounts\/(\d+)/)[1];
-      const nc = { id: DemoData.newId(), ...body, status: 1 };
+      const nc = { id: DemoData.newId(), ...body, status: 1, spent: 0, results: 0, cpr: 0 };
       (DemoData.campaigns[accId] = DemoData.campaigns[accId] ?? []).push(nc);
-      DemoData.ads[nc.id] = [];
-      DemoData.stats[nc.id] = [];
+      DemoData.ads[nc.id] = []; DemoData.stats[nc.id] = [];
       return { response: [{ id: nc.id }] };
     }
-
-    // PATCH /api/v1/accounts/:id/campaigns/:cid
     const campPatchM = path.match(/^\/api\/v1\/accounts\/(\d+)\/campaigns\/(\d+)$/);
     if (campPatchM && method === 'PATCH') {
-      const campaigns = DemoData.campaigns[+campPatchM[1]] ?? [];
-      const c = campaigns.find(x => x.id === +campPatchM[2]);
+      const c = (DemoData.campaigns[+campPatchM[1]] ?? []).find(x => x.id === +campPatchM[2]);
       if (c) Object.assign(c, body);
       return { response: 1 };
     }
-
-    // DELETE /api/v1/accounts/:id/campaigns/:cid
     if (campPatchM && method === 'DELETE') {
       const arr = DemoData.campaigns[+campPatchM[1]] ?? [];
-      const idx = arr.findIndex(x => x.id === +campPatchM[2]);
-      if (idx !== -1) arr.splice(idx, 1);
+      const i = arr.findIndex(x => x.id === +campPatchM[2]); if (i !== -1) arr.splice(i, 1);
       return { response: 1 };
     }
-
-    // POST /api/v1/accounts/:id/campaigns/stats
     const campStatsM = path.match(/^\/api\/v1\/accounts\/(\d+)\/campaigns\/stats$/);
-    if (campStatsM && method === 'POST') {
-      return (body.ids ?? []).map(id => ({
-        id,
-        stats: DemoData.stats[id] ?? [],
-      }));
-    }
-
-    // GET /api/v1/accounts/:id/ads/
+    if (campStatsM && method === 'POST') return (body.ids ?? []).map(id => ({ id, stats: DemoData.stats[id] ?? [] }));
     const adsListM = path.match(/^\/api\/v1\/accounts\/(\d+)\/ads\/$/);
     if (adsListM && method === 'GET') {
       const campIds = params?.campaign_ids ? String(params.campaign_ids).split(',').map(Number) : null;
       let ads = [];
-      const camps = DemoData.campaigns[+adsListM[1]] ?? [];
-      camps.forEach(c => {
+      (DemoData.campaigns[+adsListM[1]] ?? []).forEach(c => {
         if (!campIds || campIds.includes(c.id)) ads.push(...(DemoData.ads[c.id] ?? []));
       });
       return ads;
     }
-
-    // PATCH /api/v1/accounts/:id/ads/:aid
     const adPatchM = path.match(/^\/api\/v1\/accounts\/(\d+)\/ads\/(\d+)$/);
     if (adPatchM && method === 'PATCH') {
-      const camps = DemoData.campaigns[+adPatchM[1]] ?? [];
-      for (const c of camps) {
+      for (const c of DemoData.campaigns[+adPatchM[1]] ?? []) {
         const ad = (DemoData.ads[c.id] ?? []).find(a => a.id === +adPatchM[2]);
         if (ad) { Object.assign(ad, body); break; }
       }
       return { response: 1 };
     }
-
-    // DELETE /api/v1/accounts/:id/ads/:aid
     if (adPatchM && method === 'DELETE') {
-      const camps = DemoData.campaigns[+adPatchM[1]] ?? [];
-      for (const c of camps) {
+      for (const c of DemoData.campaigns[+adPatchM[1]] ?? []) {
         const arr = DemoData.ads[c.id] ?? [];
-        const idx = arr.findIndex(a => a.id === +adPatchM[2]);
-        if (idx !== -1) { arr.splice(idx, 1); break; }
+        const i = arr.findIndex(a => a.id === +adPatchM[2]); if (i !== -1) { arr.splice(i, 1); break; }
       }
       return { response: 1 };
     }
-
-    // GET /api/v1/accounts/:id/targeting/retargeting
     const rtListM = path.match(/^\/api\/v1\/accounts\/(\d+)\/targeting\/retargeting$/);
     if (rtListM && method === 'GET') return DemoData.retargeting[+rtListM[1]] ?? [];
-
-    // POST /api/v1/accounts/:id/targeting/retargeting
     if (rtListM && method === 'POST') {
       const accId = +rtListM[1];
       const ng = { id: DemoData.newId(), name: body.name, audience_count: 0, lifetime: body.lifetime ?? 30 };
       (DemoData.retargeting[accId] = DemoData.retargeting[accId] ?? []).push(ng);
       return { response: ng };
     }
-
-    // DELETE /api/v1/accounts/:id/targeting/retargeting/:gid
     const rtDelM = path.match(/^\/api\/v1\/accounts\/(\d+)\/targeting\/retargeting\/(\d+)$/);
     if (rtDelM && method === 'DELETE') {
       const arr = DemoData.retargeting[+rtDelM[1]] ?? [];
-      const idx = arr.findIndex(x => x.id === +rtDelM[2]);
-      if (idx !== -1) arr.splice(idx, 1);
+      const i = arr.findIndex(x => x.id === +rtDelM[2]); if (i !== -1) arr.splice(i, 1);
       return { response: 1 };
     }
-
-    // GET /api/v1/wall/
     if (method === 'GET' && path === '/api/v1/wall/') {
-      const ownerId = String(params?.owner_id ?? '');
-      const items = DemoData.wall[ownerId] ?? [];
-      const count = Math.min(+params?.count || 20, items.length);
-      const offset = +params?.offset || 0;
-      return { response: { items: items.slice(offset, offset + count), count: items.length } };
+      const oid = String(params?.owner_id ?? '');
+      const items = DemoData.wall[oid] ?? [];
+      const cnt = Math.min(+params?.count || 20, items.length);
+      return { response: { items: items.slice(+params?.offset||0, (+params?.offset||0)+cnt), count: items.length } };
     }
-
-    // POST /api/v1/wall/
     if (method === 'POST' && path === '/api/v1/wall/') {
-      const ownerId = String(body.owner_id ?? '-123456');
-      const post = { id: DemoData.newId(), date: Math.floor(Date.now()/1000), text: body.message ?? '', likes: { count: 0 }, reposts: { count: 0 }, comments: { count: 0 } };
-      (DemoData.wall[ownerId] = DemoData.wall[ownerId] ?? []).unshift(post);
+      const oid = String(body.owner_id ?? '-123456');
+      const post = { id: DemoData.newId(), date: Math.floor(Date.now()/1000), text: body.message ?? '', likes:{count:0}, reposts:{count:0}, comments:{count:0} };
+      (DemoData.wall[oid] = DemoData.wall[oid] ?? []).unshift(post);
       return { response: { post_id: post.id } };
     }
-
-    // DELETE /api/v1/wall/:id
     const wallDelM = path.match(/^\/api\/v1\/wall\/(\d+)$/);
     if (wallDelM && method === 'DELETE') {
-      const ownerId = String(params?.owner_id ?? '');
-      const arr = DemoData.wall[ownerId] ?? [];
-      const idx = arr.findIndex(x => x.id === +wallDelM[1]);
-      if (idx !== -1) arr.splice(idx, 1);
+      const oid = String(params?.owner_id ?? '');
+      const arr = DemoData.wall[oid] ?? [];
+      const i = arr.findIndex(x => x.id === +wallDelM[1]); if (i !== -1) arr.splice(i, 1);
       return { response: 1 };
     }
-
-    // POST /api/v1/wall/:id/pin
     if (method === 'POST' && path.match(/\/wall\/\d+\/pin$/)) return { response: 1 };
-
-    // GET /api/v1/groups/my
-    if (method === 'GET' && path === '/api/v1/groups/my') return { response: { items: DemoData.groups.slice(0, 2) } };
-
-    // GET /api/v1/groups/search
+    if (method === 'GET' && path === '/api/v1/groups/my') return { response: { items: DemoData.groups.slice(0,2) } };
     if (method === 'GET' && path === '/api/v1/groups/search') {
       const q = (params?.q ?? '').toLowerCase();
-      const found = DemoData.groups.filter(g => g.name.toLowerCase().includes(q) || g.screen_name.includes(q));
-      return { response: { items: found } };
+      return { response: { items: DemoData.groups.filter(g => g.name.toLowerCase().includes(q) || g.screen_name.includes(q)) } };
     }
-
-    // GET /api/v1/groups/
     if (method === 'GET' && path === '/api/v1/groups/') {
       const ids = String(params?.group_ids ?? '').split(',').map(s => s.trim());
-      const found = DemoData.groups.filter(g => ids.includes(String(g.id)) || ids.includes(g.screen_name));
-      return found;
+      return DemoData.groups.filter(g => ids.includes(String(g.id)) || ids.includes(g.screen_name));
     }
-
     return {};
   },
 };
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════════
 const State = {
   apiUrl: 'http://localhost:8000',
   token: '',
   accounts: [],
   selectedAccount: null,
   campaigns: [],
-  selectedCampaign: null,
   ads: [],
-  currentView: 'accounts',
+  selectedCampaigns: new Set(),
+  currentView: 'campaigns',
+  currentTab: 'campaigns',
+  searchQuery: '',
 };
 
-// ─── API ──────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// API
+// ══════════════════════════════════════════════════════════════════════════════
 const api = {
   async req(method, path, body = null, params = {}) {
     if (Demo.active) return Demo.handle(method, path, body, params);
     const url = new URL(State.apiUrl + path);
     Object.entries(params).forEach(([k, v]) => { if (v !== null && v !== undefined && v !== '') url.searchParams.set(k, v); });
-    const opts = {
-      method,
-      headers: { 'X-Vk-Token': State.token, 'Accept': 'application/json' },
-    };
+    const opts = { method, headers: { 'X-Vk-Token': State.token, 'Accept': 'application/json' } };
     if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
     const res = await fetch(url, opts);
     const data = await res.json().catch(() => ({ detail: res.statusText }));
@@ -724,7 +651,9 @@ const api = {
   delete: (p, params) => api.req('DELETE', p, null, params),
 };
 
-// ─── TOAST ────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════════════════════════
 function toast(msg, type = 'info') {
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
@@ -732,706 +661,952 @@ function toast(msg, type = 'info') {
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }
-
-// ─── RENDER HELPERS ───────────────────────────────────────────────────────────
-function loading() {
-  return `<div class="loading"><div class="spinner"></div> Загрузка...</div>`;
-}
-function empty(msg = 'Нет данных') {
-  return `<div class="empty">${msg}</div>`;
-}
-function statusBadge(status) {
-  const map = { 0: ['badge-red', 'Остановлен'], 1: ['badge-green', 'Активен'], 2: ['badge-gray', 'Удалён'] };
-  const [cls, label] = map[status] ?? ['badge-gray', status];
-  return `<span class="badge ${cls}">${label}</span>`;
-}
 function fmtNum(v) { return v != null ? Number(v).toLocaleString('ru') : '—'; }
-function fmtMoney(v) { return v != null ? Number(v).toLocaleString('ru', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }) : '—'; }
+function fmtMoney(v) {
+  if (v == null || v === '' || v === '0' || v == 0) return '0,00 ₽';
+  return Number(v).toLocaleString('ru', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 });
+}
+function statusToggle(id, status, onchange) {
+  return `<label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" ${status===1?'checked':''} onchange="${onchange}(${id},this.checked)"><span class="toggle-slider"></span></label>`;
+}
+function statusText(status) {
+  if (status === 1) return '<span class="status-text status-active">Активна</span>';
+  if (status === 0) return '<span class="status-text status-stopped">Остановлена</span>';
+  return '<span class="status-text status-deleted">Удалена</span>';
+}
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function nDaysAgo(n) { return new Date(Date.now() - n*86400000).toISOString().slice(0,10); }
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// SIDE PANEL
+// ══════════════════════════════════════════════════════════════════════════════
+const Panel = {
+  el: null,
+  open(title, bodyHtml, footerHtml = '') {
+    if (!this.el) this._create();
+    this.el.querySelector('.panel-title').textContent = title;
+    this.el.querySelector('.panel-body').innerHTML = bodyHtml;
+    this.el.querySelector('.panel-footer').innerHTML = footerHtml +
+      `<button class="btn btn-secondary" onclick="Panel.close()">Отмена</button>`;
+    this.el.classList.add('open');
+  },
+  close() { if (this.el) this.el.classList.remove('open'); },
+  _create() {
+    this.el = document.createElement('div');
+    this.el.className = 'side-panel';
+    this.el.innerHTML = `
+      <div class="panel-header">
+        <span class="panel-title"></span>
+        <button class="panel-close" onclick="Panel.close()">×</button>
+      </div>
+      <div class="panel-body"></div>
+      <div class="panel-footer"></div>`;
+    document.getElementById('main-content').appendChild(this.el);
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════════════════════════════════════════════════
 const App = {
   async connect() {
-    if (Demo.active) { await this.navigate('accounts'); return; }
-    State.apiUrl = document.getElementById('api-url').value.replace(/\/$/, '');
+    if (Demo.active) { await this.navigate('campaigns'); return; }
+    State.apiUrl = document.getElementById('api-url').value.replace(/\/$/,'');
     State.token = document.getElementById('vk-token').value.trim();
     if (!State.token) { toast('Введите VK токен', 'error'); return; }
     localStorage.setItem('vk_api_url', State.apiUrl);
     localStorage.setItem('vk_token', State.token);
-    await this.navigate('accounts');
+    await this.navigate('campaigns');
   },
 
   navigate(view) {
     State.currentView = view;
-    document.querySelectorAll('.nav-item').forEach(el => {
-      el.classList.toggle('active', el.dataset.view === view);
-    });
-    const views = { accounts: Views.accounts, campaigns: Views.campaigns, ads: Views.ads, stats: Views.stats, retargeting: Views.retargeting, wall: Views.wall, groups: Views.groups };
-    if (views[view]) views[view]();
-    else render(`<div class="empty">Раздел в разработке</div>`);
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === view));
+    Panel.close && Panel.close();
+    const fn = Views[view];
+    if (fn) fn.call(Views);
   },
 
-  openModal(title, bodyHtml) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-body').innerHTML = bodyHtml;
-    document.getElementById('modal-overlay').classList.add('open');
+  _getMain() { return document.getElementById('main-content'); },
+
+  _renderShell(accountBarHtml, tabsHtml, toolbarHtml, tableHtml) {
+    const m = this._getMain();
+    m.innerHTML = `
+      <div class="content-area">
+        ${accountBarHtml}
+        ${tabsHtml}
+        ${toolbarHtml}
+        <div class="table-area">${tableHtml}</div>
+      </div>`;
   },
 
-  closeModal() {
-    document.getElementById('modal-overlay').classList.remove('open');
-  },
-};
-
-function render(html) {
-  document.getElementById('main-content').innerHTML = html;
-}
-
-// ─── VIEWS ────────────────────────────────────────────────────────────────────
-const Views = {
-
-  // ── ACCOUNTS ──────────────────────────────────────────────────────────────
-  async accounts() {
-    render(`<div class="panel"><div class="panel-header"><span class="panel-title">Рекламные кабинеты</span></div><div class="panel-body">${loading()}</div></div>`);
+  async _loadAccounts() {
+    if (State.accounts.length) return;
     try {
       const data = await api.get('/api/v1/accounts/');
       State.accounts = data.response ?? data ?? [];
-      const rows = State.accounts.map(a => `
-        <tr class="clickable-row" onclick="App._selectAccount(${a.account_id})">
-          <td><strong>${a.account_id}</strong></td>
-          <td>${a.account_name ?? '—'}</td>
-          <td><span class="badge badge-blue">${a.account_type ?? '—'}</span></td>
-          <td>${statusBadge(a.account_status)}</td>
-          <td>${a.access_role ?? '—'}</td>
-          <td>
-            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();Views._accountBudget(${a.account_id})">Бюджет</button>
-            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();App._goToCampaigns(${a.account_id})">Кампании →</button>
-          </td>
-        </tr>`).join('');
-      render(`
-        <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">Рекламные кабинеты (${State.accounts.length})</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>Название</th><th>Тип</th><th>Статус</th><th>Роль</th><th>Действия</th></tr></thead>
-              <tbody>${rows || `<tr><td colspan="6">${empty()}</td></tr>`}</tbody>
-            </table>
-          </div>
-        </div>`);
-    } catch(e) { render(`<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`); toast(e.message, 'error'); }
-  },
-
-  async _accountBudget(accountId) {
-    try {
-      const d = await api.get(`/api/v1/accounts/${accountId}/budget`);
-      const budget = d.response ?? d.budget ?? JSON.stringify(d);
-      toast(`Бюджет кабинета ${accountId}: ${fmtMoney(budget)}`, 'info');
+      if (State.accounts.length && !State.selectedAccount) State.selectedAccount = State.accounts[0].account_id;
     } catch(e) { toast(e.message, 'error'); }
   },
 
-  // ── CAMPAIGNS ─────────────────────────────────────────────────────────────
-  async campaigns(accountId) {
-    if (accountId) State.selectedAccount = accountId;
-    if (!State.selectedAccount && State.accounts.length > 0) State.selectedAccount = State.accounts[0].account_id;
-    if (!State.selectedAccount) {
-      render(`<div class="panel"><div class="panel-body">${empty('Сначала выберите рекламный кабинет')}</div></div>`);
-      return;
-    }
+  _accountBarHtml() {
+    const acc = State.accounts.find(a => a.account_id === State.selectedAccount);
+    const opts = State.accounts.map(a => `<option value="${a.account_id}" ${a.account_id===State.selectedAccount?'selected':''}>${a.account_name}</option>`).join('');
+    const budget = acc ? `<span class="account-balance"><strong>${fmtMoney(DemoData.budgets?.[acc.account_id] ?? '')}</strong></span>` : '';
+    return `
+      <div class="account-bar">
+        <div class="account-select">
+          <select onchange="App._switchAccount(+this.value)">${opts || '<option>Нет кабинетов</option>'}</select>
+        </div>
+        ${budget}
+        <div class="ab-sep"></div>
+        <div class="date-range">
+          📅
+          <input type="date" id="date-from" value="${nDaysAgo(6)}">
+          —
+          <input type="date" id="date-to" value="${todayStr()}">
+        </div>
+      </div>`;
+  },
+
+  async _switchAccount(accId) {
+    State.selectedAccount = accId;
+    State.campaigns = [];
+    State.ads = [];
+    State.selectedCampaigns.clear();
+    App.navigate(State.currentView);
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VIEWS
+// ══════════════════════════════════════════════════════════════════════════════
+const Views = {
+
+  // ── CAMPAIGNS ────────────────────────────────────────────────────────────
+  async campaigns() {
+    State.currentTab = 'campaigns';
+    await App._loadAccounts();
     const accId = State.selectedAccount;
-    const accName = State.accounts.find(a => a.account_id === accId)?.account_name ?? accId;
-    render(`
-      <div class="breadcrumb"><a onclick="App.navigate('accounts')">Кабинеты</a><span class="sep">›</span><span>${accName}</span></div>
-      <div class="panel"><div class="panel-header"><span class="panel-title">Кампании</span></div><div class="panel-body">${loading()}</div></div>`);
+    App._renderShell(App._accountBarHtml(), Views._tabsHtml('campaigns'), Views._campToolbar(accId), Views._loadingTable(7));
     try {
       const data = await api.get(`/api/v1/accounts/${accId}/campaigns/`);
       State.campaigns = data.response ?? data ?? [];
-      const rows = State.campaigns.map(c => `
-        <tr class="clickable-row" onclick="App._goToAds(${c.id})">
-          <td><strong>${c.id}</strong></td>
-          <td>${c.name ?? '—'}</td>
-          <td><span class="badge badge-blue">${c.type ?? '—'}</span></td>
-          <td>${statusBadge(c.status)}</td>
-          <td>${fmtMoney(c.day_limit)}</td>
-          <td>${fmtMoney(c.lifetime_limit)}</td>
-          <td>
-            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();Views._editCampaign(${c.id})">Изменить</button>
-            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();Views._deleteCampaign(${accId},${c.id})">Удалить</button>
-          </td>
-        </tr>`).join('');
-      render(`
-        <div class="breadcrumb"><a onclick="App.navigate('accounts')">Кабинеты</a><span class="sep">›</span><span>${accName}</span></div>
-        <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">Кампании (${State.campaigns.length})</span>
-            <button class="btn btn-primary btn-sm" onclick="Views._createCampaign(${accId})">+ Создать</button>
+      Views._renderCampaignTable();
+    } catch(e) { Views._tableError(e.message); }
+  },
+
+  _tabsHtml(active) {
+    const tabs = [['campaigns','Кампании'],['ads','Объявления'],['stats','Статистика'],['audiences','Аудитории']];
+    return `<div class="tabs-bar">${tabs.map(([v,l]) => `<div class="tab ${active===v?'active':''}" onclick="Views.${v==='stats'?'stats':v==='audiences'?'audiences':v}()">${l}</div>`).join('')}</div>`;
+  },
+
+  _campToolbar(accId) {
+    return `
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="Views._createCampaign(${accId})">Создать</button>
+        <div class="dropdown" id="dd-actions">
+          <button class="btn btn-secondary btn-sm" onclick="Views._toggleDropdown('dd-actions')">Действия ▾</button>
+          <div class="dropdown-menu" id="dd-actions-menu">
+            <div class="dropdown-item" onclick="Views._bulkToggle(${accId},1)">▶ Запустить выбранные</div>
+            <div class="dropdown-item" onclick="Views._bulkToggle(${accId},0)">⏸ Остановить выбранные</div>
+            <div class="dropdown-item danger" onclick="Views._bulkDelete(${accId})">🗑 Удалить выбранные</div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>Название</th><th>Тип</th><th>Статус</th><th>Дн. лимит</th><th>Общий лимит</th><th>Действия</th></tr></thead>
-              <tbody>${rows || `<tr><td colspan="7">${empty()}</td></tr>`}</tbody>
-            </table>
+        </div>
+        <button class="btn-icon" onclick="Views.campaigns()" title="Обновить">↻</button>
+        <div class="toolbar-sep"></div>
+        <div class="search-input">
+          🔍 <input type="text" placeholder="Поиск кампаний" id="camp-search" oninput="Views._filterCampaigns()" value="${State.searchQuery}">
+        </div>
+      </div>`;
+  },
+
+  _renderCampaignTable() {
+    const q = (document.getElementById('camp-search')?.value || '').toLowerCase();
+    const list = State.campaigns.filter(c => !q || c.name.toLowerCase().includes(q));
+    const totalSpent = list.reduce((s, c) => s + (c.spent||0), 0);
+    const rows = list.length ? list.map(c => `
+      <tr class="${State.selectedCampaigns.has(c.id)?'selected':''}" onclick="Views._openCampaignPanel(${c.id})">
+        <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" ${State.selectedCampaigns.has(c.id)?'checked':''} onchange="Views._toggleSelect(${c.id},this.checked)"></td>
+        <td class="col-toggle">${statusToggle(c.id, c.status, 'Views._toggleCampaignStatus')}</td>
+        <td class="col-name">
+          <div class="cell-name" onclick="event.stopPropagation();Views._goToAds(${c.id})">${c.name}</div>
+          <div class="cell-dim">${c.type}</div>
+        </td>
+        <td class="col-status">${statusText(c.status)}</td>
+        <td class="col-budget cell-right">${c.day_limit && c.day_limit!=='0' ? fmtMoney(c.day_limit)+'/д' : 'Без лимита'}</td>
+        <td class="col-result cell-right">${fmtNum(c.results)}</td>
+        <td class="col-cpr cell-right">${c.cpr ? fmtMoney(c.cpr) : '—'}</td>
+        <td class="col-spend cell-right">${fmtMoney(c.spent)}</td>
+        <td class="col-actions">
+          <button class="row-menu-btn" onclick="event.stopPropagation();Views._campRowMenu(event,${c.id})">⋯</button>
+        </td>
+      </tr>`).join('') : `<tr><td colspan="9"><div class="empty"><div class="empty-icon">📭</div>Нет кампаний</div></td></tr>`;
+    const tbl = `
+      <table class="data-table">
+        <thead><tr>
+          <th class="col-check"><input type="checkbox" onchange="Views._selectAll(this.checked)"></th>
+          <th class="col-toggle"></th>
+          <th class="col-name">Название кампании</th>
+          <th class="col-status">Статус</th>
+          <th class="col-budget cell-right">Бюджет</th>
+          <th class="col-result cell-right">Результат</th>
+          <th class="col-cpr cell-right">Цена за результат</th>
+          <th class="col-spend cell-right">Потрачено</th>
+          <th class="col-actions"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr>
+          <td colspan="4">Итого: ${list.length} кампани${list.length===1?'я':list.length<5?'и':'й'}</td>
+          <td></td><td></td><td></td>
+          <td class="cell-right">${fmtMoney(totalSpent)}</td>
+          <td></td>
+        </tr></tfoot>
+      </table>`;
+    const ta = document.querySelector('.table-area');
+    if (ta) ta.innerHTML = tbl;
+  },
+
+  _filterCampaigns() {
+    State.searchQuery = document.getElementById('camp-search')?.value || '';
+    Views._renderCampaignTable();
+  },
+
+  _toggleSelect(id, checked) {
+    if (checked) State.selectedCampaigns.add(id); else State.selectedCampaigns.delete(id);
+    Views._renderCampaignTable();
+  },
+
+  _selectAll(checked) {
+    if (checked) State.campaigns.forEach(c => State.selectedCampaigns.add(c.id));
+    else State.selectedCampaigns.clear();
+    Views._renderCampaignTable();
+  },
+
+  async _toggleCampaignStatus(id, checked) {
+    const accId = State.selectedAccount;
+    const status = checked ? 1 : 0;
+    try {
+      await api.patch(`/api/v1/accounts/${accId}/campaigns/${id}`, { campaign_id: id, status });
+      const c = State.campaigns.find(x => x.id === id);
+      if (c) c.status = status;
+      toast(checked ? 'Кампания запущена' : 'Кампания остановлена', 'success');
+    } catch(e) { toast(e.message, 'error'); Views._renderCampaignTable(); }
+  },
+
+  async _bulkToggle(accId, status) {
+    Views._closeDropdown('dd-actions');
+    if (!State.selectedCampaigns.size) { toast('Выберите кампании', 'error'); return; }
+    try {
+      for (const id of State.selectedCampaigns) {
+        await api.patch(`/api/v1/accounts/${accId}/campaigns/${id}`, { campaign_id: id, status });
+        const c = State.campaigns.find(x => x.id === id);
+        if (c) c.status = status;
+      }
+      toast(`${status ? 'Запущено' : 'Остановлено'}: ${State.selectedCampaigns.size}`, 'success');
+      Views._renderCampaignTable();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  async _bulkDelete(accId) {
+    Views._closeDropdown('dd-actions');
+    if (!State.selectedCampaigns.size) { toast('Выберите кампании', 'error'); return; }
+    if (!confirm(`Удалить ${State.selectedCampaigns.size} кампаний?`)) return;
+    try {
+      for (const id of [...State.selectedCampaigns]) {
+        await api.delete(`/api/v1/accounts/${accId}/campaigns/${id}`);
+        const i = State.campaigns.findIndex(x => x.id === id);
+        if (i !== -1) State.campaigns.splice(i, 1);
+        State.selectedCampaigns.delete(id);
+      }
+      toast('Удалено', 'success');
+      Views._renderCampaignTable();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  _openCampaignPanel(id) {
+    const c = State.campaigns.find(x => x.id === id);
+    if (!c) return;
+    const accId = State.selectedAccount;
+    Panel.open(`Кампания: ${c.name}`, `
+      <div class="form-section">
+        <div class="form-section-title">Основное</div>
+        <div class="form-row single"><div class="form-group"><label class="form-label">Название</label><input class="form-input" id="ep-name" value="${c.name}"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Статус</label>
+            <select class="form-select" id="ep-status">
+              <option value="1" ${c.status===1?'selected':''}>Активна</option>
+              <option value="0" ${c.status===0?'selected':''}>Остановлена</option>
+            </select>
           </div>
-        </div>`);
-    } catch(e) { render(`<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`); toast(e.message, 'error'); }
+          <div class="form-group"><label class="form-label">Тип</label>
+            <select class="form-select" id="ep-type" disabled>
+              <option value="normal" ${c.type==='normal'?'selected':''}>Обычная</option>
+              <option value="promoted_posts" ${c.type==='promoted_posts'?'selected':''}>Записи</option>
+              <option value="mobile_apps" ${c.type==='mobile_apps'?'selected':''}>Мобильные</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Бюджет</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Дневной лимит (₽)</label><input class="form-input" id="ep-day" type="number" value="${c.day_limit||0}"></div>
+          <div class="form-group"><label class="form-label">Общий лимит (₽)</label><input class="form-input" id="ep-life" type="number" value="${c.lifetime_limit||0}"></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Статистика (за всё время)</div>
+        <div class="stat-cards">
+          <div class="stat-card"><div class="stat-label">Результатов</div><div class="stat-value">${fmtNum(c.results)}</div></div>
+          <div class="stat-card"><div class="stat-label">Цена/рез-т</div><div class="stat-value">${c.cpr ? fmtMoney(c.cpr) : '—'}</div></div>
+          <div class="stat-card"><div class="stat-label">Потрачено</div><div class="stat-value">${fmtMoney(c.spent)}</div></div>
+        </div>
+      </div>`,
+      `<button class="btn btn-danger btn-sm" onclick="Views._deleteCampaignFromPanel(${accId},${id})">Удалить</button>
+       <button class="btn btn-primary" onclick="Views._saveCampaign(${accId},${id})">Сохранить</button>`
+    );
+  },
+
+  async _saveCampaign(accId, id) {
+    const body = {
+      campaign_id: id,
+      name: document.getElementById('ep-name').value.trim(),
+      status: +document.getElementById('ep-status').value,
+      day_limit: String(document.getElementById('ep-day').value),
+      lifetime_limit: String(document.getElementById('ep-life').value),
+    };
+    try {
+      await api.patch(`/api/v1/accounts/${accId}/campaigns/${id}`, body);
+      const c = State.campaigns.find(x => x.id === id);
+      if (c) Object.assign(c, body);
+      Panel.close(); toast('Сохранено', 'success');
+      Views._renderCampaignTable();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  async _deleteCampaignFromPanel(accId, id) {
+    if (!confirm('Удалить кампанию?')) return;
+    try {
+      await api.delete(`/api/v1/accounts/${accId}/campaigns/${id}`);
+      const i = State.campaigns.findIndex(x => x.id === id);
+      if (i !== -1) State.campaigns.splice(i, 1);
+      Panel.close(); toast('Удалено', 'success');
+      Views._renderCampaignTable();
+    } catch(e) { toast(e.message, 'error'); }
+  },
+
+  _campRowMenu(e, id) {
+    e.stopPropagation();
+    const c = State.campaigns.find(x => x.id === id);
+    if (!c) return;
+    const accId = State.selectedAccount;
+    const menuId = `row-menu-${id}`;
+    let existing = document.getElementById(menuId);
+    if (existing) { existing.remove(); return; }
+    const menu = document.createElement('div');
+    menu.id = menuId;
+    menu.className = 'dropdown-menu open';
+    menu.style.cssText = `position:fixed;left:${e.clientX-160}px;top:${e.clientY}px`;
+    menu.innerHTML = `
+      <div class="dropdown-item" onclick="Views._openCampaignPanel(${id});document.getElementById('${menuId}').remove()">✏️ Редактировать</div>
+      <div class="dropdown-item" onclick="Views._goToAds(${id});document.getElementById('${menuId}').remove()">🎯 Объявления</div>
+      <div class="dropdown-item danger" onclick="Views._deleteCampaignFromPanel(${accId},${id});document.getElementById('${menuId}').remove()">🗑 Удалить</div>`;
+    document.body.appendChild(menu);
+    setTimeout(() => { document.addEventListener('click', () => menu.remove(), { once: true }); }, 0);
   },
 
   _createCampaign(accId) {
-    App.openModal('Создать кампанию', `
-      <div class="form-grid">
-        <div class="form-group full"><label class="form-label">Название *</label><input class="form-input" id="fc-name" placeholder="Моя кампания"></div>
-        <div class="form-group"><label class="form-label">Тип</label>
-          <select class="form-select" id="fc-type">
-            <option value="normal">Обычная</option>
-            <option value="mobile_apps">Мобильные приложения</option>
-            <option value="promoted_posts">Продвижение записей</option>
-          </select>
+    Panel.open('Новая кампания', `
+      <div class="form-section">
+        <div class="form-row single"><div class="form-group"><label class="form-label">Название *</label><input class="form-input" id="nc-name" placeholder="Моя кампания"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Тип</label>
+            <select class="form-select" id="nc-type">
+              <option value="normal">Обычная</option>
+              <option value="promoted_posts">Продвижение записей</option>
+              <option value="mobile_apps">Мобильные приложения</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Дневной лимит (₽)</label><input class="form-input" id="nc-day" type="number" value="0"></div>
         </div>
-        <div class="form-group"><label class="form-label">Дневной лимит (руб.)</label><input class="form-input" id="fc-day" type="number" value="0"></div>
-        <div class="form-group"><label class="form-label">Общий лимит (руб.)</label><input class="form-input" id="fc-life" type="number" value="0"></div>
-        <div class="form-actions full">
-          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
-          <button class="btn btn-primary" onclick="Views._submitCreateCampaign(${accId})">Создать</button>
-        </div>
-      </div>`);
+      </div>`,
+      `<button class="btn btn-primary" onclick="Views._submitCreateCampaign(${accId})">Создать</button>`
+    );
   },
 
   async _submitCreateCampaign(accId) {
-    const name = document.getElementById('fc-name').value.trim();
+    const name = document.getElementById('nc-name').value.trim();
     if (!name) { toast('Введите название', 'error'); return; }
     try {
-      await api.post(`/api/v1/accounts/${accId}/campaigns/`, {
-        name,
-        type: document.getElementById('fc-type').value,
-        day_limit: String(document.getElementById('fc-day').value || 0),
-        lifetime_limit: String(document.getElementById('fc-life').value || 0),
-      });
-      App.closeModal(); toast('Кампания создана', 'success');
-      Views.campaigns(accId);
+      await api.post(`/api/v1/accounts/${accId}/campaigns/`, { name, type: document.getElementById('nc-type').value, day_limit: String(document.getElementById('nc-day').value||0), lifetime_limit: '0' });
+      Panel.close(); toast('Кампания создана', 'success');
+      State.campaigns = [];
+      Views.campaigns();
     } catch(e) { toast(e.message, 'error'); }
   },
 
-  _editCampaign(campaignId) {
-    const c = State.campaigns.find(x => x.id === campaignId);
-    if (!c) return;
-    App.openModal('Изменить кампанию', `
-      <div class="form-grid">
-        <div class="form-group full"><label class="form-label">Название</label><input class="form-input" id="ec-name" value="${c.name ?? ''}"></div>
-        <div class="form-group"><label class="form-label">Статус</label>
-          <select class="form-select" id="ec-status">
-            <option value="" ${c.status == null ? 'selected' : ''}>Не менять</option>
-            <option value="0" ${c.status === 0 ? 'selected' : ''}>Остановить</option>
-            <option value="1" ${c.status === 1 ? 'selected' : ''}>Запустить</option>
-          </select>
-        </div>
-        <div class="form-group"><label class="form-label">Дневной лимит (руб.)</label><input class="form-input" id="ec-day" type="number" value="${c.day_limit ?? 0}"></div>
-        <div class="form-actions full">
-          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
-          <button class="btn btn-primary" onclick="Views._submitEditCampaign(${State.selectedAccount},${campaignId})">Сохранить</button>
-        </div>
-      </div>`);
-  },
-
-  async _submitEditCampaign(accId, campaignId) {
-    const body = { campaign_id: campaignId };
-    const name = document.getElementById('ec-name').value.trim();
-    const status = document.getElementById('ec-status').value;
-    const day = document.getElementById('ec-day').value;
-    if (name) body.name = name;
-    if (status !== '') body.status = Number(status);
-    if (day !== '') body.day_limit = String(day);
-    try {
-      await api.patch(`/api/v1/accounts/${accId}/campaigns/${campaignId}`, body);
-      App.closeModal(); toast('Кампания обновлена', 'success');
-      Views.campaigns(accId);
-    } catch(e) { toast(e.message, 'error'); }
-  },
-
-  async _deleteCampaign(accId, campaignId) {
-    if (!confirm(`Удалить кампанию ${campaignId}?`)) return;
-    try {
-      await api.delete(`/api/v1/accounts/${accId}/campaigns/${campaignId}`);
-      toast('Кампания удалена', 'success');
-      Views.campaigns(accId);
-    } catch(e) { toast(e.message, 'error'); }
-  },
-
-  // ── ADS ───────────────────────────────────────────────────────────────────
+  // ── ADS ──────────────────────────────────────────────────────────────────
   async ads(campaignId) {
-    if (campaignId) State.selectedCampaign = campaignId;
+    State.currentTab = 'ads';
+    await App._loadAccounts();
     const accId = State.selectedAccount;
-    if (!accId) { render(`<div class="panel"><div class="panel-body">${empty('Сначала выберите кабинет и кампанию')}</div></div>`); return; }
-    const accName = State.accounts.find(a => a.account_id === accId)?.account_name ?? accId;
-    const camp = State.campaigns.find(c => c.id === State.selectedCampaign);
-    const campName = camp?.name ?? State.selectedCampaign ?? 'Все';
-    render(`
-      <div class="breadcrumb"><a onclick="App.navigate('accounts')">Кабинеты</a><span class="sep">›</span><a onclick="App.navigate('campaigns')">${accName}</a><span class="sep">›</span><span>${campName}</span></div>
-      <div class="panel"><div class="panel-body">${loading()}</div></div>`);
+    if (!accId) { toast('Выберите кабинет', 'error'); return; }
+    if (!State.campaigns.length) {
+      const data = await api.get(`/api/v1/accounts/${accId}/campaigns/`);
+      State.campaigns = data.response ?? data ?? [];
+    }
+    App._renderShell(App._accountBarHtml(), Views._tabsHtml('ads'), Views._adsToolbar(accId), Views._loadingTable(8));
     try {
       const params = {};
-      if (State.selectedCampaign) params.campaign_ids = String(State.selectedCampaign);
+      if (campaignId) params.campaign_ids = String(campaignId);
       const data = await api.get(`/api/v1/accounts/${accId}/ads/`, params);
       State.ads = data.response ?? data ?? [];
-      const costMap = { 0: 'CPC', 1: 'CPM', 3: 'oCPM' };
-      const rows = State.ads.map(ad => `
-        <tr>
-          <td><strong>${ad.id}</strong></td>
-          <td>${ad.name ?? '—'}</td>
-          <td>${statusBadge(ad.status)}</td>
-          <td><span class="badge badge-blue">${costMap[ad.cost_type] ?? ad.cost_type}</span></td>
-          <td>${ad.cpc ? fmtMoney(ad.cpc) : ad.cpm ? fmtMoney(ad.cpm) : ad.ocpm ? fmtMoney(ad.ocpm) : '—'}</td>
-          <td>${ad.campaign_id}</td>
-          <td>
-            <button class="btn btn-secondary btn-sm" onclick="Views._editAd(${ad.id})">Изменить</button>
-            <button class="btn btn-danger btn-sm" onclick="Views._deleteAd(${accId},${ad.id})">Удалить</button>
-          </td>
-        </tr>`).join('');
-      render(`
-        <div class="breadcrumb"><a onclick="App.navigate('accounts')">Кабинеты</a><span class="sep">›</span><a onclick="App.navigate('campaigns')">${accName}</a><span class="sep">›</span><span>${campName}</span></div>
-        <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">Объявления (${State.ads.length})</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>Название</th><th>Статус</th><th>Тип</th><th>Ставка</th><th>Кампания</th><th>Действия</th></tr></thead>
-              <tbody>${rows || `<tr><td colspan="7">${empty()}</td></tr>`}</tbody>
-            </table>
-          </div>
-        </div>`);
-    } catch(e) { render(`<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`); toast(e.message, 'error'); }
+      Views._renderAdsTable(accId);
+    } catch(e) { Views._tableError(e.message); }
   },
 
-  _editAd(adId) {
-    const ad = State.ads.find(x => x.id === adId);
-    if (!ad) return;
-    App.openModal('Изменить объявление', `
-      <div class="form-grid">
-        <div class="form-group full"><label class="form-label">Название</label><input class="form-input" id="ea-name" value="${ad.name ?? ''}"></div>
-        <div class="form-group"><label class="form-label">Статус</label>
-          <select class="form-select" id="ea-status">
-            <option value="">Не менять</option>
-            <option value="0">Остановить</option>
-            <option value="1">Запустить</option>
-          </select>
-        </div>
-        <div class="form-group"><label class="form-label">CPC (руб.)</label><input class="form-input" id="ea-cpc" value="${ad.cpc ?? ''}"></div>
-        <div class="form-group"><label class="form-label">CPM (руб.)</label><input class="form-input" id="ea-cpm" value="${ad.cpm ?? ''}"></div>
-        <div class="form-actions full">
-          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
-          <button class="btn btn-primary" onclick="Views._submitEditAd(${State.selectedAccount},${adId})">Сохранить</button>
-        </div>
-      </div>`);
+  _adsToolbar(accId) {
+    const campOpts = State.campaigns.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    return `
+      <div class="toolbar">
+        <select class="form-select" id="ads-camp-filter" style="width:220px" onchange="Views.ads(+this.value||undefined)">
+          <option value="">Все кампании</option>
+          ${campOpts}
+        </select>
+        <button class="btn-icon" onclick="Views.ads()" title="Обновить">↻</button>
+        <div class="toolbar-sep"></div>
+        <div class="search-input">🔍 <input type="text" placeholder="Поиск объявлений" id="ads-search" oninput="Views._filterAds(${accId})"></div>
+      </div>`;
   },
 
-  async _submitEditAd(accId, adId) {
-    const body = { ad_id: adId };
-    const name = document.getElementById('ea-name').value.trim();
-    const status = document.getElementById('ea-status').value;
+  _renderAdsTable(accId) {
+    const q = (document.getElementById('ads-search')?.value || '').toLowerCase();
+    const costMap = { 0:'CPC', 1:'CPM', 3:'oCPM' };
+    const list = State.ads.filter(a => !q || a.name.toLowerCase().includes(q));
+    const totalSpent = list.reduce((s,a) => s + (a.spent||0), 0);
+    const rows = list.length ? list.map(a => {
+      const rate = a.cpc || a.cpm || a.ocpm;
+      const camp = State.campaigns.find(c => c.id === a.campaign_id);
+      return `<tr onclick="Views._openAdPanel(${a.id},${accId})">
+        <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox"></td>
+        <td class="col-toggle">${statusToggle(a.id, a.status, 'Views._toggleAdStatus')}</td>
+        <td class="col-name">
+          <div class="cell-name">${a.name}</div>
+          <div class="cell-dim">${camp?.name ?? ''}</div>
+        </td>
+        <td class="col-status">${statusText(a.status)}</td>
+        <td class="col-budget cell-right"><span class="badge badge-blue">${costMap[a.cost_type]??'—'}</span> ${rate ? fmtMoney(rate) : '—'}</td>
+        <td class="col-result cell-right">${fmtNum(a.results)}</td>
+        <td class="col-cpr cell-right">${a.cpr ? fmtMoney(a.cpr) : '—'}</td>
+        <td class="col-spend cell-right">${fmtMoney(a.spent)}</td>
+        <td class="col-actions"><button class="row-menu-btn" onclick="event.stopPropagation();Views._adRowMenu(event,${a.id},${accId})">⋯</button></td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="9"><div class="empty"><div class="empty-icon">📭</div>Нет объявлений</div></td></tr>`;
+    const tbl = `<table class="data-table">
+      <thead><tr>
+        <th class="col-check"><input type="checkbox"></th>
+        <th class="col-toggle"></th>
+        <th class="col-name">Название объявления</th>
+        <th class="col-status">Статус</th>
+        <th class="col-budget cell-right">Тип / Ставка</th>
+        <th class="col-result cell-right">Результат</th>
+        <th class="col-cpr cell-right">Цена/результат</th>
+        <th class="col-spend cell-right">Потрачено</th>
+        <th class="col-actions"></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="4">Итого: ${list.length} объявлени${list.length===1?'е':list.length<5?'я':'й'}</td><td></td><td></td><td></td><td class="cell-right">${fmtMoney(totalSpent)}</td><td></td></tr></tfoot>
+    </table>`;
+    const ta = document.querySelector('.table-area');
+    if (ta) ta.innerHTML = tbl;
+  },
+
+  _filterAds(accId) { Views._renderAdsTable(accId); },
+
+  async _toggleAdStatus(id, checked) {
+    const accId = State.selectedAccount;
+    const status = checked ? 1 : 0;
+    try {
+      await api.patch(`/api/v1/accounts/${accId}/ads/${id}`, { ad_id: id, status });
+      const a = State.ads.find(x => x.id === id);
+      if (a) a.status = status;
+      toast(checked ? 'Запущено' : 'Остановлено', 'success');
+    } catch(e) { toast(e.message, 'error'); Views._renderAdsTable(accId); }
+  },
+
+  _openAdPanel(id, accId) {
+    const a = State.ads.find(x => x.id === id);
+    if (!a) return;
+    const costMap = { 0:'CPC', 1:'CPM', 3:'oCPM' };
+    Panel.open(`Объявление: ${a.name}`, `
+      <div class="form-section">
+        <div class="form-section-title">Основное</div>
+        <div class="form-row single"><div class="form-group"><label class="form-label">Название</label><input class="form-input" id="ea-name" value="${a.name}"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Статус</label>
+            <select class="form-select" id="ea-status">
+              <option value="1" ${a.status===1?'selected':''}>Активно</option>
+              <option value="0" ${a.status===0?'selected':''}>Остановлено</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Тип ставки</label>
+            <input class="form-input" value="${costMap[a.cost_type]??'—'}" disabled>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Ставка</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">CPC (₽)</label><input class="form-input" id="ea-cpc" value="${a.cpc??''}"></div>
+          <div class="form-group"><label class="form-label">CPM (₽)</label><input class="form-input" id="ea-cpm" value="${a.cpm??''}"></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">Статистика</div>
+        <div class="stat-cards">
+          <div class="stat-card"><div class="stat-label">Потрачено</div><div class="stat-value">${fmtMoney(a.spent)}</div></div>
+          <div class="stat-card"><div class="stat-label">Результатов</div><div class="stat-value">${fmtNum(a.results)}</div></div>
+        </div>
+      </div>`,
+      `<button class="btn btn-danger btn-sm" onclick="Views._deleteAd(${accId},${id})">Удалить</button>
+       <button class="btn btn-primary" onclick="Views._saveAd(${accId},${id})">Сохранить</button>`
+    );
+  },
+
+  async _saveAd(accId, id) {
+    const body = { ad_id: id, name: document.getElementById('ea-name').value.trim(), status: +document.getElementById('ea-status').value };
     const cpc = document.getElementById('ea-cpc').value.trim();
     const cpm = document.getElementById('ea-cpm').value.trim();
-    if (name) body.name = name;
-    if (status !== '') body.status = Number(status);
     if (cpc) body.cpc = cpc;
     if (cpm) body.cpm = cpm;
     try {
-      await api.patch(`/api/v1/accounts/${accId}/ads/${adId}`, body);
-      App.closeModal(); toast('Объявление обновлено', 'success');
-      Views.ads();
+      await api.patch(`/api/v1/accounts/${accId}/ads/${id}`, body);
+      const a = State.ads.find(x => x.id === id);
+      if (a) Object.assign(a, body);
+      Panel.close(); toast('Сохранено', 'success');
+      Views._renderAdsTable(accId);
     } catch(e) { toast(e.message, 'error'); }
   },
 
-  async _deleteAd(accId, adId) {
-    if (!confirm(`Удалить объявление ${adId}?`)) return;
+  async _deleteAd(accId, id) {
+    if (!confirm('Удалить объявление?')) return;
     try {
-      await api.delete(`/api/v1/accounts/${accId}/ads/${adId}`);
-      toast('Объявление удалено', 'success');
-      Views.ads();
+      await api.delete(`/api/v1/accounts/${accId}/ads/${id}`);
+      const i = State.ads.findIndex(x => x.id === id);
+      if (i !== -1) State.ads.splice(i, 1);
+      Panel.close(); toast('Удалено', 'success');
+      Views._renderAdsTable(accId);
     } catch(e) { toast(e.message, 'error'); }
+  },
+
+  _adRowMenu(e, id, accId) {
+    e.stopPropagation();
+    const menuId = `row-menu-${id}`;
+    let existing = document.getElementById(menuId);
+    if (existing) { existing.remove(); return; }
+    const menu = document.createElement('div');
+    menu.id = menuId;
+    menu.className = 'dropdown-menu open';
+    menu.style.cssText = `position:fixed;left:${e.clientX-160}px;top:${e.clientY}px`;
+    menu.innerHTML = `
+      <div class="dropdown-item" onclick="Views._openAdPanel(${id},${accId});document.getElementById('${menuId}').remove()">✏️ Редактировать</div>
+      <div class="dropdown-item danger" onclick="Views._deleteAd(${accId},${id});document.getElementById('${menuId}').remove()">🗑 Удалить</div>`;
+    document.body.appendChild(menu);
+    setTimeout(() => { document.addEventListener('click', () => menu.remove(), { once: true }); }, 0);
+  },
+
+  _goToAds(campaignId) {
+    App.navigate('ads');
+    setTimeout(() => {
+      const sel = document.getElementById('ads-camp-filter');
+      if (sel) { sel.value = String(campaignId); Views.ads(campaignId); }
+    }, 50);
   },
 
   // ── STATS ─────────────────────────────────────────────────────────────────
-  stats() {
+  async stats() {
+    State.currentTab = 'stats';
+    await App._loadAccounts();
     const accId = State.selectedAccount;
-    const campOptions = State.campaigns.map(c => `<option value="${c.id}">${c.name ?? c.id}</option>`).join('');
-    const today = new Date();
-    const dateTo = today.toISOString().slice(0, 10);
-    const dateFrom = new Date(today - 6 * 86400000).toISOString().slice(0, 10);
-    render(`
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Статистика кампаний</span></div>
-        <div class="panel-body">
-          <div class="form-group" style="margin-bottom:12px">
-            <label class="form-label">Кампании (выберите одну или несколько)</label>
-            <select class="form-select" id="stat-campaigns" multiple size="4">
-              ${campOptions || '<option disabled>Нет кампаний — сначала перейдите в раздел "Кампании"</option>'}
+    if (!State.campaigns.length) {
+      const data = await api.get(`/api/v1/accounts/${accId}/campaigns/`);
+      State.campaigns = data.response ?? data ?? [];
+    }
+    const campOpts = State.campaigns.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    const main = document.getElementById('main-content');
+    main.innerHTML = `
+      <div class="content-area">
+        ${App._accountBarHtml()}
+        ${Views._tabsHtml('stats')}
+        <div class="stats-filter">
+          <div class="form-group stats-campaigns-select">
+            <label class="form-label">Кампании (Ctrl+клик — несколько)</label>
+            <select class="form-select" id="stat-campaigns" multiple size="3">
+              ${campOpts || '<option disabled>Нет кампаний</option>'}
             </select>
           </div>
-          <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
-            <div class="form-group" style="min-width:130px">
-              <label class="form-label">Период</label>
-              <select class="form-select" id="stat-period">
-                <option value="day">День</option>
-                <option value="month">Месяц</option>
-                <option value="overall">Всего</option>
-              </select>
-            </div>
-            <div class="form-group" style="min-width:140px">
-              <label class="form-label">Дата от</label>
-              <input class="form-input" id="stat-from" value="${dateFrom}">
-            </div>
-            <div class="form-group" style="min-width:140px">
-              <label class="form-label">Дата до</label>
-              <input class="form-input" id="stat-to" value="${dateTo}">
-            </div>
-            <button class="btn btn-primary" style="margin-bottom:1px" onclick="Views._loadStats('campaigns',${accId})">Загрузить</button>
+          <div class="form-group">
+            <label class="form-label">Период</label>
+            <select class="form-select" id="stat-period" style="width:120px">
+              <option value="day">День</option>
+              <option value="month">Месяц</option>
+              <option value="overall">Всего</option>
+            </select>
           </div>
+          <div class="form-group">
+            <label class="form-label">Дата от</label>
+            <input class="form-input" id="stat-from" value="${nDaysAgo(6)}" style="width:140px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Дата до</label>
+            <input class="form-input" id="stat-to" value="${todayStr()}" style="width:140px">
+          </div>
+          <button class="btn btn-primary" style="align-self:flex-end" onclick="Views._loadStats(${accId})">Загрузить</button>
         </div>
-      </div>
-      <div id="stats-result"></div>`);
+        <div class="table-area" id="stats-result"><div class="empty"><div class="empty-icon">📊</div>Выберите кампании и нажмите Загрузить</div></div>
+      </div>`;
   },
 
-  async _loadStats(type, accId) {
+  async _loadStats(accId) {
     const sel = document.getElementById('stat-campaigns');
-    const ids = Array.from(sel.selectedOptions).map(o => Number(o.value));
-    if (!ids.length) { toast('Выберите хотя бы одну кампанию', 'error'); return; }
+    const ids = Array.from(sel.selectedOptions).map(o => +o.value);
+    if (!ids.length) { toast('Выберите кампании', 'error'); return; }
     const period = document.getElementById('stat-period').value;
-    const date_from = document.getElementById('stat-from').value.trim() || '0';
-    const date_to = document.getElementById('stat-to').value.trim() || '0';
-    document.getElementById('stats-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
+    const date_from = document.getElementById('stat-from').value || '0';
+    const date_to = document.getElementById('stat-to').value || '0';
+    const res = document.getElementById('stats-result');
+    res.innerHTML = `<div class="loading"><span class="spinner"></span> Загрузка...</div>`;
     try {
       const data = await api.post(`/api/v1/accounts/${accId}/campaigns/stats`, { ids, period, date_from, date_to });
       const rows = (data.response ?? data ?? []).flatMap(item =>
-        (item.stats ?? [{ impressions: item.impressions, clicks: item.clicks, spent: item.spent }]).map(s => `
-          <tr>
-            <td>${item.id}</td>
-            <td>${State.campaigns.find(c=>c.id===item.id)?.name ?? '—'}</td>
+        (item.stats?.length ? item.stats : [{}]).map(s => {
+          const cname = State.campaigns.find(c => c.id === item.id)?.name ?? item.id;
+          const ctr = s.clicks && s.impressions ? (s.clicks/s.impressions*100).toFixed(2)+'%' : '—';
+          const cpc = s.clicks && s.spent ? fmtMoney(+s.spent/s.clicks) : '—';
+          return `<tr>
+            <td>${item.id}</td><td>${cname}</td>
             <td>${s.day ?? s.month ?? '—'}</td>
-            <td>${fmtNum(s.impressions)}</td>
-            <td>${fmtNum(s.clicks)}</td>
-            <td>${s.clicks && s.impressions ? (s.clicks/s.impressions*100).toFixed(2)+'%' : '—'}</td>
-            <td>${fmtMoney(s.spent)}</td>
-            <td>${s.clicks && s.spent ? fmtMoney(s.spent/s.clicks) : '—'}</td>
-          </tr>`)
+            <td class="cell-right">${fmtNum(s.impressions)}</td>
+            <td class="cell-right">${fmtNum(s.clicks)}</td>
+            <td class="cell-right">${ctr}</td>
+            <td class="cell-right">${fmtMoney(s.spent)}</td>
+            <td class="cell-right">${cpc}</td>
+          </tr>`;
+        })
       ).join('');
-      document.getElementById('stats-result').innerHTML = `
-        <div class="panel">
-          <div class="panel-header"><span class="panel-title">Результаты</span></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>Кампания</th><th>Дата</th><th>Показы</th><th>Клики</th><th>CTR</th><th>Расход</th><th>CPC</th></tr></thead>
-              <tbody>${rows || `<tr><td colspan="8">${empty('Нет данных за период')}</td></tr>`}</tbody>
-            </table>
-          </div>
-        </div>`;
-    } catch(e) {
-      document.getElementById('stats-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`;
-      toast(e.message, 'error');
-    }
+      res.innerHTML = `<table class="data-table">
+        <thead><tr>
+          <th>ID</th><th>Кампания</th><th>Дата</th>
+          <th class="cell-right">Показы</th><th class="cell-right">Клики</th>
+          <th class="cell-right">CTR</th><th class="cell-right">Расход</th><th class="cell-right">CPC</th>
+        </tr></thead>
+        <tbody>${rows || `<tr><td colspan="8"><div class="empty">Нет данных за период</div></td></tr>`}</tbody>
+      </table>`;
+    } catch(e) { res.innerHTML = `<div class="empty">Ошибка: ${e.message}</div>`; toast(e.message, 'error'); }
   },
 
-  // ── RETARGETING ───────────────────────────────────────────────────────────
-  async retargeting() {
+  // ── AUDIENCES (RETARGETING) ───────────────────────────────────────────────
+  async audiences() {
+    State.currentTab = 'audiences';
+    await App._loadAccounts();
     const accId = State.selectedAccount;
-    if (!accId) {
-      render(`<div class="panel"><div class="panel-body">${empty('Сначала выберите рекламный кабинет в разделе "Кабинеты"')}</div></div>`);
-      return;
-    }
-    render(`<div class="panel"><div class="panel-header"><span class="panel-title">Ретаргетинг</span></div><div class="panel-body">${loading()}</div></div>`);
+    App._renderShell(App._accountBarHtml(), Views._tabsHtml('audiences'),
+      `<div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="Views._createRetargeting(${accId})">Создать аудиторию</button>
+        <button class="btn-icon" onclick="Views.audiences()" title="Обновить">↻</button>
+      </div>`, Views._loadingTable(5));
     try {
       const data = await api.get(`/api/v1/accounts/${accId}/targeting/retargeting`);
       const groups = data.response ?? data ?? [];
-      const rows = groups.map(g => `
+      const rows = groups.length ? groups.map(g => `
         <tr>
           <td>${g.id}</td>
-          <td>${g.name ?? '—'}</td>
-          <td>${fmtNum(g.audience_count)}</td>
-          <td>${g.lifetime ?? '—'} дн.</td>
-          <td><button class="btn btn-danger btn-sm" onclick="Views._deleteRetargeting(${accId},${g.id})">Удалить</button></td>
-        </tr>`).join('');
-      render(`
-        <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">Группы ретаргетинга (${groups.length})</span>
-            <button class="btn btn-primary btn-sm" onclick="Views._createRetargeting(${accId})">+ Создать</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>Название</th><th>Аудитория</th><th>Срок хранения</th><th>Действия</th></tr></thead>
-              <tbody>${rows || `<tr><td colspan="5">${empty()}</td></tr>`}</tbody>
-            </table>
-          </div>
-        </div>`);
-    } catch(e) { render(`<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`); toast(e.message, 'error'); }
+          <td class="col-name"><div class="cell-name">${g.name}</div></td>
+          <td class="cell-right">${fmtNum(g.audience_count)}</td>
+          <td class="cell-right">${g.lifetime} дн.</td>
+          <td><button class="btn btn-danger btn-xs" onclick="Views._deleteRetargeting(${accId},${g.id})">Удалить</button></td>
+        </tr>`).join('') : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div>Нет аудиторий</div></td></tr>`;
+      const ta = document.querySelector('.table-area');
+      if (ta) ta.innerHTML = `<table class="data-table">
+        <thead><tr><th>ID</th><th>Название</th><th class="cell-right">Аудитория</th><th class="cell-right">Срок</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="2">Итого: ${groups.length}</td><td colspan="3"></td></tr></tfoot>
+      </table>`;
+    } catch(e) { Views._tableError(e.message); }
   },
 
   _createRetargeting(accId) {
-    App.openModal('Создать группу ретаргетинга', `
-      <div class="form-grid">
-        <div class="form-group full"><label class="form-label">Название *</label><input class="form-input" id="rt-name" placeholder="Посетители сайта"></div>
-        <div class="form-group full"><label class="form-label">Срок хранения (дней)</label><input class="form-input" id="rt-life" type="number" value="30" min="1" max="720"></div>
-        <div class="form-actions full">
-          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
-          <button class="btn btn-primary" onclick="Views._submitCreateRetargeting(${accId})">Создать</button>
-        </div>
-      </div>`);
+    Panel.open('Новая аудитория', `
+      <div class="form-section">
+        <div class="form-row single"><div class="form-group"><label class="form-label">Название *</label><input class="form-input" id="rt-name" placeholder="Посетители сайта"></div></div>
+        <div class="form-row single"><div class="form-group"><label class="form-label">Срок хранения (дней)</label><input class="form-input" id="rt-life" type="number" value="30" min="1" max="720"></div></div>
+      </div>`,
+      `<button class="btn btn-primary" onclick="Views._submitRetargeting(${accId})">Создать</button>`
+    );
   },
 
-  async _submitCreateRetargeting(accId) {
+  async _submitRetargeting(accId) {
     const name = document.getElementById('rt-name').value.trim();
     if (!name) { toast('Введите название', 'error'); return; }
-    const lifetime = Number(document.getElementById('rt-life').value) || 30;
     try {
-      await api.post(`/api/v1/accounts/${accId}/targeting/retargeting`, { name, lifetime });
-      App.closeModal(); toast('Группа создана', 'success');
-      Views.retargeting();
+      await api.post(`/api/v1/accounts/${accId}/targeting/retargeting`, { name, lifetime: +document.getElementById('rt-life').value||30 });
+      Panel.close(); toast('Аудитория создана', 'success');
+      Views.audiences();
     } catch(e) { toast(e.message, 'error'); }
   },
 
-  async _deleteRetargeting(accId, groupId) {
-    if (!confirm(`Удалить группу ${groupId}?`)) return;
+  async _deleteRetargeting(accId, id) {
+    if (!confirm('Удалить аудиторию?')) return;
     try {
-      await api.delete(`/api/v1/accounts/${accId}/targeting/retargeting/${groupId}`);
-      toast('Группа удалена', 'success');
-      Views.retargeting();
+      await api.delete(`/api/v1/accounts/${accId}/targeting/retargeting/${id}`);
+      toast('Удалено', 'success'); Views.audiences();
     } catch(e) { toast(e.message, 'error'); }
   },
 
-  // ── WALL ──────────────────────────────────────────────────────────────────
-  wall() {
-    render(`
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Стена / Посты</span></div>
-        <div class="panel-body">
-          <div class="form-grid">
-            <div class="form-group"><label class="form-label">ID владельца (owner_id) *</label><input class="form-input" id="wall-owner" placeholder="-123456 для группы"></div>
-            <div class="form-group"><label class="form-label">Количество (макс. 100)</label><input class="form-input" id="wall-count" type="number" value="20" min="1" max="100"></div>
-            <div class="form-group"><label class="form-label">Смещение</label><input class="form-input" id="wall-offset" type="number" value="0" min="0"></div>
-            <div class="form-group"><label class="form-label">Фильтр</label>
-              <select class="form-select" id="wall-filter">
-                <option value="all">Все</option>
-                <option value="owner">Свои</option>
-                <option value="others">Чужие</option>
-                <option value="postponed">Отложенные</option>
-              </select>
-            </div>
-            <div class="form-actions full">
-              <button class="btn btn-primary" onclick="Views._loadWall()">Загрузить</button>
-              <button class="btn btn-secondary" onclick="Views._createPost()">+ Новый пост</button>
+  // ── WALL ─────────────────────────────────────────────────────────────────
+  async wall() {
+    const main = document.getElementById('main-content');
+    main.innerHTML = `
+      <div class="content-area">
+        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+          <div class="form-group" style="flex:0 0 auto">
+            <label class="form-label">ID владельца</label>
+            <input class="form-input" id="wall-owner" placeholder="-123456 для группы" style="width:180px">
+          </div>
+          <div class="form-group" style="flex:0 0 auto">
+            <label class="form-label">Показать</label>
+            <select class="form-select" id="wall-count" style="width:90px">
+              <option>10</option><option selected>20</option><option>50</option><option>100</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:0 0 auto;justify-content:flex-end;padding-top:18px">
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary btn-sm" onclick="Views._loadWall()">Загрузить</button>
+              <button class="btn btn-primary btn-sm" onclick="Views._createPost()">+ Пост</button>
             </div>
           </div>
         </div>
-      </div>
-      <div id="wall-result"></div>`);
+        <div class="table-area" id="wall-result">
+          <div class="empty"><div class="empty-icon">📝</div>Введите ID владельца и нажмите Загрузить</div>
+        </div>
+      </div>`;
   },
 
   async _loadWall() {
     const owner_id = document.getElementById('wall-owner').value.trim();
     if (!owner_id) { toast('Введите owner_id', 'error'); return; }
     const count = document.getElementById('wall-count').value;
-    const offset = document.getElementById('wall-offset').value;
-    const filter = document.getElementById('wall-filter').value;
-    document.getElementById('wall-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
+    const res = document.getElementById('wall-result');
+    res.innerHTML = `<div class="loading"><span class="spinner"></span> Загрузка...</div>`;
     try {
-      const data = await api.get('/api/v1/wall/', { owner_id, count, offset, filter });
+      const data = await api.get('/api/v1/wall/', { owner_id, count, offset: 0 });
       const posts = data.response?.items ?? data.items ?? data ?? [];
       const rows = posts.map(p => {
-        const text = (p.text ?? '').slice(0, 80) + ((p.text ?? '').length > 80 ? '…' : '');
-        const date = p.date ? new Date(p.date * 1000).toLocaleString('ru') : '—';
+        const text = (p.text||'').slice(0,100)+((p.text||'').length>100?'…':'');
+        const date = p.date ? new Date(p.date*1000).toLocaleString('ru') : '—';
         return `<tr>
-          <td>${p.id}</td>
-          <td>${date}</td>
-          <td style="max-width:300px;word-break:break-word">${text || '<em>нет текста</em>'}</td>
-          <td>${fmtNum(p.likes?.count)} / ${fmtNum(p.reposts?.count)} / ${fmtNum(p.comments?.count)}</td>
-          <td>
-            <button class="btn btn-secondary btn-sm" onclick="Views._pinPost('${owner_id}',${p.id})">📌 Закрепить</button>
-            <button class="btn btn-danger btn-sm" onclick="Views._deletePost('${owner_id}',${p.id})">Удалить</button>
+          <td style="width:60px;color:var(--text-dim)">${p.id}</td>
+          <td style="width:150px;font-size:12px;color:var(--text-dim)">${date}</td>
+          <td style="max-width:400px;word-break:break-word">${text||'<em style="color:var(--text-dim)">нет текста</em>'}</td>
+          <td style="width:130px;font-size:12px;color:var(--text-dim);white-space:nowrap">❤️ ${fmtNum(p.likes?.count)} &nbsp;🔁 ${fmtNum(p.reposts?.count)} &nbsp;💬 ${fmtNum(p.comments?.count)}</td>
+          <td style="width:120px">
+            <button class="btn btn-secondary btn-xs" onclick="Views._pinPost('${owner_id}',${p.id})">📌</button>
+            <button class="btn btn-danger btn-xs" onclick="Views._deletePost('${owner_id}',${p.id})">Удалить</button>
           </td>
         </tr>`;
       }).join('');
-      document.getElementById('wall-result').innerHTML = `
-        <div class="panel">
-          <div class="panel-header"><span class="panel-title">Посты (${posts.length})</span></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>Дата</th><th>Текст</th><th>❤️ / 🔁 / 💬</th><th>Действия</th></tr></thead>
-              <tbody>${rows || `<tr><td colspan="5">${empty()}</td></tr>`}</tbody>
-            </table>
-          </div>
-        </div>`;
-    } catch(e) {
-      document.getElementById('wall-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`;
-      toast(e.message, 'error');
-    }
+      res.innerHTML = `<table class="data-table">
+        <thead><tr><th>ID</th><th>Дата</th><th>Текст</th><th>Активность</th><th>Действия</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="5"><div class="empty">Нет постов</div></td></tr>`}</tbody>
+        <tfoot><tr><td colspan="5">Итого: ${posts.length} записей</td></tr></tfoot>
+      </table>`;
+    } catch(e) { res.innerHTML = `<div class="empty">Ошибка: ${e.message}</div>`; toast(e.message, 'error'); }
   },
 
   _createPost() {
-    App.openModal('Новый пост', `
-      <div class="form-grid">
-        <div class="form-group full"><label class="form-label">ID владельца (owner_id, пусто = текущий пользователь)</label><input class="form-input" id="cp-owner" placeholder="-123456"></div>
-        <div class="form-group full"><label class="form-label">Текст</label><textarea class="form-input" id="cp-text" rows="4" placeholder="Текст поста..."></textarea></div>
-        <div class="form-group full"><label class="form-label">Вложения (через запятую: photo123_456, video...)</label><input class="form-input" id="cp-attach" placeholder=""></div>
-        <div class="form-group"><label class="form-label">Дата публикации (unix timestamp, пусто = сейчас)</label><input class="form-input" id="cp-date" placeholder=""></div>
-        <div class="form-group"><label class="form-label">От имени группы</label>
-          <select class="form-select" id="cp-fromgroup"><option value="0">Нет</option><option value="1">Да</option></select>
+    Panel.open('Новый пост', `
+      <div class="form-section">
+        <div class="form-row single"><div class="form-group"><label class="form-label">owner_id (пусто = текущий)</label><input class="form-input" id="cp-owner" placeholder="-123456"></div></div>
+        <div class="form-row single"><div class="form-group"><label class="form-label">Текст</label><textarea class="form-input form-textarea" id="cp-text" placeholder="Текст поста..."></textarea></div></div>
+        <div class="form-row single"><div class="form-group"><label class="form-label">Вложения</label><input class="form-input" id="cp-attach" placeholder="photo123_456, video..."></div></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">От имени группы</label>
+            <select class="form-select" id="cp-fg"><option value="0">Нет</option><option value="1">Да</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Дата (unix, пусто = сейчас)</label><input class="form-input" id="cp-date" placeholder=""></div>
         </div>
-        <div class="form-actions full">
-          <button class="btn btn-secondary" onclick="App.closeModal()">Отмена</button>
-          <button class="btn btn-primary" onclick="Views._submitCreatePost()">Опубликовать</button>
-        </div>
-      </div>`);
+      </div>`,
+      `<button class="btn btn-primary" onclick="Views._submitPost()">Опубликовать</button>`
+    );
   },
 
-  async _submitCreatePost() {
-    const body = {
-      message: document.getElementById('cp-text').value,
-      attachments: document.getElementById('cp-attach').value.trim(),
-      from_group: Number(document.getElementById('cp-fromgroup').value),
-    };
+  async _submitPost() {
+    const body = { message: document.getElementById('cp-text').value, attachments: document.getElementById('cp-attach').value.trim(), from_group: +document.getElementById('cp-fg').value };
     const owner = document.getElementById('cp-owner').value.trim();
     const date = document.getElementById('cp-date').value.trim();
-    if (owner) body.owner_id = Number(owner);
-    if (date) body.publish_date = Number(date);
-    try {
-      await api.post('/api/v1/wall/', body);
-      App.closeModal(); toast('Пост опубликован', 'success');
-    } catch(e) { toast(e.message, 'error'); }
+    if (owner) body.owner_id = +owner;
+    if (date) body.publish_date = +date;
+    try { await api.post('/api/v1/wall/', body); Panel.close(); toast('Пост опубликован', 'success'); }
+    catch(e) { toast(e.message, 'error'); }
   },
 
   async _pinPost(ownerId, postId) {
-    try {
-      await api.post(`/api/v1/wall/${postId}/pin`, null, { owner_id: ownerId });
-      toast('Пост закреплён', 'success');
-    } catch(e) { toast(e.message, 'error'); }
+    try { await api.post(`/api/v1/wall/${postId}/pin`, null, { owner_id: ownerId }); toast('Закреплено', 'success'); }
+    catch(e) { toast(e.message, 'error'); }
   },
 
   async _deletePost(ownerId, postId) {
-    if (!confirm(`Удалить пост ${postId}?`)) return;
-    try {
-      await api.delete(`/api/v1/wall/${postId}`, { owner_id: ownerId });
-      toast('Пост удалён', 'success');
-      Views._loadWall();
-    } catch(e) { toast(e.message, 'error'); }
+    if (!confirm('Удалить пост?')) return;
+    try { await api.delete(`/api/v1/wall/${postId}`, { owner_id: ownerId }); toast('Удалено', 'success'); Views._loadWall(); }
+    catch(e) { toast(e.message, 'error'); }
   },
 
   // ── GROUPS ────────────────────────────────────────────────────────────────
   groups() {
-    render(`
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Группы ВКонтакте</span></div>
-        <div class="panel-body">
-          <div style="display:flex;gap:8px;margin-bottom:16px">
-            <button class="btn ${Views._groupTab==='my'?'btn-primary':'btn-secondary'}" id="gtab-my" onclick="Views._switchGroupTab('my')">Мои группы</button>
-            <button class="btn btn-secondary" id="gtab-search" onclick="Views._switchGroupTab('search')">Поиск</button>
-            <button class="btn btn-secondary" id="gtab-id" onclick="Views._switchGroupTab('id')">По ID</button>
-          </div>
-          <div id="groups-form"></div>
+    const main = document.getElementById('main-content');
+    main.innerHTML = `
+      <div class="content-area">
+        <div class="toolbar">
+          <button class="btn ${Views._gTab==='my'?'btn-primary':'btn-secondary'} btn-sm" id="gt-my" onclick="Views._switchGTab('my')">Мои группы</button>
+          <button class="btn btn-secondary btn-sm" id="gt-search" onclick="Views._switchGTab('search')">Поиск</button>
+          <button class="btn btn-secondary btn-sm" id="gt-id" onclick="Views._switchGTab('id')">По ID</button>
+          <div class="toolbar-sep"></div>
+          <div id="groups-toolbar-form"></div>
         </div>
-      </div>
-      <div id="groups-result"></div>`);
-    Views._groupTab = 'my';
-    Views._switchGroupTab('my');
+        <div class="table-area" id="groups-result">
+          <div class="empty"><div class="empty-icon">👥</div>Выберите режим поиска выше</div>
+        </div>
+      </div>`;
+    Views._gTab = 'my';
+    Views._switchGTab('my');
   },
-  _groupTab: 'my',
+  _gTab: 'my',
 
-  _switchGroupTab(tab) {
-    Views._groupTab = tab;
+  _switchGTab(tab) {
+    Views._gTab = tab;
     ['my','search','id'].forEach(t => {
-      const btn = document.getElementById(`gtab-${t}`);
-      if (btn) btn.className = `btn ${t===tab?'btn-primary':'btn-secondary'}`;
+      const btn = document.getElementById(`gt-${t}`);
+      if (btn) btn.className = `btn ${t===tab?'btn-primary':'btn-secondary'} btn-sm`;
     });
     const forms = {
-      my: `<div class="form-grid">
-        <div class="form-group"><label class="form-label">user_id (пусто = текущий)</label><input class="form-input" id="g-uid" placeholder=""></div>
-        <div class="form-group"><label class="form-label">Фильтр</label>
-          <select class="form-select" id="g-filter"><option value="">Все</option><option value="admin">Администратор</option><option value="editor">Редактор</option><option value="moder">Модератор</option></select>
-        </div>
-        <div class="form-actions full"><button class="btn btn-primary" onclick="Views._loadMyGroups()">Загрузить</button></div>
+      my: `<div style="display:flex;align-items:flex-end;gap:8px">
+        <div class="form-group"><label class="form-label">user_id</label><input class="form-input" id="g-uid" placeholder="пусто = текущий" style="width:160px"></div>
+        <button class="btn btn-secondary btn-sm" onclick="Views._loadMyGroups()" style="margin-bottom:1px">Загрузить</button>
       </div>`,
-      search: `<div class="form-grid">
-        <div class="form-group full"><label class="form-label">Поисковый запрос *</label><input class="form-input" id="g-q" placeholder="ВКонтакте"></div>
-        <div class="form-group"><label class="form-label">Количество</label><input class="form-input" id="g-count" type="number" value="20" min="1" max="1000"></div>
-        <div class="form-actions full"><button class="btn btn-primary" onclick="Views._searchGroups()">Найти</button></div>
+      search: `<div style="display:flex;align-items:flex-end;gap:8px">
+        <div class="form-group"><label class="form-label">Запрос</label><input class="form-input" id="g-q" placeholder="название группы" style="width:220px"></div>
+        <button class="btn btn-secondary btn-sm" onclick="Views._searchGroups()" style="margin-bottom:1px">Найти</button>
       </div>`,
-      id: `<div class="form-grid">
-        <div class="form-group full"><label class="form-label">ID или короткие имена (через запятую)</label><input class="form-input" id="g-ids" placeholder="1,vkteam,club2"></div>
-        <div class="form-actions full"><button class="btn btn-primary" onclick="Views._loadGroupsById()">Загрузить</button></div>
+      id: `<div style="display:flex;align-items:flex-end;gap:8px">
+        <div class="form-group"><label class="form-label">ID или короткие имена</label><input class="form-input" id="g-ids" placeholder="1,vkteam,club2" style="width:220px"></div>
+        <button class="btn btn-secondary btn-sm" onclick="Views._loadGroupsById()" style="margin-bottom:1px">Загрузить</button>
       </div>`,
     };
-    document.getElementById('groups-form').innerHTML = forms[tab] ?? '';
+    const tf = document.getElementById('groups-toolbar-form');
+    if (tf) tf.innerHTML = forms[tab] ?? '';
+  },
+
+  _renderGroupsTable(groups) {
+    const rows = groups.map(g => `<tr>
+      <td>${g.id}</td>
+      <td>${g.screen_name ? `<a href="https://vk.com/${g.screen_name}" target="_blank" style="color:var(--accent)">@${g.screen_name}</a>` : '—'}</td>
+      <td class="col-name"><div class="cell-name">${g.name}</div></td>
+      <td><span class="badge badge-blue">${g.type??'—'}</span></td>
+      <td>${g.is_closed != null ? (g.is_closed ? '<span class="badge badge-gray">Закрытая</span>' : '<span class="badge badge-green">Открытая</span>') : '—'}</td>
+      <td class="cell-right">${fmtNum(g.members_count)}</td>
+    </tr>`).join('');
+    const res = document.getElementById('groups-result');
+    if (res) res.innerHTML = `<table class="data-table">
+      <thead><tr><th>ID</th><th>Адрес</th><th>Название</th><th>Тип</th><th>Доступ</th><th class="cell-right">Участников</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="6"><div class="empty">Ничего не найдено</div></td></tr>`}</tbody>
+      <tfoot><tr><td colspan="6">Итого: ${groups.length}</td></tr></tfoot>
+    </table>`;
   },
 
   async _loadMyGroups() {
-    document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
-    const uid = document.getElementById('g-uid').value.trim();
-    const filter = document.getElementById('g-filter').value;
-    try {
-      const data = await api.get('/api/v1/groups/my', { user_id: uid || undefined, extended: true, filter: filter || undefined });
-      Views._renderGroups(data.response?.items ?? data.items ?? data ?? []);
-    } catch(e) { document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`; toast(e.message, 'error'); }
+    const uid = document.getElementById('g-uid')?.value.trim();
+    try { const d = await api.get('/api/v1/groups/my', { user_id: uid||undefined, extended: true }); Views._renderGroupsTable(d.response?.items ?? d.items ?? d ?? []); }
+    catch(e) { toast(e.message,'error'); }
   },
-
   async _searchGroups() {
-    const q = document.getElementById('g-q').value.trim();
-    if (!q) { toast('Введите запрос', 'error'); return; }
-    const count = document.getElementById('g-count').value;
-    document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
-    try {
-      const data = await api.get('/api/v1/groups/search', { q, count });
-      Views._renderGroups(data.response?.items ?? data.items ?? data ?? []);
-    } catch(e) { document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`; toast(e.message, 'error'); }
+    const q = document.getElementById('g-q')?.value.trim();
+    if (!q) { toast('Введите запрос','error'); return; }
+    try { const d = await api.get('/api/v1/groups/search',{q,count:50}); Views._renderGroupsTable(d.response?.items ?? d.items ?? []); }
+    catch(e) { toast(e.message,'error'); }
   },
-
   async _loadGroupsById() {
-    const ids = document.getElementById('g-ids').value.trim();
-    if (!ids) { toast('Введите ID', 'error'); return; }
-    document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body">${loading()}</div></div>`;
-    try {
-      const data = await api.get('/api/v1/groups/', { group_ids: ids });
-      Views._renderGroups(data.response ?? data ?? []);
-    } catch(e) { document.getElementById('groups-result').innerHTML = `<div class="panel"><div class="panel-body"><div class="empty">Ошибка: ${e.message}</div></div></div>`; toast(e.message, 'error'); }
+    const ids = document.getElementById('g-ids')?.value.trim();
+    if (!ids) { toast('Введите ID','error'); return; }
+    try { const d = await api.get('/api/v1/groups/',{group_ids:ids}); Views._renderGroupsTable(d.response ?? d ?? []); }
+    catch(e) { toast(e.message,'error'); }
   },
 
-  _renderGroups(groups) {
-    const rows = groups.map(g => `
-      <tr>
-        <td>${g.id}</td>
-        <td>${g.screen_name ? `<a href="https://vk.com/${g.screen_name}" target="_blank" style="color:var(--accent)">@${g.screen_name}</a>` : '—'}</td>
-        <td>${g.name ?? '—'}</td>
-        <td><span class="badge badge-blue">${g.type ?? '—'}</span></td>
-        <td>${g.is_closed != null ? (g.is_closed ? '<span class="badge badge-gray">Закрытая</span>' : '<span class="badge badge-green">Открытая</span>') : '—'}</td>
-        <td>${fmtNum(g.members_count)}</td>
-      </tr>`).join('');
-    document.getElementById('groups-result').innerHTML = `
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Группы (${groups.length})</span></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>ID</th><th>Адрес</th><th>Название</th><th>Тип</th><th>Тип доступа</th><th>Участников</th></tr></thead>
-            <tbody>${rows || `<tr><td colspan="6">${empty()}</td></tr>`}</tbody>
-          </table>
+  // ── SETTINGS ──────────────────────────────────────────────────────────────
+  settings() {
+    const main = document.getElementById('main-content');
+    main.innerHTML = `
+      <div class="content-area">
+        <div style="max-width:480px;padding:24px">
+          <div class="form-section">
+            <div class="form-section-title">Подключение к API</div>
+            <div class="form-row single"><div class="form-group"><label class="form-label">API URL</label><input class="form-input" id="s-url" value="${State.apiUrl}"></div></div>
+            <div class="form-row single"><div class="form-group"><label class="form-label">VK Token</label><input class="form-input" type="password" id="s-token" value="${State.token !== 'demo' ? State.token : ''}"></div></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btn btn-primary btn-sm" onclick="Views._saveSettings()">Сохранить и подключить</button>
+              <button class="btn btn-secondary btn-sm" onclick="Views._clearSettings()">Очистить</button>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="form-section-title">Интерфейс</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+              <span style="font-size:13px">Demo-режим</span>
+              <div class="demo-toggle ${Demo.active?'on':''}" onclick="Demo.toggle()"><span class="dot"></span>${Demo.active?'Включён':'Выключен'}</div>
+            </div>
+          </div>
         </div>
       </div>`;
   },
+
+  _saveSettings() {
+    State.apiUrl = document.getElementById('s-url').value.trim().replace(/\/$/,'');
+    State.token = document.getElementById('s-token').value.trim();
+    localStorage.setItem('vk_api_url', State.apiUrl);
+    localStorage.setItem('vk_token', State.token);
+    document.getElementById('api-url').value = State.apiUrl;
+    document.getElementById('vk-token').value = State.token;
+    toast('Сохранено', 'success');
+    App.navigate('campaigns');
+  },
+
+  _clearSettings() {
+    localStorage.removeItem('vk_api_url'); localStorage.removeItem('vk_token');
+    document.getElementById('s-url').value = 'http://localhost:8000';
+    document.getElementById('s-token').value = '';
+    toast('Очищено', 'info');
+  },
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────
+  _loadingTable(cols) {
+    return `<table class="data-table"><tbody><tr class="loading-row"><td colspan="${cols}"><span class="spinner"></span> Загрузка...</td></tr></tbody></table>`;
+  },
+  _tableError(msg) {
+    const ta = document.querySelector('.table-area');
+    if (ta) ta.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>${msg}</div>`;
+    toast(msg, 'error');
+  },
+  _toggleDropdown(id) {
+    document.getElementById(id+'-menu')?.classList.toggle('open');
+    document.addEventListener('click', () => document.getElementById(id+'-menu')?.classList.remove('open'), { once: true });
+  },
+  _closeDropdown(id) {
+    document.getElementById(id+'-menu')?.classList.remove('open');
+  },
 };
 
-// ─── NAVIGATION HELPERS ───────────────────────────────────────────────────────
-App._selectAccount = function(accId) {
-  State.selectedAccount = accId;
-  App._goToCampaigns(accId);
-};
-
-App._goToCampaigns = function(accId) {
-  State.selectedAccount = accId;
-  State.selectedCampaign = null;
-  App.navigate('campaigns');
-};
-
-App._goToAds = function(campaignId) {
-  State.selectedCampaign = campaignId;
-  App.navigate('ads');
-};
-
-// ─── INIT ─────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
 (function init() {
   const savedUrl = localStorage.getItem('vk_api_url');
   const savedToken = localStorage.getItem('vk_token');
@@ -1441,11 +1616,10 @@ App._goToAds = function(campaignId) {
   if (localStorage.getItem('demo_mode') === '1') {
     Demo.active = true;
     document.getElementById('demo-toggle').classList.add('on');
-    document.getElementById('demo-banner').classList.add('visible');
     document.getElementById('api-url').disabled = true;
     document.getElementById('vk-token').disabled = true;
     State.token = 'demo';
-    App.navigate('accounts');
+    App.navigate('campaigns');
   }
 })();
 </script>
