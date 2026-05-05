@@ -1,4 +1,8 @@
+import base64
+import hashlib
 import logging
+import os
+import secrets
 from urllib.parse import urlencode
 import httpx
 from app.core.config import get_settings
@@ -6,30 +10,44 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+def _generate_pkce_pair() -> tuple[str, str]:
+    """Return (code_verifier, code_challenge) for PKCE S256."""
+    verifier = secrets.token_urlsafe(64)
+    digest = hashlib.sha256(verifier.encode()).digest()
+    challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+    return verifier, challenge
+
+
 class VKOAuthService:
-    """VK OAuth 2.0 flow"""
+    """VK OAuth 2.0 / VK ID OAuth 2.1 flow"""
 
     def __init__(self):
         self._settings = get_settings()
 
-    def get_auth_url(self, scope: str = "ads,offline") -> str:
+    def get_auth_url(self, scope: str = "ads,offline") -> tuple[str, str]:
+        """Return (auth_url, code_verifier). Caller must persist code_verifier."""
+        code_verifier, code_challenge = _generate_pkce_pair()
         params = {
             "client_id": self._settings.vk_client_id,
             "redirect_uri": self._settings.vk_redirect_uri,
             "scope": scope,
             "response_type": "code",
-            "v": self._settings.vk_api_version,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "s256",
+            "state": secrets.token_urlsafe(16),
         }
-        return f"{self._settings.vk_oauth_url}/authorize?{urlencode(params)}"
+        url = f"https://id.vk.com/authorize?{urlencode(params)}"
+        return url, code_verifier
 
-    async def exchange_code(self, code: str, device_id: str = "", state: str = "") -> dict:
-        # VK ID OAuth 2.1 (code_v2) uses POST to id.vk.com/oauth2/auth
+    async def exchange_code(
+        self, code: str, code_verifier: str, device_id: str = "", state: str = ""
+    ) -> dict:
         payload = {
             "grant_type": "authorization_code",
             "client_id": self._settings.vk_client_id,
-            "client_secret": self._settings.vk_client_secret,
-            "redirect_uri": self._settings.vk_redirect_uri,
             "code": code,
+            "code_verifier": code_verifier,
+            "redirect_uri": self._settings.vk_redirect_uri,
             "device_id": device_id,
             "state": state,
         }
@@ -40,6 +58,8 @@ class VKOAuthService:
                 timeout=15,
             )
             logger.debug("VK token response %s: %s", response.status_code, response.text)
+            if not response.is_success:
+                logger.error("VK token error body: %s", response.text)
             response.raise_for_status()
             data = response.json()
 
