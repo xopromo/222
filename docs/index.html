@@ -288,6 +288,44 @@
   .date-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .date-filter label { font-size: 12px; color: var(--text-dim); }
 
+  /* DEMO TOGGLE */
+  .demo-toggle {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: all 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .demo-toggle:hover { border-color: var(--yellow); color: var(--yellow); }
+  .demo-toggle.on { border-color: var(--yellow); color: var(--yellow); background: rgba(251,191,36,0.08); }
+  .demo-toggle .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.15s;
+  }
+  .demo-toggle.on .dot { background: var(--yellow); }
+
+  .demo-banner {
+    display: none;
+    background: rgba(251,191,36,0.08);
+    border-bottom: 1px solid rgba(251,191,36,0.3);
+    padding: 6px 20px;
+    font-size: 12px;
+    color: var(--yellow);
+    flex-shrink: 0;
+  }
+  .demo-banner.visible { display: block; }
+
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -305,7 +343,12 @@
   <label for="vk-token">Токен:</label>
   <input type="password" id="vk-token" placeholder="vk1.a.xxx...">
   <button class="btn btn-primary" onclick="App.connect()">Подключить</button>
+  <div class="topbar-sep"></div>
+  <div class="demo-toggle" id="demo-toggle" onclick="Demo.toggle()">
+    <span class="dot"></span> Demo
+  </div>
 </div>
+<div class="demo-banner" id="demo-banner">Demo-режим: данные выдуманные, запросы к API не отправляются. Все изменения сохраняются локально в сессии.</div>
 
 <!-- LAYOUT -->
 <div class="layout">
@@ -362,6 +405,291 @@
 <div id="toast-container"></div>
 
 <script>
+// ─── DEMO DATA ────────────────────────────────────────────────────────────────
+const DemoData = {
+  accounts: [
+    { account_id: 1001, account_name: 'ООО Ромашка — Основной', account_type: 'general', account_status: 1, access_role: 'admin' },
+    { account_id: 1002, account_name: 'ИП Соколов — Ретейл', account_type: 'agency', account_status: 1, access_role: 'manager' },
+    { account_id: 1003, account_name: 'Архив 2023', account_type: 'general', account_status: 0, access_role: 'admin' },
+  ],
+  budgets: { 1001: 84320.50, 1002: 12750.00, 1003: 0 },
+  campaigns: {
+    1001: [
+      { id: 2001, name: 'Лидогенерация — Москва', type: 'normal', status: 1, day_limit: '5000', lifetime_limit: '0' },
+      { id: 2002, name: 'Ретаргетинг — Корзина', type: 'normal', status: 1, day_limit: '2000', lifetime_limit: '0' },
+      { id: 2003, name: 'Look-alike — Март', type: 'promoted_posts', status: 0, day_limit: '3000', lifetime_limit: '30000' },
+      { id: 2004, name: 'Мобильное приложение', type: 'mobile_apps', status: 1, day_limit: '1500', lifetime_limit: '0' },
+    ],
+    1002: [
+      { id: 2005, name: 'Бренд-awareness Q2', type: 'normal', status: 1, day_limit: '8000', lifetime_limit: '0' },
+      { id: 2006, name: 'Промо магазина', type: 'promoted_posts', status: 0, day_limit: '4000', lifetime_limit: '20000' },
+    ],
+    1003: [],
+  },
+  ads: {
+    2001: [
+      { id: 3001, name: 'Баннер 1 — Оффер скидка 20%', status: 1, cost_type: 0, cpc: '18.50', cpm: null, ocpm: null, campaign_id: 2001, ad_format: 2 },
+      { id: 3002, name: 'Карусель — Каталог', status: 1, cost_type: 1, cpc: null, cpm: '120.00', ocpm: null, campaign_id: 2001, ad_format: 9 },
+      { id: 3003, name: 'Видео 15 сек', status: 0, cost_type: 3, cpc: null, cpm: null, ocpm: '250.00', campaign_id: 2001, ad_format: 4 },
+    ],
+    2002: [
+      { id: 3004, name: 'Напоминание о корзине', status: 1, cost_type: 0, cpc: '22.00', cpm: null, ocpm: null, campaign_id: 2002, ad_format: 1 },
+    ],
+    2003: [
+      { id: 3005, name: 'Пост — Кейс клиента', status: 0, cost_type: 1, cpc: null, cpm: '95.00', ocpm: null, campaign_id: 2003, ad_format: 4 },
+    ],
+    2004: [
+      { id: 3006, name: 'App Install — Android', status: 1, cost_type: 0, cpc: '35.00', cpm: null, ocpm: null, campaign_id: 2004, ad_format: 9 },
+      { id: 3007, name: 'App Install — iOS', status: 1, cost_type: 0, cpc: '41.00', cpm: null, ocpm: null, campaign_id: 2004, ad_format: 9 },
+    ],
+    2005: [
+      { id: 3008, name: 'Охватный баннер', status: 1, cost_type: 1, cpc: null, cpm: '85.00', ocpm: null, campaign_id: 2005, ad_format: 2 },
+    ],
+    2006: [],
+  },
+  stats: {
+    2001: [
+      { day: '2026-05-01', impressions: 84200, clicks: 1263, spent: '23364.00' },
+      { day: '2026-05-02', impressions: 91400, clicks: 1370, spent: '25345.00' },
+      { day: '2026-05-03', impressions: 78600, clicks: 1179, spent: '21823.50' },
+      { day: '2026-05-04', impressions: 88100, clicks: 1321, spent: '24438.50' },
+      { day: '2026-05-05', impressions: 53200, clicks: 798, spent: '14763.00' },
+    ],
+    2002: [
+      { day: '2026-05-01', impressions: 22100, clicks: 442, spent: '9724.00' },
+      { day: '2026-05-02', impressions: 19800, clicks: 396, spent: '8712.00' },
+      { day: '2026-05-03', impressions: 21400, clicks: 428, spent: '9416.00' },
+      { day: '2026-05-04', impressions: 23700, clicks: 474, spent: '10428.00' },
+      { day: '2026-05-05', impressions: 14200, clicks: 284, spent: '6248.00' },
+    ],
+    2003: [
+      { day: '2026-04-10', impressions: 120000, clicks: 960, spent: '11520.00' },
+    ],
+    2004: [
+      { day: '2026-05-01', impressions: 45000, clicks: 900, spent: '31500.00' },
+      { day: '2026-05-02', impressions: 47200, clicks: 944, spent: '33040.00' },
+    ],
+    2005: [
+      { day: '2026-05-01', impressions: 210000, clicks: 1470, spent: '17850.00' },
+      { day: '2026-05-02', impressions: 198000, clicks: 1386, spent: '16830.00' },
+    ],
+    2006: [],
+  },
+  retargeting: {
+    1001: [
+      { id: 5001, name: 'Посетители сайта (30д)', audience_count: 48320, lifetime: 30 },
+      { id: 5002, name: 'Брошенная корзина', audience_count: 8741, lifetime: 14 },
+      { id: 5003, name: 'Покупатели 90 дней', audience_count: 23180, lifetime: 90 },
+      { id: 5004, name: 'Look-alike база', audience_count: 192400, lifetime: 60 },
+    ],
+    1002: [
+      { id: 5005, name: 'CRM Upload — клиенты', audience_count: 15600, lifetime: 720 },
+    ],
+    1003: [],
+  },
+  wall: {
+    '-123456': [
+      { id: 101, date: 1746316800, text: 'Скидка 20% на весь ассортимент только сегодня! Переходите в каталог и выбирайте.', likes: { count: 342 }, reposts: { count: 87 }, comments: { count: 54 } },
+      { id: 100, date: 1746230400, text: 'Наш новый продукт уже в продаже — встречайте линейку Summer 2026!', likes: { count: 521 }, reposts: { count: 134 }, comments: { count: 98 } },
+      { id: 99, date: 1746144000, text: 'Кейс: как мы увеличили конверсию на 35% за месяц с помощью ретаргетинга.', likes: { count: 218 }, reposts: { count: 46 }, comments: { count: 31 } },
+      { id: 98, date: 1746057600, text: 'Вакансия: ищем таргетолога в команду. Удалёнка, хорошие условия.', likes: { count: 89 }, reposts: { count: 23 }, comments: { count: 17 } },
+    ],
+  },
+  groups: [
+    { id: 123456, screen_name: 'romashka_official', name: 'ООО Ромашка', type: 'page', is_closed: 0, members_count: 84200 },
+    { id: 234567, screen_name: 'sokol_retail', name: 'Соколов Ретейл', type: 'group', is_closed: 0, members_count: 31400 },
+    { id: 345678, screen_name: 'vk', name: 'ВКонтакте', type: 'page', is_closed: 0, members_count: 98400000 },
+    { id: 456789, screen_name: 'targetolog_pro', name: 'Таргетологи PRO', type: 'group', is_closed: 1, members_count: 12800 },
+  ],
+  _nextId: 9000,
+  newId() { return ++this._nextId; },
+};
+
+// ─── DEMO LAYER ───────────────────────────────────────────────────────────────
+const Demo = {
+  active: false,
+
+  toggle() {
+    this.active = !this.active;
+    localStorage.setItem('demo_mode', this.active ? '1' : '0');
+    document.getElementById('demo-toggle').classList.toggle('on', this.active);
+    document.getElementById('demo-banner').classList.toggle('visible', this.active);
+    const apiRow = document.getElementById('api-url');
+    const tokenRow = document.getElementById('vk-token');
+    if (this.active) {
+      apiRow.disabled = true; tokenRow.disabled = true;
+      State.token = 'demo';
+      toast('Demo-режим включён', 'info');
+      App.navigate(State.currentView || 'accounts');
+    } else {
+      apiRow.disabled = false; tokenRow.disabled = false;
+      State.token = tokenRow.value.trim();
+      toast('Demo-режим выключен', 'info');
+    }
+  },
+
+  // Simulate network latency
+  delay(ms = 220) { return new Promise(r => setTimeout(r, ms + Math.random() * 100)); },
+
+  async handle(method, path, body, params) {
+    await this.delay();
+
+    // GET /api/v1/accounts/
+    if (method === 'GET' && path === '/api/v1/accounts/') return DemoData.accounts;
+
+    // GET /api/v1/accounts/:id/budget
+    const budgetM = path.match(/^\/api\/v1\/accounts\/(\d+)\/budget$/);
+    if (budgetM) return { budget: DemoData.budgets[+budgetM[1]] ?? 0 };
+
+    // GET /api/v1/accounts/:id/campaigns/
+    const campListM = path.match(/^\/api\/v1\/accounts\/(\d+)\/campaigns\/$/);
+    if (campListM && method === 'GET') {
+      const list = DemoData.campaigns[+campListM[1]] ?? [];
+      return list;
+    }
+
+    // POST /api/v1/accounts/:id/campaigns/
+    if (method === 'POST' && path.match(/^\/api\/v1\/accounts\/(\d+)\/campaigns\/$/)) {
+      const accId = +path.match(/\/accounts\/(\d+)/)[1];
+      const nc = { id: DemoData.newId(), ...body, status: 1 };
+      (DemoData.campaigns[accId] = DemoData.campaigns[accId] ?? []).push(nc);
+      DemoData.ads[nc.id] = [];
+      DemoData.stats[nc.id] = [];
+      return { response: [{ id: nc.id }] };
+    }
+
+    // PATCH /api/v1/accounts/:id/campaigns/:cid
+    const campPatchM = path.match(/^\/api\/v1\/accounts\/(\d+)\/campaigns\/(\d+)$/);
+    if (campPatchM && method === 'PATCH') {
+      const campaigns = DemoData.campaigns[+campPatchM[1]] ?? [];
+      const c = campaigns.find(x => x.id === +campPatchM[2]);
+      if (c) Object.assign(c, body);
+      return { response: 1 };
+    }
+
+    // DELETE /api/v1/accounts/:id/campaigns/:cid
+    if (campPatchM && method === 'DELETE') {
+      const arr = DemoData.campaigns[+campPatchM[1]] ?? [];
+      const idx = arr.findIndex(x => x.id === +campPatchM[2]);
+      if (idx !== -1) arr.splice(idx, 1);
+      return { response: 1 };
+    }
+
+    // POST /api/v1/accounts/:id/campaigns/stats
+    const campStatsM = path.match(/^\/api\/v1\/accounts\/(\d+)\/campaigns\/stats$/);
+    if (campStatsM && method === 'POST') {
+      return (body.ids ?? []).map(id => ({
+        id,
+        stats: DemoData.stats[id] ?? [],
+      }));
+    }
+
+    // GET /api/v1/accounts/:id/ads/
+    const adsListM = path.match(/^\/api\/v1\/accounts\/(\d+)\/ads\/$/);
+    if (adsListM && method === 'GET') {
+      const campIds = params?.campaign_ids ? String(params.campaign_ids).split(',').map(Number) : null;
+      let ads = [];
+      const camps = DemoData.campaigns[+adsListM[1]] ?? [];
+      camps.forEach(c => {
+        if (!campIds || campIds.includes(c.id)) ads.push(...(DemoData.ads[c.id] ?? []));
+      });
+      return ads;
+    }
+
+    // PATCH /api/v1/accounts/:id/ads/:aid
+    const adPatchM = path.match(/^\/api\/v1\/accounts\/(\d+)\/ads\/(\d+)$/);
+    if (adPatchM && method === 'PATCH') {
+      const camps = DemoData.campaigns[+adPatchM[1]] ?? [];
+      for (const c of camps) {
+        const ad = (DemoData.ads[c.id] ?? []).find(a => a.id === +adPatchM[2]);
+        if (ad) { Object.assign(ad, body); break; }
+      }
+      return { response: 1 };
+    }
+
+    // DELETE /api/v1/accounts/:id/ads/:aid
+    if (adPatchM && method === 'DELETE') {
+      const camps = DemoData.campaigns[+adPatchM[1]] ?? [];
+      for (const c of camps) {
+        const arr = DemoData.ads[c.id] ?? [];
+        const idx = arr.findIndex(a => a.id === +adPatchM[2]);
+        if (idx !== -1) { arr.splice(idx, 1); break; }
+      }
+      return { response: 1 };
+    }
+
+    // GET /api/v1/accounts/:id/targeting/retargeting
+    const rtListM = path.match(/^\/api\/v1\/accounts\/(\d+)\/targeting\/retargeting$/);
+    if (rtListM && method === 'GET') return DemoData.retargeting[+rtListM[1]] ?? [];
+
+    // POST /api/v1/accounts/:id/targeting/retargeting
+    if (rtListM && method === 'POST') {
+      const accId = +rtListM[1];
+      const ng = { id: DemoData.newId(), name: body.name, audience_count: 0, lifetime: body.lifetime ?? 30 };
+      (DemoData.retargeting[accId] = DemoData.retargeting[accId] ?? []).push(ng);
+      return { response: ng };
+    }
+
+    // DELETE /api/v1/accounts/:id/targeting/retargeting/:gid
+    const rtDelM = path.match(/^\/api\/v1\/accounts\/(\d+)\/targeting\/retargeting\/(\d+)$/);
+    if (rtDelM && method === 'DELETE') {
+      const arr = DemoData.retargeting[+rtDelM[1]] ?? [];
+      const idx = arr.findIndex(x => x.id === +rtDelM[2]);
+      if (idx !== -1) arr.splice(idx, 1);
+      return { response: 1 };
+    }
+
+    // GET /api/v1/wall/
+    if (method === 'GET' && path === '/api/v1/wall/') {
+      const ownerId = String(params?.owner_id ?? '');
+      const items = DemoData.wall[ownerId] ?? [];
+      const count = Math.min(+params?.count || 20, items.length);
+      const offset = +params?.offset || 0;
+      return { response: { items: items.slice(offset, offset + count), count: items.length } };
+    }
+
+    // POST /api/v1/wall/
+    if (method === 'POST' && path === '/api/v1/wall/') {
+      const ownerId = String(body.owner_id ?? '-123456');
+      const post = { id: DemoData.newId(), date: Math.floor(Date.now()/1000), text: body.message ?? '', likes: { count: 0 }, reposts: { count: 0 }, comments: { count: 0 } };
+      (DemoData.wall[ownerId] = DemoData.wall[ownerId] ?? []).unshift(post);
+      return { response: { post_id: post.id } };
+    }
+
+    // DELETE /api/v1/wall/:id
+    const wallDelM = path.match(/^\/api\/v1\/wall\/(\d+)$/);
+    if (wallDelM && method === 'DELETE') {
+      const ownerId = String(params?.owner_id ?? '');
+      const arr = DemoData.wall[ownerId] ?? [];
+      const idx = arr.findIndex(x => x.id === +wallDelM[1]);
+      if (idx !== -1) arr.splice(idx, 1);
+      return { response: 1 };
+    }
+
+    // POST /api/v1/wall/:id/pin
+    if (method === 'POST' && path.match(/\/wall\/\d+\/pin$/)) return { response: 1 };
+
+    // GET /api/v1/groups/my
+    if (method === 'GET' && path === '/api/v1/groups/my') return { response: { items: DemoData.groups.slice(0, 2) } };
+
+    // GET /api/v1/groups/search
+    if (method === 'GET' && path === '/api/v1/groups/search') {
+      const q = (params?.q ?? '').toLowerCase();
+      const found = DemoData.groups.filter(g => g.name.toLowerCase().includes(q) || g.screen_name.includes(q));
+      return { response: { items: found } };
+    }
+
+    // GET /api/v1/groups/
+    if (method === 'GET' && path === '/api/v1/groups/') {
+      const ids = String(params?.group_ids ?? '').split(',').map(s => s.trim());
+      const found = DemoData.groups.filter(g => ids.includes(String(g.id)) || ids.includes(g.screen_name));
+      return found;
+    }
+
+    return {};
+  },
+};
+
 // ─── STATE ────────────────────────────────────────────────────────────────────
 const State = {
   apiUrl: 'http://localhost:8000',
@@ -377,6 +705,7 @@ const State = {
 // ─── API ──────────────────────────────────────────────────────────────────────
 const api = {
   async req(method, path, body = null, params = {}) {
+    if (Demo.active) return Demo.handle(method, path, body, params);
     const url = new URL(State.apiUrl + path);
     Object.entries(params).forEach(([k, v]) => { if (v !== null && v !== undefined && v !== '') url.searchParams.set(k, v); });
     const opts = {
@@ -422,10 +751,10 @@ function fmtMoney(v) { return v != null ? Number(v).toLocaleString('ru', { style
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 const App = {
   async connect() {
+    if (Demo.active) { await this.navigate('accounts'); return; }
     State.apiUrl = document.getElementById('api-url').value.replace(/\/$/, '');
     State.token = document.getElementById('vk-token').value.trim();
     if (!State.token) { toast('Введите VK токен', 'error'); return; }
-    // save to localStorage
     localStorage.setItem('vk_api_url', State.apiUrl);
     localStorage.setItem('vk_token', State.token);
     await this.navigate('accounts');
@@ -1107,6 +1436,16 @@ App._goToAds = function(campaignId) {
   const savedToken = localStorage.getItem('vk_token');
   if (savedUrl) { document.getElementById('api-url').value = savedUrl; State.apiUrl = savedUrl; }
   if (savedToken) { document.getElementById('vk-token').value = savedToken; State.token = savedToken; }
+
+  if (localStorage.getItem('demo_mode') === '1') {
+    Demo.active = true;
+    document.getElementById('demo-toggle').classList.add('on');
+    document.getElementById('demo-banner').classList.add('visible');
+    document.getElementById('api-url').disabled = true;
+    document.getElementById('vk-token').disabled = true;
+    State.token = 'demo';
+    App.navigate('accounts');
+  }
 })();
 </script>
 </body>
