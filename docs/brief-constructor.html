@@ -1035,6 +1035,28 @@
     </div>
   </div>
 
+  <div class="modal" id="textsModal">
+    <div class="modal-content">
+      <div class="modal-header">Сгенерировать тексты (открывашки)</div>
+
+      <div class="modal-section">
+        <label class="modal-label">Количество текстов:</label>
+        <input type="number" id="textsCount" value="3" min="1" max="20" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+      </div>
+
+      <div class="modal-section">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="includeSourceDataTexts" checked /> Учитывать исходные данные сегмента (приоритет)
+        </label>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeTextsModal()">Отмена</button>
+        <button class="btn-primary" onclick="generateTexts()">Сгенерировать</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let items = [];
     let itemId = 0;
@@ -1058,6 +1080,7 @@
     ];
     let selectedTitleTemplate = null;
     let currentGeneratingSegmentIdx = null;
+    let currentGeneratingTextSegmentIdx = null;
 
     // Переключение вкладок
     function switchTab(tabName) {
@@ -1847,9 +1870,8 @@
     }
 
     function generateSegmentTexts(idx) {
-      const segment = segments[idx];
-      console.log('Генерирование текстов для сегмента:', segment.name);
-      // TODO: добавить функцию генерации текстов через AI
+      currentGeneratingTextSegmentIdx = idx;
+      document.getElementById('textsModal').classList.add('active');
     }
 
     function openTitlesGenerationModal(idx) {
@@ -1863,6 +1885,11 @@
       document.getElementById('titlesModal').classList.remove('active');
       selectedTitleTemplate = null;
       currentGeneratingSegmentIdx = null;
+    }
+
+    function closeTextsModal() {
+      document.getElementById('textsModal').classList.remove('active');
+      currentGeneratingTextSegmentIdx = null;
     }
 
     function renderTitleTemplateList() {
@@ -1979,6 +2006,78 @@
       if (!segments[idx].openings) segments[idx].openings = [];
       segments[idx].openings[openingIdx] = value;
       saveData();
+    }
+
+    async function generateTexts() {
+      const idx = currentGeneratingTextSegmentIdx;
+      const segment = segments[idx];
+      const textsCount = parseInt(document.getElementById('textsCount').value) || 3;
+      const includeSourceData = document.getElementById('includeSourceDataTexts').checked;
+
+      let prompt = `Создай ${textsCount} открывашек (первые 3 предложения) для рекламного объявления, ориентированных на аудиторию: "${segment.name}".
+Каждая открывашка должна быть привлекательной, кратко описывать преимущество и вызывать интерес к прочтению полного объявления.
+Открывашка должна быть не более 3 предложений.`;
+
+      if (includeSourceData && segment.description) {
+        prompt = `ВАЖНО! Учти в первую очередь эту информацию о сегменте:\n${segment.description}\n\n${prompt}`;
+      }
+
+      const fullPrompt = `${prompt}\n\nОтветь ТОЛЬКО JSON. Формат: {"openings":["Открывашка 1","Открывашка 2",...]}. БЕЗ никакого другого текста!`;
+
+      console.log('Генерирование текстов для сегмента:', segment.name);
+      console.log('Промпт:', fullPrompt);
+
+      const apis = [
+        { name: 'Mistral', fn: callMistralAPI },
+        { name: 'Cerebras', fn: callCerebrasAPI },
+        { name: 'Gemini', fn: callGeminiAPI }
+      ];
+
+      let lastError = null;
+      let content = null;
+      let successfulAPI = null;
+
+      for (const api of apis) {
+        try {
+          console.log(`Пробую ${api.name} API для генерации текстов...`);
+          content = await api.fn(fullPrompt);
+          console.log(`${api.name} API успешно! Ответ:`, content);
+          successfulAPI = api.name;
+          break;
+        } catch (error) {
+          console.log(`${api.name} API ошибка: ${error.message}`);
+          lastError = error;
+          continue;
+        }
+      }
+
+      if (!content) {
+        alert(`Ошибка при обращении ко всем API. Проверьте ключи доступа.\nПоследняя ошибка: ${lastError?.message}`);
+        return;
+      }
+
+      try {
+        const result = extractJSON(content);
+        if (!result || !result.openings || result.openings.length === 0) {
+          console.error('Не удалось распарсить JSON. Полный ответ:', content);
+          alert('Не удалось распарсить ответ API. Попробуйте еще раз.');
+          return;
+        }
+
+        const newOpenings = result.openings.slice(0, textsCount);
+
+        if (!segment.openings) segment.openings = [];
+
+        // Добавить новые в начало
+        segment.openings = newOpenings.concat(segment.openings);
+
+        saveData();
+        closeTextsModal();
+        renderSegmentDetails(idx);
+      } catch (error) {
+        console.error('Ошибка парсинга:', error, 'Ответ:', content);
+        alert('Ошибка при обработке результата.\n\nОтвет от API: ' + content.substring(0, 200));
+      }
     }
 
     // Обновить заголовок
@@ -2248,6 +2347,8 @@
           closePromptModal();
         } else if (event.target.id === 'titlesModal') {
           closeTitlesModal();
+        } else if (event.target.id === 'textsModal') {
+          closeTextsModal();
         } else if (event.target.id === 'cardsSettingsModal') {
           closeCardsSettings();
         }
