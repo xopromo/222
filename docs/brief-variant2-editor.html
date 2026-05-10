@@ -28,18 +28,18 @@
     }
     .panel h2 { margin-top: 0; color: #333; font-size: 16px; }
     .document-preview {
-      background: #f8f9fa;
+      background: white;
       padding: 15px;
       border-radius: 6px;
       max-height: 500px;
       overflow-y: auto;
       font-size: 13px;
       line-height: 1.7;
-      white-space: pre-wrap;
-      word-wrap: break-word;
       color: #333;
       font-family: 'Monaco', 'Menlo', monospace;
-      border: 1px solid #e0e0e0;
+      border: 1px solid #ddd;
+      resize: vertical;
+      min-height: 300px;
     }
     .form-fields { background: #f8f9fa; padding: 15px; border-radius: 6px; }
     .field { margin-bottom: 18px; }
@@ -57,6 +57,16 @@
       border-radius: 4px;
       font-size: 13px;
       font-family: inherit;
+      flex: 1;
+    }
+    .field-with-confidence {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .field-with-confidence .confidence {
+      flex-shrink: 0;
     }
     .field input:focus, .field select:focus {
       outline: none;
@@ -101,10 +111,11 @@
       transition: all 0.2s;
     }
     .btn-primary {
-      background: #007bff;
+      background: #6c757d;
       color: white;
+      flex: 1;
     }
-    .btn-primary:hover { background: #0056b3; }
+    .btn-primary:hover { background: #5a6268; }
     .btn-secondary {
       background: #6c757d;
       color: white;
@@ -135,8 +146,8 @@
     <div class="editor-layout">
       <!-- Левая часть: Исходный документ -->
       <div class="panel">
-        <h2>📄 Исходный документ</h2>
-        <div class="document-preview">Бриф: Летняя акция
+        <h2>📄 Редактируй бриф</h2>
+        <textarea id="briefText" class="document-preview" placeholder="Вставь текст брифа или скопируй из Google Docs...">Бриф: Летняя акция
 ========================
 
 📌 ОСНОВНЫЕ ПАРАМЕТРЫ
@@ -155,7 +166,7 @@
 Основной слоган: "Летние скидки до 50%"
 Призыв к действию: "Купить сейчас"
 Форматы: 1200x628, 1080x1080
-Видео: 15-30 секунд</div>
+Видео: 15-30 секунд</textarea>
       </div>
 
       <!-- Правая часть: Структурированная форма -->
@@ -164,50 +175,62 @@
         <div class="form-fields">
           <div class="field">
             <label>Название кампании</label>
-            <input type="text" value="Летняя акция" />
-            <div class="confidence high">✓ Уверенность: 98%</div>
+            <div class="field-with-confidence">
+              <input type="text" value="Летняя акция" />
+              <div class="confidence high">98%</div>
+            </div>
           </div>
 
           <div class="field">
             <label>Бюджет (₽)</label>
-            <input type="number" value="50000" />
-            <div class="confidence high">✓ Уверенность: 99%</div>
+            <div class="field-with-confidence">
+              <input type="number" value="50000" />
+              <div class="confidence high">99%</div>
+            </div>
           </div>
 
           <div class="field">
             <label>Период</label>
-            <div class="date-range">
-              <input type="date" value="2024-06-01" />
-              <span>—</span>
-              <input type="date" value="2024-06-30" />
+            <div class="field-with-confidence">
+              <div class="date-range">
+                <input type="date" value="2024-06-01" />
+                <span>—</span>
+                <input type="date" value="2024-06-30" />
+              </div>
+              <div class="confidence high">100%</div>
             </div>
-            <div class="confidence high">✓ Уверенность: 100%</div>
           </div>
 
           <div class="field">
             <label>Возраст целевой аудитории</label>
-            <div class="date-range">
-              От <input type="number" value="18" style="width: 70px;" />
-              до <input type="number" value="45" style="width: 70px;" /> лет
+            <div class="field-with-confidence">
+              <div style="display: flex; gap: 5px; align-items: center;">
+                От <input type="number" value="18" style="width: 50px;" />
+                до <input type="number" value="45" style="width: 50px;" /> лет
+              </div>
+              <div class="confidence high">99%</div>
             </div>
-            <div class="confidence high">✓ Уверенность: 99%</div>
           </div>
 
           <div class="field">
             <label>Основное сообщение / Слоган</label>
-            <input type="text" value="Летние скидки до 50%" />
-            <div class="confidence medium">⚠ Уверенность: 85%</div>
+            <div class="field-with-confidence">
+              <input type="text" value="Летние скидки до 50%" />
+              <div class="confidence medium">85%</div>
+            </div>
           </div>
 
           <div class="field">
             <label>CTA (призыв к действию)</label>
-            <input type="text" value="Купить сейчас" />
-            <div class="confidence high">✓ Уверенность: 92%</div>
+            <div class="field-with-confidence">
+              <input type="text" value="Купить сейчас" />
+              <div class="confidence high">92%</div>
+            </div>
           </div>
 
           <div class="action-buttons">
-            <button class="btn-secondary">Отредактировать</button>
-            <button class="btn-success">✓ Подтвердить и создать кампанию</button>
+            <button class="btn-primary" onclick="reExtractData()">🔄 Переизвлечь данные</button>
+            <button class="btn-success" onclick="proceedToNext()">Далее →</button>
           </div>
         </div>
       </div>
@@ -220,5 +243,34 @@
       </p>
     </div>
   </div>
+
+  <script>
+    const briefTextarea = document.getElementById('briefText');
+
+    // Загрузить сохраненный текст при загрузке страницы
+    window.addEventListener('load', () => {
+      const saved = localStorage.getItem('briefText');
+      if (saved) {
+        briefTextarea.value = saved;
+      }
+    });
+
+    // Сохранять текст автоматически при изменении
+    briefTextarea.addEventListener('input', () => {
+      localStorage.setItem('briefText', briefTextarea.value);
+    });
+
+    // Функция переизвлечения данных
+    function reExtractData() {
+      alert('🔄 Переизвлечение данных из обновленного текста...\n\n(В реальной версии здесь будет вызов Claude API)');
+      // Здесь будет вызов к backend для переизвлечения данных
+    }
+
+    // Функция перехода на следующий экран
+    function proceedToNext() {
+      alert('✓ Переход на экран с генерацией заголовков и компоновкой креативов...');
+      // Здесь будет переход на следующий этап
+    }
+  </script>
 </body>
 </html>
