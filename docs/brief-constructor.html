@@ -1494,7 +1494,7 @@
       return data.candidates[0].content.parts[0].text;
     }
 
-    // Парсить JSON из текста
+    // Парсить JSON из текста (для сегментов)
     function extractJSON(text) {
       try {
         // Попытка 1: поискать JSON массив
@@ -1526,6 +1526,29 @@
         const jsonStr = text.trim();
         if (jsonStr.startsWith('[') && jsonStr.endsWith(']')) {
           return JSON.parse(jsonStr);
+        }
+
+        return null;
+      } catch (e) {
+        console.error('Ошибка парсинга JSON:', e);
+        return null;
+      }
+    }
+
+    // Парсить JSON для заголовков и текстов
+    function extractTitlesJSON(text) {
+      try {
+        // Попытка 1: найти объект с "titles" и "openings"
+        const match = text.match(/\{\s*"(?:titles|openings)"[\s\S]*?\}/);
+        if (match) {
+          return JSON.parse(match[0]);
+        }
+
+        // Попытка 2: простой парсинг JSON всей строки
+        const jsonStr = text.trim();
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && (parsed.titles || parsed.openings)) {
+          return parsed;
         }
 
         return null;
@@ -1968,7 +1991,7 @@
       }
 
       try {
-        const result = extractJSON(content);
+        const result = extractTitlesJSON(content);
         if (!result || !result.titles || result.titles.length === 0) {
           console.error('Не удалось распарсить JSON. Полный ответ:', content);
           alert('Не удалось распарсить ответ API. Попробуйте еще раз или используйте другой промпт.');
@@ -2057,7 +2080,7 @@
       }
 
       try {
-        const result = extractJSON(content);
+        const result = extractTitlesJSON(content);
         if (!result || !result.openings || result.openings.length === 0) {
           console.error('Не удалось распарсить JSON. Полный ответ:', content);
           alert('Не удалось распарсить ответ API. Попробуйте еще раз.');
