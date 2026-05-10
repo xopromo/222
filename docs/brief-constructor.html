@@ -654,29 +654,83 @@
     .btn-secondary:hover {
       background: #d0d0d0;
     }
-    .segments-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-    .segment-card {
-      background: white;
+    .segment-item {
       border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: white;
+      overflow: hidden;
+      transition: all 0.2s;
     }
-    .segment-card h3 {
-      margin: 0 0 10px 0;
-      font-size: 14px;
+    .segment-item:hover {
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .segment-header {
+      padding: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: background 0.2s;
+    }
+    .segment-header:hover {
+      background: #f9f9f9;
+    }
+    .segment-checkbox {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .segment-title-wrapper {
+      flex: 1;
+      min-width: 0;
+    }
+    .segment-title {
       font-weight: 600;
-      color: #333;
-    }
-    .segment-card p {
-      margin: 0;
       font-size: 13px;
-      color: #666;
-      line-height: 1.4;
+      color: #333;
+      margin-bottom: 6px;
+      word-break: break-word;
+    }
+    .segment-rating {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .segment-rating-input {
+      width: 80px;
+      height: 4px;
+      cursor: pointer;
+    }
+    .segment-rating-value {
+      color: #999;
+      min-width: 30px;
+    }
+    .segment-content {
+      display: none;
+      padding: 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .segment-item.selected .segment-content {
+      display: block;
+    }
+    .segment-item.selected .segment-header {
+      background: #f5f5f5;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .segment-description {
+      width: 100%;
+      min-height: 80px;
+      padding: 8px;
+      border: 1px solid #d0d0d0;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
     }
     .empty-state {
       text-align: center;
@@ -804,11 +858,23 @@
 
       <!-- Вкладка "ЦА и сегменты" -->
       <div class="tab-page" id="tab-segments">
-        <div class="right-panel">
-          <h1>ЦА и сегменты</h1>
-          <div id="segmentsContainer" class="segments-list"></div>
-          <div id="segmentsEmpty" class="empty-state">
-            <p>Сегменты пока не созданы.<br>Выберите данные в левой панели вкладки "Информация" и нажмите правую кнопку мыши.</p>
+        <div class="container">
+          <div class="left-panel">
+            <div class="builder-toolbar">
+              <h3 style="margin: 0; flex: 1; font-size: 14px; font-weight: 600;">Сегменты</h3>
+            </div>
+            <div class="builder-items" id="segmentsListContainer"></div>
+            <div id="segmentsEmpty" class="empty-state" style="padding: 20px; text-align: center; color: #999;">
+              <p>Сегменты пока не созданы.<br>Выберите данные и нажмите "ЦА и сегменты"</p>
+            </div>
+          </div>
+          <div class="right-panel">
+            <h1>Информация о сегменте</h1>
+            <div id="segmentDetailsContainer">
+              <div class="empty-state" style="padding: 20px; color: #999;">
+                <p>Выберите сегмент из списка слева</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1447,7 +1513,7 @@
 
     // Отрендерить сегменты
     function renderSegments() {
-      const container = document.getElementById('segmentsContainer');
+      const container = document.getElementById('segmentsListContainer');
       const empty = document.getElementById('segmentsEmpty');
 
       if (segments.length === 0) {
@@ -1456,14 +1522,81 @@
         return;
       }
 
-      container.style.display = 'grid';
+      container.style.display = 'flex';
       empty.style.display = 'none';
       container.innerHTML = segments.map((segment, idx) => `
-        <div class="segment-card">
-          <h3>${segment.name}</h3>
-          <p>${segment.description}</p>
+        <div class="segment-item" data-segment-idx="${idx}" oncontextmenu="showSegmentContextMenu(${idx}, event)">
+          <div class="segment-header" onclick="selectSegment(${idx})">
+            <input type="checkbox" class="segment-checkbox" ${segment.selected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSegmentSelection(${idx})" />
+            <div class="segment-title-wrapper">
+              <div class="segment-title">${segment.name}</div>
+              <div class="segment-rating">
+                <input type="range" class="segment-rating-input" min="1" max="10" value="${segment.rating || 5}" onchange="updateSegmentRating(${idx}, this.value)" onclick="event.stopPropagation()" />
+                <span class="segment-rating-value">${segment.rating || 5}/10</span>
+              </div>
+            </div>
+          </div>
+          <div class="segment-content">
+            <textarea class="segment-description" onchange="updateSegmentDescription(${idx}, this.value)" onclick="event.stopPropagation()">${segment.description}</textarea>
+          </div>
         </div>
       `).join('');
+    }
+
+    function selectSegment(idx) {
+      document.querySelectorAll('.segment-item').forEach(el => el.classList.remove('selected'));
+      const item = document.querySelector(`[data-segment-idx="${idx}"]`);
+      if (item) item.classList.add('selected');
+    }
+
+    function toggleSegmentSelection(idx) {
+      segments[idx].selected = !segments[idx].selected;
+      saveData();
+      renderSegments();
+    }
+
+    function updateSegmentRating(idx, rating) {
+      segments[idx].rating = parseInt(rating);
+      saveData();
+      renderSegments();
+    }
+
+    function updateSegmentDescription(idx, description) {
+      segments[idx].description = description;
+      saveData();
+    }
+
+    function showSegmentContextMenu(idx, e) {
+      e.preventDefault();
+
+      // Удалить все существующие контекстные меню
+      document.querySelectorAll('[data-context-menu]').forEach(m => m.parentElement && m.parentElement.removeChild(m));
+
+      const menu = document.createElement('div');
+      menu.setAttribute('data-context-menu', 'true');
+      menu.style.position = 'fixed';
+      menu.style.top = e.clientY + 'px';
+      menu.style.left = e.clientX + 'px';
+      menu.style.background = 'white';
+      menu.style.border = '1px solid #ccc';
+      menu.style.borderRadius = '4px';
+      menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+      menu.style.zIndex = '10001';
+      menu.style.minWidth = '140px';
+      menu.innerHTML = `
+        <button onclick="deleteSegment(${idx}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>
+      `;
+      document.body.appendChild(menu);
+      document.addEventListener('click', function closeMenu() {
+        if (menu.parentElement) document.body.removeChild(menu);
+        document.removeEventListener('click', closeMenu);
+      });
+    }
+
+    function deleteSegment(idx) {
+      segments.splice(idx, 1);
+      saveData();
+      renderSegments();
     }
 
     // Обновить заголовок
