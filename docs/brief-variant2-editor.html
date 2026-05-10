@@ -146,6 +146,10 @@
       background: #f8d7da;
       color: #721c24;
     }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
     .date-range { display: flex; gap: 8px; align-items: center; }
     .date-range input { flex: 1; }
     .date-range span { color: #666; font-size: 12px; }
@@ -367,10 +371,92 @@
       renderDocsList();
     }
 
-    // Функция переизвлечения данных
-    function reExtractData() {
-      const docCount = addedDocs.length > 0 ? `${addedDocs.length} доков + ` : '';
-      alert(`🔄 Переизвлечение данных из ${docCount}текста...\n\n(В реальной версии: вызов Claude API для разбора документов)`);
+    // Функция переизвлечения данных через Mistral API
+    async function reExtractData() {
+      const briefText = briefTextarea.value.trim();
+      if (!briefText) {
+        alert('Введи текст брифа!');
+        return;
+      }
+
+      // Отключаем кнопку и показываем загрузку
+      const btn = event.target;
+      const originalText = btn.textContent;
+      btn.textContent = '⏳ Обработка...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/api/v1/brief/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: briefText })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Ошибка при обработке');
+        }
+
+        const data = await response.json();
+
+        // Обновляем поля с извлеченными данными
+        updateFieldsFromExtraction(data);
+        alert('✓ Данные успешно переизвлечены!');
+
+      } catch (error) {
+        alert(`❌ Ошибка: ${error.message}`);
+        console.error('Extraction error:', error);
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    // Обновить поля формы с извлеченными данными
+    function updateFieldsFromExtraction(data) {
+      const fieldMap = {
+        campaign_name: 'Название кампании',
+        budget_rub: 'Бюджет (₽)',
+        start_date: 'Период (начало)',
+        end_date: 'Период (конец)',
+        age_from: 'Возраст (от)',
+        age_to: 'Возраст (до)',
+        message: 'Основное сообщение / Слоган',
+        cta: 'CTA (призыв к действию)'
+      };
+
+      for (const [apiField, label] of Object.entries(fieldMap)) {
+        if (data[apiField] && data[apiField].value !== null) {
+          const value = data[apiField].value;
+          const confidence = Math.round(data[apiField].confidence * 100);
+
+          // Находим соответствующее input поле и обновляем его
+          const inputs = document.querySelectorAll('.field input, .field select');
+          for (let input of inputs) {
+            if (input.placeholder && input.placeholder.includes(label)) {
+              input.value = value;
+            }
+          }
+
+          // Обновляем badge уверенности
+          updateConfidenceBadge(label, confidence);
+        }
+      }
+    }
+
+    // Обновить badge с процентом уверенности
+    function updateConfidenceBadge(label, confidence) {
+      const fields = document.querySelectorAll('.field');
+      for (let field of fields) {
+        const labelElement = field.querySelector('label');
+        if (labelElement && labelElement.textContent.includes(label)) {
+          const badge = field.querySelector('.confidence');
+          if (badge) {
+            badge.textContent = confidence + '%';
+            badge.className = 'confidence ' + (confidence >= 85 ? 'high' : confidence >= 70 ? 'medium' : 'low');
+          }
+        }
+      }
     }
 
     // Функция перехода на следующий экран
