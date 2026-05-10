@@ -155,17 +155,45 @@
     .link-item-add:hover { background: #218838; }
     .text-item {
       margin-bottom: 12px;
-    }
-    .text-item textarea {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid #ddd;
+      border: 1px solid #e0e0e0;
       border-radius: 4px;
-      font-size: 12px;
-      font-family: inherit;
-      resize: vertical;
-      min-height: 60px;
-      max-height: 300px;
+      overflow: hidden;
+    }
+    .text-item.collapsed {
+      border: 1px solid #ddd;
+      background: #f9f9f9;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .text-item.collapsed:hover {
+      background: #f5f5f5;
+    }
+    .text-item-collapsed-preview {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 36px;
+    }
+    .text-item-collapsed-text {
+      flex: 1;
+      color: #333;
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .text-item-collapsed-counter {
+      font-size: 11px;
+      color: #999;
+      background: #e0e0e0;
+      padding: 2px 6px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .text-item-expanded {
+      padding: 12px;
     }
     .text-item-header {
       display: flex;
@@ -173,15 +201,6 @@
       align-items: center;
       margin-bottom: 8px;
       font-size: 11px;
-    }
-    .text-item-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 4px;
-      font-size: 11px;
-      color: #999;
-      gap: 10px;
     }
     .text-item-link {
       background: none;
@@ -194,6 +213,25 @@
     }
     .text-item-link:hover {
       text-decoration: underline;
+    }
+    .text-item-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #999;
+      gap: 10px;
+    }
+    .text-item textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 0;
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 100px;
     }
     .text-item-add {
       background: none;
@@ -781,24 +819,32 @@
             ${item.texts.map((text, idx) => {
               loadTextExpandState(item.id, idx);
               const isExpanded = item.textExpanded[idx] !== false;
+              const firstLine = text.split('\n')[0] || '(пусто)';
               return `
-              <div class="text-item">
-                <div class="text-item-header">
-                  <button class="text-item-link" onclick="toggleTextExpand(${item.id}, ${idx})">
-                    ${isExpanded ? '▼ Свернуть' : '▶ Развернуть'}
-                  </button>
-                </div>
-                ${isExpanded ? `
-                  <textarea
-                    placeholder="Введи текст..."
-                    onchange="updateText(${item.id}, ${idx}, this.value)"
-                    onkeyup="autoResizeTextarea(this)"
-                  >${text}</textarea>
-                ` : ''}
-                <div class="text-item-meta">
-                  <span>${countChars(text)} символов</span>
-                  ${item.texts.length > 1 ? `<button class="text-item-link" onclick="removeText(${item.id}, ${idx})">Удалить</button>` : ''}
-                </div>
+              <div class="text-item ${!isExpanded ? 'collapsed' : ''}" onclick="${!isExpanded ? `toggleTextExpand(${item.id}, ${idx})` : ''}">
+                ${!isExpanded ? `
+                  <div class="text-item-collapsed-preview">
+                    <span class="text-item-collapsed-text">${firstLine}</span>
+                    <span class="text-item-collapsed-counter">${countChars(text)}</span>
+                  </div>
+                ` : `
+                  <div class="text-item-expanded">
+                    <div class="text-item-header">
+                      <span></span>
+                      <button class="text-item-link" onclick="event.stopPropagation(); toggleTextExpand(${item.id}, ${idx})">▲ Свернуть</button>
+                    </div>
+                    <textarea
+                      placeholder="Введи текст..."
+                      onchange="updateText(${item.id}, ${idx}, this.value)"
+                      onkeyup="autoResizeTextarea(this)"
+                      onclick="event.stopPropagation()"
+                    >${text}</textarea>
+                    <div class="text-item-meta">
+                      <span>${countChars(text)} символов</span>
+                      ${item.texts.length > 1 ? `<button class="text-item-link" onclick="event.stopPropagation(); removeText(${item.id}, ${idx})">Удалить</button>` : ''}
+                    </div>
+                  </div>
+                `}
               </div>
             `}).join('')}
             <button class="text-item-add" onclick="addText(${item.id})">+ Добавить поле</button>
