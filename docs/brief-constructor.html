@@ -743,6 +743,10 @@
       visibility: visible;
       opacity: 1;
     }
+    .segment-rating-value-details:hover > div {
+      visibility: visible;
+      opacity: 1;
+    }
     .segment-content {
       padding: 12px;
       border-top: 1px solid #f0f0f0;
@@ -1703,7 +1707,15 @@
       let html = `
         <h2>${segment.name}</h2>
         <div style="margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
-          <div style="font-size: 13px; color: #666; margin-bottom: 8px;">Рейтинг: <span style="font-weight: 600; color: #28a745;">${segment.rating || 5}/10</span></div>
+          <div style="font-size: 13px; color: #666; margin-bottom: 8px;">
+            Рейтинг:
+            <span class="segment-rating-value-details" style="font-weight: 600; color: #28a745; cursor: help; position: relative; display: inline-block;">
+              ${segment.rating || 5}/10
+              <div style="visibility: hidden; width: 250px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 1000; bottom: 125%; left: 50%; margin-left: -125px; opacity: 0; transition: opacity 0.3s; font-size: 12px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: normal; word-break: break-word; pointer-events: none;">
+                ${(segment.ratingExplanation || 'Сегмент четко определен').split('\n• ').join('<br>• ')}
+              </div>
+            </span>
+          </div>
           <div style="font-size: 13px; color: #666;">
             <strong>Описание:</strong><br>
             ${segment.description}
@@ -2126,7 +2138,7 @@
 
     function autoResizeSegmentTextarea(textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = Math.max(textarea.scrollHeight, 80) + 'px';
+      textarea.style.height = Math.max(textarea.scrollHeight, 20) + 'px';
     }
 
     // Получить количество сущностей
