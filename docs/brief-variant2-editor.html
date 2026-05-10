@@ -17,7 +17,7 @@
     .description { color: #666; margin-bottom: 30px; }
     .editor-layout {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1.2fr 1fr;
       gap: 20px;
     }
     .panel {
@@ -67,6 +67,49 @@
     }
     .field-with-confidence .confidence {
       flex-shrink: 0;
+    }
+    .google-doc-section {
+      margin-bottom: 15px;
+    }
+    .google-doc-section label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 13px;
+    }
+    .google-doc-input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .google-doc-input-group input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .add-doc-btn {
+      padding: 8px 12px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .add-doc-btn:hover { background: #218838; }
+    .docs-list {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .docs-list span {
+      display: block;
+      padding: 4px 0;
     }
     .field input:focus, .field select:focus {
       outline: none;
@@ -137,16 +180,23 @@
 </head>
 <body>
   <div class="container">
-    <h1>Вариант 2: Редактор с превью документа</h1>
-    <p class="description">
-      Слева — исходный документ/текст из Google Docs, справа — извлеченные и структурированные данные.
-      Таргетолог сразу видит, что система распознала, и может быстро отредактировать.
-    </p>
+    <h1>Исходная информация</h1>
 
     <div class="editor-layout">
       <!-- Левая часть: Исходный документ -->
       <div class="panel">
-        <h2>📄 Редактируй бриф</h2>
+        <h2>📄 Бриф</h2>
+
+        <div class="google-doc-section">
+          <label>Ссылка на Google Doc (опционально)</label>
+          <div class="google-doc-input-group">
+            <input type="url" id="googleDocUrl" placeholder="https://docs.google.com/document/d/..." />
+            <button class="add-doc-btn" onclick="addGoogleDoc()">+ Добавить</button>
+          </div>
+          <div class="docs-list" id="docsList"></div>
+        </div>
+
+        <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333; font-size: 13px;">Или отредактируй текст</label>
         <textarea id="briefText" class="document-preview" placeholder="Вставь текст брифа или скопируй из Google Docs...">Бриф: Летняя акция
 ========================
 
@@ -236,22 +286,24 @@
       </div>
     </div>
 
-    <div style="margin-top: 30px; padding: 15px; background: #d4edda; border-radius: 6px; border-left: 4px solid #28a745;">
-      <strong style="color: #155724;">✓ Успешно обработано</strong>
-      <p style="margin: 10px 0 0 0; color: #155724; font-size: 13px;">
-        Система распознала все основные элементы брифа. Проверьте данные и создавайте кампанию!
-      </p>
-    </div>
   </div>
 
   <script>
     const briefTextarea = document.getElementById('briefText');
+    const googleDocUrl = document.getElementById('googleDocUrl');
+    const docsList = document.getElementById('docsList');
+    let addedDocs = [];
 
-    // Загрузить сохраненный текст при загрузке страницы
+    // Загрузить сохраненные данные при загрузке страницы
     window.addEventListener('load', () => {
-      const saved = localStorage.getItem('briefText');
-      if (saved) {
-        briefTextarea.value = saved;
+      const savedText = localStorage.getItem('briefText');
+      if (savedText) {
+        briefTextarea.value = savedText;
+      }
+      const savedDocs = localStorage.getItem('addedDocs');
+      if (savedDocs) {
+        addedDocs = JSON.parse(savedDocs);
+        renderDocsList();
       }
     });
 
@@ -260,16 +312,59 @@
       localStorage.setItem('briefText', briefTextarea.value);
     });
 
+    // Добавить Google Doc
+    function addGoogleDoc() {
+      const url = googleDocUrl.value.trim();
+      if (!url) {
+        alert('Введи URL документа');
+        return;
+      }
+      if (!url.includes('docs.google.com')) {
+        alert('Это не похоже на ссылку Google Docs');
+        return;
+      }
+
+      const docName = extractDocName(url);
+      if (!addedDocs.find(d => d.url === url)) {
+        addedDocs.push({ url, name: docName });
+        localStorage.setItem('addedDocs', JSON.stringify(addedDocs));
+        googleDocUrl.value = '';
+        renderDocsList();
+      } else {
+        alert('Этот документ уже добавлен');
+      }
+    }
+
+    function extractDocName(url) {
+      const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      return match ? match[1].substring(0, 12) + '...' : 'Document';
+    }
+
+    function renderDocsList() {
+      if (addedDocs.length === 0) {
+        docsList.innerHTML = '';
+        return;
+      }
+      docsList.innerHTML = addedDocs.map((doc, i) =>
+        `<span>✓ ${doc.name} <button onclick="removeDoc(${i})" style="background:none;border:none;color:#dc3545;cursor:pointer;font-size:12px;">✕</button></span>`
+      ).join('');
+    }
+
+    function removeDoc(index) {
+      addedDocs.splice(index, 1);
+      localStorage.setItem('addedDocs', JSON.stringify(addedDocs));
+      renderDocsList();
+    }
+
     // Функция переизвлечения данных
     function reExtractData() {
-      alert('🔄 Переизвлечение данных из обновленного текста...\n\n(В реальной версии здесь будет вызов Claude API)');
-      // Здесь будет вызов к backend для переизвлечения данных
+      const docCount = addedDocs.length > 0 ? `${addedDocs.length} доков + ` : '';
+      alert(`🔄 Переизвлечение данных из ${docCount}текста...\n\n(В реальной версии: вызов Claude API для разбора документов)`);
     }
 
     // Функция перехода на следующий экран
     function proceedToNext() {
       alert('✓ Переход на экран с генерацией заголовков и компоновкой креативов...');
-      // Здесь будет переход на следующий этап
     }
   </script>
 </body>
