@@ -33,24 +33,24 @@
     }
     .builder-toolbar {
       padding: 15px;
-      border-bottom: 1px solid #e0e0e0;
       display: flex;
-      gap: 8px;
+      gap: 15px;
       flex-wrap: wrap;
-      background: #f9f9f9;
+      background: white;
     }
     .btn-add {
-      padding: 8px 12px;
-      background: #007bff;
-      color: white;
+      padding: 0;
+      background: none;
+      color: #007bff;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
-      transition: all 0.2s;
+      transition: color 0.2s;
+      text-decoration: none;
     }
-    .btn-add:hover { background: #0056b3; }
+    .btn-add:hover { color: #0056b3; text-decoration: underline; }
     .builder-items {
       flex: 1;
       overflow-y: auto;
@@ -61,24 +61,25 @@
     }
     .builder-item {
       background: white;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      margin-bottom: 10px;
+      border: none;
+      border-radius: 0;
+      margin-bottom: 0;
       overflow: hidden;
       transition: all 0.2s;
       user-select: none;
+      border-bottom: 1px solid transparent;
     }
     .builder-item.collapsed {
-      background: #f8f8f8;
+      background: white;
     }
     .builder-item-header {
       padding: 12px;
-      background: #f9f9f9;
-      border-bottom: 1px solid #e0e0e0;
+      background: white;
+      border-bottom: none;
       display: flex;
       align-items: center;
       gap: 10px;
-      cursor: move;
+      cursor: pointer;
       user-select: none;
     }
     .builder-item.collapsed .builder-item-header {
@@ -117,19 +118,8 @@
       font-size: 16px;
     }
     .builder-item-delete {
-      width: 20px;
-      height: 20px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #dc3545;
-      font-size: 18px;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: none;
     }
-    .builder-item-delete:hover { color: #c82333; }
     .builder-item-content {
       padding: 12px;
       display: none;
@@ -179,6 +169,13 @@
       min-height: 60px;
       max-height: 300px;
     }
+    .text-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
     .text-item-meta {
       display: flex;
       justify-content: space-between;
@@ -186,17 +183,33 @@
       margin-top: 4px;
       font-size: 11px;
       color: #999;
+      gap: 10px;
+    }
+    .text-item-link {
+      background: none;
+      border: none;
+      color: #007bff;
+      cursor: pointer;
+      font-size: 11px;
+      padding: 0;
+      text-decoration: none;
+    }
+    .text-item-link:hover {
+      text-decoration: underline;
     }
     .text-item-add {
-      background: #28a745;
-      color: white;
+      background: none;
+      color: #007bff;
       border: none;
-      padding: 6px 10px;
-      border-radius: 3px;
+      padding: 0;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
+      margin-top: 10px;
+      text-decoration: none;
+      font-weight: 600;
     }
-    .text-item-add:hover { background: #218838; }
+    .text-item-add:hover { text-decoration: underline; }
     .image-gallery {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
@@ -256,18 +269,15 @@
       font-size: 13px;
       color: #333;
       cursor: text;
-      padding: 2px 4px;
-      margin: -2px -4px;
-      border-bottom: 1px solid transparent;
+      padding: 0;
+      margin: 0;
     }
     .editable-title:hover {
-      background: #f0f0f0;
-      border-bottom-color: #999;
+      background: none;
     }
     .editable-title:focus {
       outline: none;
-      background: white;
-      border-bottom-color: #007bff;
+      background: none;
     }
     h1 {
       margin: 0 0 20px 0;
@@ -460,6 +470,7 @@
         type: 'text',
         title: 'Текст',
         texts: [''],
+        textExpanded: {},
         expanded: true
       };
       items.unshift(item);
@@ -530,7 +541,31 @@
       const item = items.find(i => i.id === itemId);
       if (item && item.texts.length > 1) {
         item.texts.splice(index, 1);
+        delete item.textExpanded[index];
         render();
+      }
+    }
+
+    // Переключить сворачивание текстового поля
+    function toggleTextExpand(itemId, index) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.textExpanded[index] = !item.textExpanded[index];
+        localStorage.setItem(`textExpanded_${itemId}_${index}`, item.textExpanded[index]);
+        render();
+      }
+    }
+
+    // Загрузить состояние текстовых полей
+    function loadTextExpandState(itemId, index) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        const saved = localStorage.getItem(`textExpanded_${itemId}_${index}`);
+        if (saved !== null) {
+          item.textExpanded[index] = saved === 'true';
+        } else {
+          item.textExpanded[index] = true; // По умолчанию развернуто
+        }
       }
     }
 
@@ -578,6 +613,27 @@
       render();
     }
 
+    // Контекстное меню
+    function showContextMenu(itemId, e) {
+      e.preventDefault();
+      const menu = document.createElement('div');
+      menu.style.position = 'fixed';
+      menu.style.top = e.clientY + 'px';
+      menu.style.left = e.clientX + 'px';
+      menu.style.background = 'white';
+      menu.style.border = '1px solid #ccc';
+      menu.style.borderRadius = '4px';
+      menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+      menu.style.zIndex = '10001';
+      menu.style.minWidth = '150px';
+      menu.innerHTML = `<button onclick="deleteItem(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>`;
+      document.body.appendChild(menu);
+      document.addEventListener('click', function closeMenu() {
+        if (menu.parentElement) document.body.removeChild(menu);
+        document.removeEventListener('click', closeMenu);
+      });
+    }
+
     // Обновить заголовок
     function updateTitle(itemId, value) {
       const item = items.find(i => i.id === itemId);
@@ -615,21 +671,23 @@
              ondragstart="startDrag(${item.id}, event)"
              ondragover="dragOver(${item.id}, event)"
              ondragleave="dragLeave(${item.id}, event)"
-             ondrop="drop(${item.id}, event)">
-          <div class="builder-item-header">
-            <div class="builder-item-drag"></div>
+             ondrop="drop(${item.id}, event)"
+             oncontextmenu="showContextMenu(${item.id}, event)">
+          <div class="builder-item-header" onclick="if(event.target.tagName !== 'INPUT') toggleCollapse(${item.id})">
+            <div class="builder-item-drag" ondragstart="event.stopPropagation()" style="flex-shrink: 0;"></div>
             <input
               type="text"
               class="editable-title"
               value="${item.title}"
               onchange="updateTitle(${item.id}, this.value)"
               onclick="event.stopPropagation()"
+              ondblclick="event.stopPropagation()"
             />
             ${getItemCount(item) > 0 ? `<div class="builder-item-count">${getItemCount(item)}</div>` : ''}
-            <button class="builder-item-collapse" onclick="toggleCollapse(${item.id})">
+            <button class="builder-item-collapse" onclick="event.stopPropagation(); toggleCollapse(${item.id})">
               ${item.expanded ? '▼' : '▶'}
             </button>
-            <button class="builder-item-delete" onclick="deleteItem(${item.id})">✕</button>
+            <button class="builder-item-delete"></button>
           </div>
           <div class="builder-item-content">
             ${renderItemContent(item)}
@@ -660,19 +718,29 @@
       if (item.type === 'text') {
         return `
           <div>
-            ${item.texts.map((text, idx) => `
+            ${item.texts.map((text, idx) => {
+              loadTextExpandState(item.id, idx);
+              const isExpanded = item.textExpanded[idx] !== false;
+              return `
               <div class="text-item">
-                <textarea
-                  placeholder="Введи текст..."
-                  onchange="updateText(${item.id}, ${idx}, this.value)"
-                  onkeyup="autoResizeTextarea(this)"
-                >${text}</textarea>
+                <div class="text-item-header">
+                  <button class="text-item-link" onclick="toggleTextExpand(${item.id}, ${idx})">
+                    ${isExpanded ? '▼ Свернуть' : '▶ Развернуть'}
+                  </button>
+                </div>
+                ${isExpanded ? `
+                  <textarea
+                    placeholder="Введи текст..."
+                    onchange="updateText(${item.id}, ${idx}, this.value)"
+                    onkeyup="autoResizeTextarea(this)"
+                  >${text}</textarea>
+                ` : ''}
                 <div class="text-item-meta">
                   <span>${countChars(text)} символов</span>
-                  ${item.texts.length > 1 ? `<button class="text-item-add" onclick="removeText(${item.id}, ${idx})">Удалить</button>` : ''}
+                  ${item.texts.length > 1 ? `<button class="text-item-link" onclick="removeText(${item.id}, ${idx})">Удалить</button>` : ''}
                 </div>
               </div>
-            `).join('')}
+            `}).join('')}
             <button class="text-item-add" onclick="addText(${item.id})">+ Добавить поле</button>
           </div>
         `;
