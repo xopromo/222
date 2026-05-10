@@ -704,6 +704,44 @@
       font-weight: 600;
       font-size: 13px;
       min-width: 35px;
+      cursor: help;
+      position: relative;
+      display: inline-block;
+    }
+    .segment-rating-tooltip {
+      visibility: hidden;
+      width: 250px;
+      background-color: #333;
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 12px;
+      position: absolute;
+      z-index: 1000;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -125px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 12px;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      white-space: normal;
+      word-break: break-word;
+    }
+    .segment-rating-tooltip::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #333 transparent transparent transparent;
+    }
+    .segment-rating-value:hover .segment-rating-tooltip {
+      visibility: visible;
+      opacity: 1;
     }
     .segment-content {
       padding: 12px;
@@ -1530,7 +1568,9 @@
         console.log('Распарсено сегментов:', newSegments);
         // Рассчитать рейтинг для каждого нового сегмента и добавить в начало
         newSegments.forEach(segment => {
-          segment.rating = calculateSegmentRating(segment.name, segment.description);
+          const ratingInfo = calculateSegmentRating(segment.name, segment.description);
+          segment.rating = ratingInfo.rating;
+          segment.ratingExplanation = ratingInfo.explanation;
           // Сохранить исходные данные, на основе которых был создан сегмент
           segment.sourceData = collectSelectedData();
         });
@@ -1584,7 +1624,10 @@
             <input type="checkbox" class="segment-checkbox" ${segment.selected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSegmentSelection(${idx})" />
             <div class="segment-title">${segment.name}</div>
             <div class="segment-rating">
-              <span class="segment-rating-value">${segment.rating || 5}/10</span>
+              <span class="segment-rating-value">
+                ${segment.rating || 5}/10
+                <div class="segment-rating-tooltip">${(segment.ratingExplanation || 'Сегмент четко определен').split('\n• ').join('<br>• ')}</div>
+              </span>
             </div>
           </div>
           <div class="segment-content">
@@ -1766,9 +1809,34 @@
       const baseRating = 4;
       const descLength = description.length;
       const detailBonus = Math.min(Math.floor(descLength / 150), 3);
-      const keywordBonus = (description.match(/покуп|интерес|потребн|поведен|предпочт|склонн|готов|ценн/gi) || []).length > 0 ? 1 : 0;
-      const rating = Math.min(10, baseRating + detailBonus + keywordBonus + Math.floor(Math.random() * 2));
-      return rating;
+      const keywords = description.match(/покуп|интерес|потребн|поведен|предпочт|склонн|готов|ценн/gi) || [];
+      const keywordBonus = keywords.length > 0 ? 1 : 0;
+      const randomBonus = Math.floor(Math.random() * 2);
+      const rating = Math.min(10, baseRating + detailBonus + keywordBonus + randomBonus);
+
+      // Генерируем объяснение рейтинга
+      let reasons = [];
+
+      if (descLength < 50) {
+        reasons.push('Описание сегмента очень краткое');
+      } else if (descLength < 150) {
+        reasons.push('Описание сегмента содержит базовую информацию');
+      } else {
+        reasons.push('Описание сегмента хорошо детализировано');
+      }
+
+      if (keywords.length > 0) {
+        reasons.push('Обнаружены ключевые слова о покупательском поведении');
+      } else {
+        reasons.push('Отсутствуют ключевые слова о поведении и интересах');
+      }
+
+      reasons.push(`Сегмент "${name}" будет лучше покупать, потому что аудитория четко определена и имеет понятные характеристики, что упрощает таргетирование рекламы и увеличивает конверсию.`);
+
+      return {
+        rating: rating,
+        explanation: reasons.join('\n• ')
+      };
     }
 
     function generateSegmentTitles(idx) {
