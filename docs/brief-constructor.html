@@ -717,15 +717,15 @@
     }
     .segment-description {
       width: 100%;
-      min-height: 100px;
-      max-height: 300px;
+      min-height: 80px;
       padding: 8px;
       border: 1px solid #d0d0d0;
       border-radius: 4px;
       font-size: 13px;
       font-family: inherit;
-      resize: vertical;
+      resize: none;
       line-height: 1.5;
+      overflow: hidden;
     }
     .empty-state {
       text-align: center;
@@ -953,6 +953,39 @@
     </div>
   </div>
 
+  <!-- Модальное окно для генерации заголовков -->
+  <div class="modal" id="titlesModal">
+    <div class="modal-content">
+      <div class="modal-header">Сгенерировать заголовки</div>
+
+      <div class="modal-section">
+        <label class="modal-label">Выберите шаблон промпта:</label>
+        <div class="template-list" id="titleTemplateList"></div>
+      </div>
+
+      <div class="modal-section">
+        <label class="modal-label">Или создайте новый промпт:</label>
+        <textarea id="customTitlePrompt" placeholder="Напишите инструкцию для генерации заголовков..." style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; min-height: 100px; font-family: inherit;"></textarea>
+      </div>
+
+      <div class="modal-section">
+        <label class="modal-label">Количество заголовков:</label>
+        <input type="number" id="titleCount" value="5" min="1" max="20" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+      </div>
+
+      <div class="modal-section">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="generateOpenings" /> Генерировать открывашки (первые 3 предложения)
+        </label>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeTitlesModal()">Отмена</button>
+        <button class="btn-primary" onclick="generateTitles()">Сгенерировать</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let items = [];
     let itemId = 0;
@@ -969,6 +1002,13 @@
     ];
     let selectedTemplate = null;
     let selectedItemsForAnalysis = null;
+    let titleTemplates = [
+      { id: 1, name: 'Классические заголовки', prompt: 'Создай N привлекательных заголовков для рекламной кампании, ориентированных на аудиторию: [SEGMENT]. Заголовки должны быть краткими, убедительными и вызывать интерес.' },
+      { id: 2, name: 'Заголовки с преимуществами', prompt: 'Напиши N заголовков, которые подчеркивают основные преимущества и выгоды для аудитории [SEGMENT]. Заголовки должны четко описывать ценность предложения.' },
+      { id: 3, name: 'Заголовки с вопросом', prompt: 'Создай N привлекающих внимание заголовков в форме вопросов для аудитории [SEGMENT]. Вопросы должны быть актуальными и вызывать желание узнать ответ.' }
+    ];
+    let selectedTitleTemplate = null;
+    let currentGeneratingSegmentIdx = null;
 
     // Переключение вкладок
     function switchTab(tabName) {
@@ -1477,7 +1517,11 @@
         }
 
         console.log('Распарсено сегментов:', newSegments);
-        segments = segments.concat(newSegments);
+        // Рассчитать рейтинг для каждого нового сегмента и добавить в начало
+        newSegments.forEach(segment => {
+          segment.rating = calculateSegmentRating(segment.name, segment.description);
+        });
+        segments = newSegments.concat(segments);
         saveData();
         closePromptModal();
         switchTab('segments');
@@ -1519,7 +1563,9 @@
 
       container.style.display = 'flex';
       empty.style.display = 'none';
-      container.innerHTML = segments.map((segment, idx) => `
+      container.innerHTML = segments.slice().reverse().map((segment, reverseIdx) => {
+        const idx = segments.length - 1 - reverseIdx;
+        return `
         <div class="segment-item" data-segment-idx="${idx}" oncontextmenu="showSegmentContextMenu(${idx}, event)">
           <div class="segment-header" onclick="selectSegment(${idx})">
             <input type="checkbox" class="segment-checkbox" ${segment.selected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSegmentSelection(${idx})" />
@@ -1531,10 +1577,14 @@
             </div>
           </div>
           <div class="segment-content">
-            <textarea class="segment-description" onchange="updateSegmentDescription(${idx}, this.value)" onclick="event.stopPropagation()">${segment.description}</textarea>
+            <textarea class="segment-description" onchange="updateSegmentDescription(${idx}, this.value)" onkeyup="autoResizeSegmentTextarea(this)" onclick="event.stopPropagation()">${segment.description}</textarea>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
+
+      // Авторезайз всех текстареа
+      document.querySelectorAll('.segment-description').forEach(ta => autoResizeSegmentTextarea(ta));
     }
 
     function selectSegment(idx) {
@@ -1592,16 +1642,63 @@
       renderSegments();
     }
 
+    function calculateSegmentRating(name, description) {
+      // Рассчитываем рейтинг на основе длины и детализации описания
+      const baseRating = 4;
+      const descLength = description.length;
+      const detailBonus = Math.min(Math.floor(descLength / 150), 3);
+      const keywordBonus = (description.match(/покуп|интерес|потребн|поведен|предпочт|склонн|готов|ценн/gi) || []).length > 0 ? 1 : 0;
+      const rating = Math.min(10, baseRating + detailBonus + keywordBonus + Math.floor(Math.random() * 2));
+      return rating;
+    }
+
     function generateSegmentTitles(idx) {
       const segment = segments[idx];
       console.log('Генерирование заголовков для сегмента:', segment.name);
-      // TODO: добавить функцию генерации заголовков через AI
+      // Открыть модальное окно с промптами для генерации заголовков
+      openTitlesGenerationModal(idx);
     }
 
     function generateSegmentTexts(idx) {
       const segment = segments[idx];
       console.log('Генерирование текстов для сегмента:', segment.name);
       // TODO: добавить функцию генерации текстов через AI
+    }
+
+    function openTitlesGenerationModal(idx) {
+      currentGeneratingSegmentIdx = idx;
+      selectedTitleTemplate = null;
+      renderTitleTemplateList();
+      document.getElementById('titlesModal').classList.add('active');
+    }
+
+    function closeTitlesModal() {
+      document.getElementById('titlesModal').classList.remove('active');
+      selectedTitleTemplate = null;
+      currentGeneratingSegmentIdx = null;
+    }
+
+    function renderTitleTemplateList() {
+      const list = document.getElementById('titleTemplateList');
+      list.innerHTML = titleTemplates.map(template => `
+        <div class="template-item ${selectedTitleTemplate === template.id ? 'selected' : ''}" onclick="selectTitleTemplate(${template.id})">
+          ${template.name}
+        </div>
+      `).join('');
+    }
+
+    function selectTitleTemplate(templateId) {
+      selectedTitleTemplate = selectedTitleTemplate === templateId ? null : templateId;
+      renderTitleTemplateList();
+    }
+
+    function generateTitles() {
+      const segment = segments[currentGeneratingSegmentIdx];
+      const titleCount = parseInt(document.getElementById('titleCount').value) || 5;
+      const generateOpenings = document.getElementById('generateOpenings').checked;
+      console.log('Генерирование заголовков для сегмента:', segment.name, 'Количество:', titleCount, 'Открывашки:', generateOpenings);
+      // TODO: добавить функцию генерации заголовков через AI
+      closeTitlesModal();
     }
 
     // Обновить заголовок
@@ -1623,6 +1720,11 @@
     function autoResizeTextarea(textarea) {
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    function autoResizeSegmentTextarea(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.max(textarea.scrollHeight, 80) + 'px';
     }
 
     // Получить количество сущностей
