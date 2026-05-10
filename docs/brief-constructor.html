@@ -155,12 +155,11 @@
     .link-item-add:hover { background: #218838; }
     .text-item {
       margin-bottom: 12px;
-      border: 1px solid #e0e0e0;
+      border: none;
       border-radius: 4px;
       overflow: hidden;
     }
     .text-item.collapsed {
-      border: 1px solid #ddd;
       background: #f9f9f9;
       cursor: pointer;
       transition: all 0.2s;
@@ -817,7 +816,7 @@
       }
       if (item.type === 'text') {
         return `
-          <div>
+          <div style="display: flex; flex-direction: column; gap: 0;">
             ${item.texts.map((text, idx) => {
               loadTextExpandState(item.id, idx);
               const isExpanded = item.textExpanded[idx] !== false;
@@ -849,7 +848,9 @@
                 `}
               </div>
             `}).join('')}
-            <button class="text-item-add" onclick="addText(${item.id})">+ Добавить поле</button>
+            <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+              <button class="text-item-add" onclick="addText(${item.id})">+ Добавить поле</button>
+            </div>
           </div>
         `;
       }
