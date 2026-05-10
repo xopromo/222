@@ -701,22 +701,15 @@
       gap: 8px;
       font-size: 12px;
     }
-    .segment-rating-input {
-      width: 80px;
-      height: 4px;
-      cursor: pointer;
-    }
     .segment-rating-value {
-      color: #999;
-      min-width: 30px;
+      color: #28a745;
+      font-weight: 600;
+      font-size: 13px;
+      min-width: 35px;
     }
     .segment-content {
-      display: none;
       padding: 12px;
       border-top: 1px solid #f0f0f0;
-    }
-    .segment-item.selected .segment-content {
-      display: block;
     }
     .segment-item.selected .segment-header {
       background: #f5f5f5;
@@ -724,13 +717,15 @@
     }
     .segment-description {
       width: 100%;
-      min-height: 80px;
+      min-height: 100px;
+      max-height: 300px;
       padding: 8px;
       border: 1px solid #d0d0d0;
       border-radius: 4px;
       font-size: 13px;
       font-family: inherit;
       resize: vertical;
+      line-height: 1.5;
     }
     .empty-state {
       text-align: center;
@@ -1531,7 +1526,6 @@
             <div class="segment-title-wrapper">
               <div class="segment-title">${segment.name}</div>
               <div class="segment-rating">
-                <input type="range" class="segment-rating-input" min="1" max="10" value="${segment.rating || 5}" onchange="updateSegmentRating(${idx}, this.value)" onclick="event.stopPropagation()" />
                 <span class="segment-rating-value">${segment.rating || 5}/10</span>
               </div>
             </div>
@@ -1551,12 +1545,6 @@
 
     function toggleSegmentSelection(idx) {
       segments[idx].selected = !segments[idx].selected;
-      saveData();
-      renderSegments();
-    }
-
-    function updateSegmentRating(idx, rating) {
-      segments[idx].rating = parseInt(rating);
       saveData();
       renderSegments();
     }
@@ -1582,10 +1570,15 @@
       menu.style.borderRadius = '4px';
       menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
       menu.style.zIndex = '10001';
-      menu.style.minWidth = '140px';
-      menu.innerHTML = `
-        <button onclick="deleteSegment(${idx}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>
-      `;
+      menu.style.minWidth = '180px';
+      const selected = document.querySelector(`[data-segment-idx="${idx}"]`).classList.contains('selected');
+      let menuHTML = '';
+      if (selected) {
+        menuHTML += `<button onclick="generateSegmentTitles(${idx}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #007bff; cursor: pointer; text-align: left; font-size: 13px;">Сгенерировать заголовки</button>`;
+        menuHTML += `<button onclick="generateSegmentTexts(${idx}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #007bff; cursor: pointer; text-align: left; font-size: 13px;">Сгенерировать тексты</button>`;
+      }
+      menuHTML += `<button onclick="deleteSegment(${idx}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>`;
+      menu.innerHTML = menuHTML;
       document.body.appendChild(menu);
       document.addEventListener('click', function closeMenu() {
         if (menu.parentElement) document.body.removeChild(menu);
@@ -1597,6 +1590,18 @@
       segments.splice(idx, 1);
       saveData();
       renderSegments();
+    }
+
+    function generateSegmentTitles(idx) {
+      const segment = segments[idx];
+      console.log('Генерирование заголовков для сегмента:', segment.name);
+      // TODO: добавить функцию генерации заголовков через AI
+    }
+
+    function generateSegmentTexts(idx) {
+      const segment = segments[idx];
+      console.log('Генерирование текстов для сегмента:', segment.name);
+      // TODO: добавить функцию генерации текстов через AI
     }
 
     // Обновить заголовок
