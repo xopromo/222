@@ -1183,6 +1183,9 @@
     function showContextMenu(itemId, e) {
       e.preventDefault();
 
+      // Удалить все существующие контекстные меню
+      document.querySelectorAll('[data-context-menu]').forEach(m => m.parentElement && m.parentElement.removeChild(m));
+
       if (!selectedItems.has(itemId)) {
         selectedItems.clear();
         selectedItems.add(itemId);
@@ -1190,6 +1193,7 @@
       }
 
       const menu = document.createElement('div');
+      menu.setAttribute('data-context-menu', 'true');
       menu.style.position = 'fixed';
       menu.style.top = e.clientY + 'px';
       menu.style.left = e.clientX + 'px';
