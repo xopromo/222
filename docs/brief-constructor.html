@@ -1811,7 +1811,7 @@
       renderTitleTemplateList();
     }
 
-    function generateTitles() {
+    async function generateTitles() {
       const idx = currentGeneratingSegmentIdx;
       const segment = segments[idx];
       const titleCount = parseInt(document.getElementById('titleCount').value) || 5;
@@ -1837,41 +1837,68 @@
         prompt += ' Также для каждого заголовка создай первые 3 предложения (открывашку) для использования в основном тексте объявления.';
       }
 
-      console.log('Генерирование заголовков для сегмента:', segment.name);
-      console.log('Промпт:', prompt);
+      // Добавить требование формата ответа
+      const fullPrompt = `${prompt}\n\nОтветь ТОЛЬКО JSON. Формат: {"titles":["Заголовок 1","Заголовок 2",...], "openings":["Открывашка 1",...]}. БЕЗ никакого другого текста!`;
 
-      // TODO: отправить запрос к AI и получить заголовки
-      // Пока добавляем тестовые данные
-      const mockTitles = [
-        `Специально для ${segment.name} - революционное решение`,
-        'Откройте новые возможности вместе с нами',
-        'Идеально подходит для ваших потребностей',
-        'Проверено и рекомендовано экспертами',
-        'Первоклассное качество по доступной цене'
+      console.log('Генерирование заголовков для сегмента:', segment.name);
+      console.log('Промпт:', fullPrompt);
+
+      const apis = [
+        { name: 'Mistral', fn: callMistralAPI },
+        { name: 'Cerebras', fn: callCerebrasAPI },
+        { name: 'Gemini', fn: callGeminiAPI }
       ];
 
-      const mockOpenings = generateOpenings ? [
-        `Мы понимаем, что ${segment.name} нуждаются в инновационных решениях. Наш продукт специально разработан с учетом ваших потребностей. Присоединитесь к тысячам довольных клиентов.`,
-        'Каждый день люди открывают для себя новые возможности благодаря нашему сервису. Вы не исключение - вперед к успеху. Начните прямо сейчас.',
-        'Качество - это наш приоритет, и мы это доказываем ежедневно. Ваша удовлетворенность - наша главная цель. Испытайте разницу уже сегодня.'
-      ] : [];
+      let lastError = null;
+      let content = null;
+      let successfulAPI = null;
 
-      // Добавить новые заголовки и открывашки в начало (новые сверху)
-      const newTitles = mockTitles.slice(0, titleCount);
-      const newOpenings = mockOpenings;
-
-      if (!segment.titles) segment.titles = [];
-      if (!segment.openings) segment.openings = [];
-
-      // Добавить новые в начало
-      segment.titles = newTitles.concat(segment.titles);
-      if (generateOpenings) {
-        segment.openings = newOpenings.concat(segment.openings);
+      for (const api of apis) {
+        try {
+          console.log(`Пробую ${api.name} API для генерации заголовков...`);
+          content = await api.fn(fullPrompt);
+          console.log(`${api.name} API успешно! Ответ:`, content);
+          successfulAPI = api.name;
+          break;
+        } catch (error) {
+          console.log(`${api.name} API ошибка: ${error.message}`);
+          lastError = error;
+          continue;
+        }
       }
 
-      saveData();
-      closeTitlesModal();
-      renderSegmentDetails(idx);
+      if (!content) {
+        alert(`Ошибка при обращении ко всем API. Проверьте ключи доступа.\nПоследняя ошибка: ${lastError?.message}`);
+        return;
+      }
+
+      try {
+        const result = extractJSON(content);
+        if (!result || !result.titles || result.titles.length === 0) {
+          console.error('Не удалось распарсить JSON. Полный ответ:', content);
+          alert('Не удалось распарсить ответ API. Попробуйте еще раз или используйте другой промпт.');
+          return;
+        }
+
+        const newTitles = result.titles.slice(0, titleCount);
+        const newOpenings = generateOpenings ? (result.openings || []) : [];
+
+        if (!segment.titles) segment.titles = [];
+        if (!segment.openings) segment.openings = [];
+
+        // Добавить новые в начало
+        segment.titles = newTitles.concat(segment.titles);
+        if (generateOpenings && newOpenings.length > 0) {
+          segment.openings = newOpenings.concat(segment.openings);
+        }
+
+        saveData();
+        closeTitlesModal();
+        renderSegmentDetails(idx);
+      } catch (error) {
+        console.error('Ошибка парсинга:', error, 'Ответ:', content);
+        alert('Ошибка при обработке результата.\n\nОтвет от API: ' + content.substring(0, 200));
+      }
     }
 
     function updateSegmentTitle(idx, titleIdx, value) {
