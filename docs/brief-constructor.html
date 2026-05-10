@@ -122,7 +122,6 @@
       background: white;
     }
     .builder-item.selected {
-      background: #e3f2fd;
       border-left: 3px solid #007bff;
     }
     .builder-item-header {
@@ -185,8 +184,11 @@
       display: block;
     }
     .field-checkbox {
-      margin-right: 8px;
+      width: 16px;
+      height: 16px;
+      margin-right: 6px;
       cursor: pointer;
+      flex-shrink: 0;
     }
     .field-wrapper {
       display: flex;
@@ -1454,7 +1456,7 @@
               <div class="text-item ${!isExpanded ? 'collapsed' : ''}" onclick="${!isExpanded ? `toggleTextExpand(${item.id}, ${idx})` : ''}">
                 ${!isExpanded ? `
                   <div class="text-item-collapsed-preview">
-                    <input type="checkbox" class="field-checkbox" style="margin-right: 8px;" ${selectedFields.get(item.id)?.has(idx) ? 'checked' : ''} onchange="toggleFieldSelection(${item.id}, ${idx}, event)" />
+                    <input type="checkbox" class="field-checkbox" ${selectedFields.get(item.id)?.has(idx) ? 'checked' : ''} onchange="toggleFieldSelection(${item.id}, ${idx}, event)" />
                     <span class="text-item-collapsed-text">${firstLine}</span>
                     <span class="text-item-collapsed-counter">${countChars(text)}</span>
                   </div>
