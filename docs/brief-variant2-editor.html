@@ -25,23 +25,33 @@
       border-radius: 8px;
       padding: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
     }
     .panel h2 { margin-top: 0; color: #333; font-size: 16px; }
     .document-preview {
       background: white;
-      padding: 15px;
+      padding: 12px;
       border-radius: 6px;
-      max-height: 500px;
+      flex: 1;
       overflow-y: auto;
       font-size: 13px;
       line-height: 1.7;
       color: #333;
       font-family: 'Monaco', 'Menlo', monospace;
-      border: 1px solid #ddd;
+      border: 2px solid #ddd;
       resize: vertical;
+      width: 100%;
+      margin: 0;
+      box-sizing: border-box;
       min-height: 300px;
     }
-    .form-fields { background: #f8f9fa; padding: 15px; border-radius: 6px; }
+    .form-fields {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
     .field { margin-bottom: 18px; }
     .field label {
       display: block;
@@ -70,6 +80,7 @@
     }
     .google-doc-section {
       margin-bottom: 15px;
+      flex-shrink: 0;
     }
     .google-doc-section label {
       display: block;
