@@ -126,6 +126,84 @@
       flex-direction: column;
       gap: 0;
     }
+
+    /* Стили оформления */
+
+    /* Тема: Компактная */
+    body.theme-compact .builder-item {
+      margin-bottom: 0;
+      border-bottom: 1px solid #eee;
+    }
+    body.theme-compact .builder-item-header {
+      padding: 8px 10px;
+    }
+    body.theme-compact .builder-items {
+      padding: 5px;
+    }
+
+    /* Тема: Просторная */
+    body.theme-spaced .builder-item {
+      margin-bottom: 12px;
+      background: #f9f9f9;
+      border-radius: 6px;
+      border: 1px solid #e8e8e8;
+    }
+    body.theme-spaced .builder-item-header {
+      padding: 14px;
+    }
+    body.theme-spaced .builder-items {
+      padding: 12px;
+    }
+
+    /* Тема: Карточки */
+    body.theme-cards .builder-item {
+      margin-bottom: 10px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    body.theme-cards .builder-item-header {
+      padding: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    body.theme-cards .builder-items {
+      padding: 10px;
+      gap: 8px;
+    }
+
+    /* Тема: Минимальная */
+    body.theme-minimal .builder-item {
+      margin-bottom: 0;
+      border: none;
+      border-top: 1px solid #f0f0f0;
+    }
+    body.theme-minimal .builder-item-header {
+      padding: 10px 8px;
+      font-size: 12px;
+    }
+    body.theme-minimal .builder-items {
+      padding: 0;
+    }
+
+    /* Тема: С цветными блоками */
+    body.theme-colored .builder-item {
+      margin-bottom: 8px;
+      border-radius: 4px;
+      border-left: 4px solid #007bff;
+    }
+    body.theme-colored .builder-item[data-type="links"] {
+      border-left-color: #28a745;
+      background: #f0f9ff;
+    }
+    body.theme-colored .builder-item[data-type="text"] {
+      border-left-color: #ffc107;
+      background: #fffef0;
+    }
+    body.theme-colored .builder-item[data-type="images"] {
+      border-left-color: #e83e8c;
+      background: #fff0f7;
+    }
     .builder-item {
       background: white;
       border: none;
@@ -627,6 +705,16 @@
               <button class="btn-add" onclick="addLinksObject()">+ Ссылка</button>
               <button class="btn-add" onclick="addTextObject()">+ Текст</button>
               <button class="btn-add" onclick="addImagesObject()">+ Картинки</button>
+              <div style="flex: 1;"></div>
+              <select id="themeSelector" onchange="setTheme(this.value)" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: white;">
+                <option value="">Стиль оформления...</option>
+                <option value="default">📋 Стандартный</option>
+                <option value="compact">⚙️ Компактный</option>
+                <option value="spaced">📦 Просторный</option>
+                <option value="cards">🎴 Карточки</option>
+                <option value="minimal">➖ Минимальный</option>
+                <option value="colored">🎨 Цветные блоки</option>
+              </select>
             </div>
             <div class="builder-items" id="builderItems"></div>
           </div>
@@ -1435,6 +1523,7 @@
           </div>
         </div>
       `).join('');
+      updateItemDataTypes();
     }
 
     // Отрендерить содержимое объекта
@@ -1629,6 +1718,39 @@
       }
     }
 
+    // Функции для работы с темами оформления
+    function setTheme(theme) {
+      // Удалить все классы тем
+      document.body.classList.remove('theme-compact', 'theme-spaced', 'theme-cards', 'theme-minimal', 'theme-colored');
+
+      // Добавить выбранную тему
+      if (theme) {
+        document.body.classList.add('theme-' + theme);
+        localStorage.setItem('selectedTheme', theme);
+      } else {
+        localStorage.removeItem('selectedTheme');
+      }
+    }
+
+    function initializeTheme() {
+      const savedTheme = localStorage.getItem('selectedTheme');
+      if (savedTheme) {
+        document.getElementById('themeSelector').value = savedTheme;
+        setTheme(savedTheme);
+      }
+    }
+
+    // Добавить data-type к элементам для цветной темы
+    function updateItemDataTypes() {
+      const builderItems = document.getElementById('builderItems');
+      items.forEach(item => {
+        const element = builderItems.querySelector(`[data-item-id="${item.id}"]`);
+        if (element) {
+          element.setAttribute('data-type', item.type);
+        }
+      });
+    }
+
     // Инициализировать API ключи
     function initializeAPIKeys() {
       const defaultKeys = {
@@ -1651,6 +1773,7 @@
 
     // Инициализация
     initializeAPIKeys();
+    initializeTheme();
     loadData();
     render();
   </script>
