@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Конструктор данных проекта</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      padding: 0;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .left-panel {
+      background: white;
+      border-right: 2px solid #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .right-panel {
+      background: white;
+      overflow-y: auto;
+      padding: 30px;
+    }
+    .builder-toolbar {
+      padding: 15px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      background: white;
+    }
+    .btn-add {
+      padding: 0;
+      background: none;
+      color: #007bff;
+      border: none;
+      border-radius: 0;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: color 0.2s;
+      text-decoration: none;
+    }
+    .btn-add:hover { color: #0056b3; text-decoration: underline; }
+    .builder-items {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .builder-item {
+      background: white;
+      border: none;
+      border-radius: 0;
+      margin-bottom: 0;
+      overflow: hidden;
+      transition: all 0.2s;
+      user-select: none;
+      border-bottom: 1px solid transparent;
+    }
+    .builder-item.collapsed {
+      background: white;
+    }
+    .builder-item-header {
+      padding: 12px;
+      background: white;
+      border-bottom: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .builder-item-header:hover {
+      background: #f5f5f5;
+    }
+    .builder-item.collapsed .builder-item-header {
+      border-bottom: none;
+    }
+    .builder-item-drag {
+      width: 4px;
+      height: 20px;
+      background: #ccc;
+      border-radius: 2px;
+      cursor: grab;
+    }
+    .builder-item-drag:active {
+      cursor: grabbing;
+    }
+    .builder-item-title {
+      flex: 1;
+      font-weight: 600;
+      color: #333;
+      font-size: 13px;
+    }
+    .builder-item-count {
+      font-size: 11px;
+      color: #999;
+      background: #e0e0e0;
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+    .builder-item-collapse {
+      display: none;
+    }
+    .builder-item-delete {
+      display: none;
+    }
+    .builder-item-content {
+      padding: 12px;
+      display: none;
+    }
+    .builder-item.expanded .builder-item-content {
+      display: block;
+    }
+    .link-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .link-item input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .link-item-add {
+      background: #28a745;
+      color: white;
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .link-item-add:hover { background: #218838; }
+    .text-item {
+      margin-bottom: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .text-item.collapsed {
+      border: 1px solid #ddd;
+      background: #f9f9f9;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .text-item.collapsed:hover {
+      background: #f5f5f5;
+    }
+    .text-item-collapsed-preview {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 36px;
+    }
+    .text-item-collapsed-text {
+      flex: 1;
+      color: #333;
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .text-item-collapsed-counter {
+      font-size: 11px;
+      color: #999;
+      background: #e0e0e0;
+      padding: 2px 6px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .text-item-expanded {
+      padding: 12px;
+    }
+    .text-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+    .text-item-link {
+      background: none;
+      border: none;
+      color: #007bff;
+      cursor: pointer;
+      font-size: 11px;
+      padding: 0;
+      text-decoration: none;
+    }
+    .text-item-link:hover {
+      text-decoration: underline;
+    }
+    .text-item-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #999;
+      gap: 10px;
+    }
+    .text-item textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 0;
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 100px;
+    }
+    .text-item-add {
+      background: none;
+      color: #007bff;
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 10px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .text-item-add:hover { text-decoration: underline; }
+    .image-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 8px;
+    }
+    .image-item {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      border: 2px dashed #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #f9f9f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .image-item:hover {
+      border-color: #007bff;
+      background: #f0f7ff;
+    }
+    .image-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .image-item-add {
+      font-size: 24px;
+      color: #999;
+    }
+    .image-item-delete {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(255,0,0,0.8);
+      color: white;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 0;
+      display: none;
+    }
+    .image-item:hover .image-item-delete {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .editable-title {
+      background: none;
+      border: none;
+      font-weight: 600;
+      font-size: 13px;
+      color: #333;
+      cursor: text;
+      padding: 0;
+      margin: 0;
+    }
+    .editable-title:hover {
+      background: none;
+    }
+    .editable-title:focus {
+      outline: none;
+      background: none;
+    }
+    h1 {
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      color: #333;
+    }
+    .right-panel h2 {
+      margin-top: 0;
+      color: #333;
+      font-size: 16px;
+    }
+    textarea::-webkit-scrollbar {
+      width: 6px;
+    }
+    textarea::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    textarea::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 3px;
+    }
+    textarea::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    .fullscreen-gallery {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.95);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .fullscreen-gallery.active {
+      display: flex;
+    }
+    .fullscreen-gallery-image {
+      max-width: 90vw;
+      max-height: 80vh;
+      object-fit: contain;
+    }
+    .fullscreen-gallery-controls {
+      color: white;
+      margin-top: 20px;
+      font-size: 14px;
+      text-align: center;
+    }
+    .fullscreen-gallery-close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: white;
+      font-size: 36px;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .builder-item.dragging {
+      opacity: 0.5;
+    }
+    .builder-item.drag-over {
+      border-top: 3px solid #007bff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Левая панель: Конструктор -->
+    <div class="left-panel">
+      <div class="builder-toolbar">
+        <button class="btn-add" onclick="addLinksObject()">+ Ссылка</button>
+        <button class="btn-add" onclick="addTextObject()">+ Текст</button>
+        <button class="btn-add" onclick="addImagesObject()">+ Картинки</button>
+      </div>
+      <div class="builder-items" id="builderItems"></div>
+    </div>
+
+    <!-- Правая панель: Предпросмотр/Форма -->
+    <div class="right-panel">
+      <h1>Исходная информация</h1>
+
+      <div style="margin-bottom: 30px;">
+        <h2 style="margin-top: 0;">✓ Извлеченные данные</h2>
+        <div class="form-fields" style="background: #f8f9fa; padding: 15px; border-radius: 6px;">
+          <div class="field" style="margin-bottom: 18px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Название кампании</label>
+            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+              <input type="text" value="Летняя акция" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">98%</div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom: 18px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Бюджет (₽)</label>
+            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+              <input type="number" value="50000" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">99%</div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom: 18px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Период</label>
+            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+              <div style="display: flex; gap: 8px; align-items: center; flex: 1;">
+                <input type="date" value="2024-06-01" style="padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                <span style="color: #666;">—</span>
+                <input type="date" value="2024-06-30" style="padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+              </div>
+              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">100%</div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom: 18px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Возраст целевой аудитории</label>
+            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+              <div style="display: flex; gap: 5px; align-items: center;">
+                От <input type="number" value="18" style="width: 50px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                до <input type="number" value="45" style="width: 50px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" /> лет
+              </div>
+              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">99%</div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom: 18px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Основное сообщение / Слоган</label>
+            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+              <input type="text" value="Летние скидки до 50%" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+              <div class="confidence medium" style="background: #fff3cd; color: #856404; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">85%</div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom: 18px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">CTA (призыв к действию)</label>
+            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+              <input type="text" value="Купить сейчас" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">92%</div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button style="flex: 1; padding: 10px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">🔄 Переизвлечь данные</button>
+            <button style="flex: 1; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">Далее →</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="preview" style="color: #999; text-align: center; margin-top: 100px; font-size: 14px;">
+        <p>Здесь будут отображаться извлеченные данные после обработки брифа</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen галерея -->
+  <div class="fullscreen-gallery" id="fullscreenGallery">
+    <button class="fullscreen-gallery-close" onclick="closeGallery()">✕</button>
+    <img class="fullscreen-gallery-image" id="galleryImage" />
+    <div class="fullscreen-gallery-controls">
+      <div id="galleryCounter"></div>
+      <small>Скролл колесо мыши или стрелки на клавиатуре для перелистывания</small>
+    </div>
+  </div>
+
+  <script>
+    let items = [];
+    let itemId = 0;
+    let draggedItem = null;
+    let currentGalleryIndex = 0;
+    let currentGalleryItemId = null;
+
+    // Сохранить данные в localStorage
+    function saveData() {
+      localStorage.setItem('constructorItems', JSON.stringify(items));
+      localStorage.setItem('constructorItemId', itemId.toString());
+    }
+
+    // Загрузить данные из localStorage
+    function loadData() {
+      const saved = localStorage.getItem('constructorItems');
+      const savedId = localStorage.getItem('constructorItemId');
+      if (saved) {
+        items = JSON.parse(saved);
+        itemId = parseInt(savedId) || 0;
+      }
+    }
+
+    // Добавить объект со ссылками
+    function addLinksObject() {
+      const item = {
+        id: itemId++,
+        type: 'links',
+        title: 'Ссылки',
+        links: [''],
+        expanded: true
+      };
+      items.unshift(item);
+      saveData();
+      render();
+    }
+
+    // Добавить объект с текстом
+    function addTextObject() {
+      const item = {
+        id: itemId++,
+        type: 'text',
+        title: 'Текст',
+        texts: [''],
+        textExpanded: {},
+        expanded: true
+      };
+      items.unshift(item);
+      saveData();
+      render();
+    }
+
+    // Добавить объект с картинками
+    function addImagesObject() {
+      const item = {
+        id: itemId++,
+        type: 'images',
+        title: 'Картинки',
+        images: [],
+        expanded: true
+      };
+      items.unshift(item);
+      saveData();
+      render();
+    }
+
+    // Дублировать объект
+    function duplicateItem(originalItemId) {
+      const original = items.find(i => i.id === originalItemId);
+      if (!original) return;
+
+      // Найти текущий индекс
+      const matches = original.title.match(/\s(\d+)$/);
+      const currentIndex = matches ? parseInt(matches[1]) : 1;
+      const newTitle = original.title.replace(/\s\d+$/, '').trim() + ' ' + (currentIndex + 1);
+
+      const duplicate = JSON.parse(JSON.stringify(original));
+      duplicate.id = itemId++;  // Используем глобальный счетчик
+      duplicate.title = newTitle;
+
+      const originalIndex = items.findIndex(i => i.id === originalItemId);
+      items.splice(originalIndex + 1, 0, duplicate);
+
+      saveData();
+      render();
+    }
+
+    // Обновить ссылку
+    function updateLink(itemId, index, value) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.links[index] = value;
+        saveData();
+        updatePreview();
+      }
+    }
+
+    // Добавить новую ссылку
+    function addLink(itemId) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.links.push('');
+        saveData();
+        render();
+      }
+    }
+
+    // Удалить ссылку
+    function removeLink(itemId, index) {
+      const item = items.find(i => i.id === itemId);
+      if (item && item.links.length > 1) {
+        item.links.splice(index, 1);
+        saveData();
+        render();
+      }
+    }
+
+    // Обновить текст
+    function updateText(itemId, index, value) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.texts[index] = value;
+        saveData();
+        autoResizeTextarea(event.target);
+        updatePreview();
+      }
+    }
+
+    // Добавить новое текстовое поле
+    function addText(itemId) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.texts.push('');
+        saveData();
+        render();
+      }
+    }
+
+    // Удалить текст
+    function removeText(itemId, index) {
+      const item = items.find(i => i.id === itemId);
+      if (item && item.texts.length > 1) {
+        item.texts.splice(index, 1);
+        delete item.textExpanded[index];
+        saveData();
+        render();
+      }
+    }
+
+    // Переключить сворачивание текстового поля
+    function toggleTextExpand(itemId, index) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.textExpanded[index] = !item.textExpanded[index];
+        localStorage.setItem(`textExpanded_${itemId}_${index}`, item.textExpanded[index]);
+        saveData();
+        render();
+      }
+    }
+
+    // Загрузить состояние текстовых полей
+    function loadTextExpandState(itemId, index) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        const saved = localStorage.getItem(`textExpanded_${itemId}_${index}`);
+        if (saved !== null) {
+          item.textExpanded[index] = saved === 'true';
+        } else {
+          item.textExpanded[index] = true; // По умолчанию развернуто
+        }
+      }
+    }
+
+    // Добавить картинку (множественный выбор)
+    function addImage(itemId) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = true;
+        input.onchange = (e) => {
+          let loaded = 0;
+          const files = Array.from(e.target.files);
+          files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              item.images.push(event.target.result);
+              loaded++;
+              if (loaded === files.length) {
+                saveData();
+                render();
+              }
+            };
+            reader.readAsDataURL(file);
+          });
+        };
+        input.click();
+      }
+    }
+
+    // Удалить картинку
+    function removeImage(itemId, index) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.images.splice(index, 1);
+        saveData();
+        render();
+      }
+    }
+
+    // Переключить развернуть/схлопнуть
+    function toggleCollapse(itemId) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.expanded = !item.expanded;
+        saveData();
+        render();
+      }
+    }
+
+    // Удалить объект
+    function deleteItem(itemId) {
+      items = items.filter(i => i.id !== itemId);
+      saveData();
+      render();
+    }
+
+    // Контекстное меню
+    function showContextMenu(itemId, e) {
+      e.preventDefault();
+      const menu = document.createElement('div');
+      menu.style.position = 'fixed';
+      menu.style.top = e.clientY + 'px';
+      menu.style.left = e.clientX + 'px';
+      menu.style.background = 'white';
+      menu.style.border = '1px solid #ccc';
+      menu.style.borderRadius = '4px';
+      menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+      menu.style.zIndex = '10001';
+      menu.style.minWidth = '150px';
+      menu.innerHTML = `
+        <button onclick="duplicateItem(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #007bff; cursor: pointer; text-align: left; font-size: 13px;">Дублировать</button>
+        <button onclick="deleteItem(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>
+      `;
+      document.body.appendChild(menu);
+      document.addEventListener('click', function closeMenu() {
+        if (menu.parentElement) document.body.removeChild(menu);
+        document.removeEventListener('click', closeMenu);
+      });
+    }
+
+    // Обновить заголовок
+    function updateTitle(itemId, value) {
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        item.title = value;
+        saveData();
+        render();
+      }
+    }
+
+    // Подсчитать символы
+    function countChars(text) {
+      return text.length;
+    }
+
+    // Автоподстройка высоты textarea
+    function autoResizeTextarea(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    // Получить количество сущностей
+    function getItemCount(item) {
+      if (item.type === 'links') return item.links.filter(l => l.trim()).length;
+      if (item.type === 'text') return item.texts.filter(t => t.trim()).length;
+      if (item.type === 'images') return item.images.length;
+      return 0;
+    }
+
+    // Отрендерить интерфейс
+    function render() {
+      const builderItems = document.getElementById('builderItems');
+      builderItems.innerHTML = items.map(item => `
+        <div class="builder-item ${item.expanded ? 'expanded' : 'collapsed'}" data-item-id="${item.id}"
+             draggable="true"
+             ondragstart="startDrag(${item.id}, event)"
+             ondragover="dragOver(${item.id}, event)"
+             ondragleave="dragLeave(${item.id}, event)"
+             ondrop="drop(${item.id}, event)"
+             oncontextmenu="showContextMenu(${item.id}, event)">
+          <div class="builder-item-header" onclick="if(event.target.tagName !== 'INPUT') toggleCollapse(${item.id})">
+            <div class="builder-item-drag" ondragstart="event.stopPropagation()" style="flex-shrink: 0;"></div>
+            <input
+              type="text"
+              class="editable-title"
+              value="${item.title}"
+              onchange="updateTitle(${item.id}, this.value)"
+              onclick="event.stopPropagation()"
+              ondblclick="event.stopPropagation()"
+            />
+            ${getItemCount(item) > 0 ? `<div class="builder-item-count">${getItemCount(item)}</div>` : ''}
+            <button class="builder-item-collapse" onclick="event.stopPropagation(); toggleCollapse(${item.id})">
+              ${item.expanded ? '▼' : '▶'}
+            </button>
+            <button class="builder-item-delete"></button>
+          </div>
+          <div class="builder-item-content">
+            ${renderItemContent(item)}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Отрендерить содержимое объекта
+    function renderItemContent(item) {
+      if (item.type === 'links') {
+        return `
+          <div>
+            ${item.links.map((link, idx) => `
+              <div class="link-item">
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value="${link}"
+                  onchange="updateLink(${item.id}, ${idx}, this.value)"
+                />
+                <button class="link-item-add" onclick="addLink(${item.id})">+</button>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      if (item.type === 'text') {
+        return `
+          <div>
+            ${item.texts.map((text, idx) => {
+              loadTextExpandState(item.id, idx);
+              const isExpanded = item.textExpanded[idx] !== false;
+              const firstLine = text.split('\n')[0] || '(пусто)';
+              return `
+              <div class="text-item ${!isExpanded ? 'collapsed' : ''}" onclick="${!isExpanded ? `toggleTextExpand(${item.id}, ${idx})` : ''}">
+                ${!isExpanded ? `
+                  <div class="text-item-collapsed-preview">
+                    <span class="text-item-collapsed-text">${firstLine}</span>
+                    <span class="text-item-collapsed-counter">${countChars(text)}</span>
+                  </div>
+                ` : `
+                  <div class="text-item-expanded">
+                    <div class="text-item-header">
+                      <span></span>
+                      <button class="text-item-link" onclick="event.stopPropagation(); toggleTextExpand(${item.id}, ${idx})">▲ Свернуть</button>
+                    </div>
+                    <textarea
+                      placeholder="Введи текст..."
+                      onchange="updateText(${item.id}, ${idx}, this.value)"
+                      onkeyup="autoResizeTextarea(this)"
+                      onclick="event.stopPropagation()"
+                    >${text}</textarea>
+                    <div class="text-item-meta">
+                      <span>${countChars(text)} символов</span>
+                      ${item.texts.length > 1 ? `<button class="text-item-link" onclick="event.stopPropagation(); removeText(${item.id}, ${idx})">Удалить</button>` : ''}
+                    </div>
+                  </div>
+                `}
+              </div>
+            `}).join('')}
+            <button class="text-item-add" onclick="addText(${item.id})">+ Добавить поле</button>
+          </div>
+        `;
+      }
+      if (item.type === 'images') {
+        return `
+          <div class="image-gallery">
+            ${item.images.map((img, idx) => `
+              <div class="image-item" onclick="openGallery(${item.id}, ${idx})">
+                <img src="${img}" style="cursor: pointer;" />
+                <button class="image-item-delete" onclick="event.stopPropagation(); removeImage(${item.id}, ${idx})">✕</button>
+              </div>
+            `).join('')}
+            <div class="image-item" onclick="addImage(${item.id})">
+              <div class="image-item-add">+</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Обновить предпросмотр (отключено - дублирует левую панель)
+    function updatePreview() {
+      // Правая панель показывает только извлеченные данные, не содержимое конструктора
+    }
+
+    // Drag and Drop функции
+    function startDrag(itemId, e) {
+      draggedItem = itemId;
+      const item = document.querySelector(`[data-item-id="${itemId}"]`);
+      item.classList.add('dragging');
+    }
+
+    function allowDrop(e) {
+      e.preventDefault();
+    }
+
+    function dragOver(targetItemId, e) {
+      e.preventDefault();
+      const item = document.querySelector(`[data-item-id="${targetItemId}"]`);
+      if (draggedItem !== targetItemId) {
+        item.classList.add('drag-over');
+      }
+    }
+
+    function dragLeave(targetItemId, e) {
+      const item = document.querySelector(`[data-item-id="${targetItemId}"]`);
+      item.classList.remove('drag-over');
+    }
+
+    function drop(targetItemId, e) {
+      e.preventDefault();
+      if (draggedItem === null || draggedItem === targetItemId) return;
+
+      const draggedIdx = items.findIndex(i => i.id === draggedItem);
+      const targetIdx = items.findIndex(i => i.id === targetItemId);
+
+      if (draggedIdx > -1 && targetIdx > -1) {
+        const temp = items[draggedIdx];
+        items[draggedIdx] = items[targetIdx];
+        items[targetIdx] = temp;
+      }
+
+      draggedItem = null;
+      document.querySelectorAll('.builder-item').forEach(el => {
+        el.classList.remove('dragging', 'drag-over');
+      });
+      render();
+    }
+
+    // Fullscreen галерея
+    function openGallery(itemId, startIndex) {
+      currentGalleryItemId = itemId;
+      currentGalleryIndex = startIndex;
+      const item = items.find(i => i.id === itemId);
+      if (item && item.images.length > 0) {
+        updateGalleryImage();
+        document.getElementById('fullscreenGallery').classList.add('active');
+        document.addEventListener('wheel', galleryWheel, { passive: false });
+        document.addEventListener('keydown', galleryKeydown);
+      }
+    }
+
+    function closeGallery() {
+      document.getElementById('fullscreenGallery').classList.remove('active');
+      document.removeEventListener('wheel', galleryWheel);
+      document.removeEventListener('keydown', galleryKeydown);
+    }
+
+    function updateGalleryImage() {
+      const item = items.find(i => i.id === currentGalleryItemId);
+      if (item && item.images[currentGalleryIndex]) {
+        document.getElementById('galleryImage').src = item.images[currentGalleryIndex];
+        document.getElementById('galleryCounter').textContent = `${currentGalleryIndex + 1} / ${item.images.length}`;
+      }
+    }
+
+    function galleryWheel(e) {
+      e.preventDefault();
+      const item = items.find(i => i.id === currentGalleryItemId);
+      if (!item) return;
+
+      if (e.deltaY > 0) {
+        currentGalleryIndex = (currentGalleryIndex + 1) % item.images.length;
+      } else {
+        currentGalleryIndex = (currentGalleryIndex - 1 + item.images.length) % item.images.length;
+      }
+      updateGalleryImage();
+    }
+
+    function galleryKeydown(e) {
+      const item = items.find(i => i.id === currentGalleryItemId);
+      if (!item) return;
+
+      if (e.key === 'ArrowRight') {
+        currentGalleryIndex = (currentGalleryIndex + 1) % item.images.length;
+        updateGalleryImage();
+      } else if (e.key === 'ArrowLeft') {
+        currentGalleryIndex = (currentGalleryIndex - 1 + item.images.length) % item.images.length;
+        updateGalleryImage();
+      } else if (e.key === 'Escape') {
+        closeGallery();
+      }
+    }
+
+    // Инициализация
+    loadData();
+    render();
+  </script>
+</body>
+</html>
