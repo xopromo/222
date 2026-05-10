@@ -448,6 +448,22 @@
     let currentGalleryIndex = 0;
     let currentGalleryItemId = null;
 
+    // Сохранить данные в localStorage
+    function saveData() {
+      localStorage.setItem('constructorItems', JSON.stringify(items));
+      localStorage.setItem('constructorItemId', itemId.toString());
+    }
+
+    // Загрузить данные из localStorage
+    function loadData() {
+      const saved = localStorage.getItem('constructorItems');
+      const savedId = localStorage.getItem('constructorItemId');
+      if (saved) {
+        items = JSON.parse(saved);
+        itemId = parseInt(savedId) || 0;
+      }
+    }
+
     // Добавить объект со ссылками
     function addLinksObject() {
       const item = {
@@ -458,6 +474,7 @@
         expanded: true
       };
       items.unshift(item);
+      saveData();
       render();
     }
 
@@ -472,6 +489,7 @@
         expanded: true
       };
       items.unshift(item);
+      saveData();
       render();
     }
 
@@ -485,6 +503,28 @@
         expanded: true
       };
       items.unshift(item);
+      saveData();
+      render();
+    }
+
+    // Дублировать объект
+    function duplicateItem(itemId) {
+      const original = items.find(i => i.id === itemId);
+      if (!original) return;
+
+      // Найти текущий индекс
+      const matches = original.title.match(/\s(\d+)$/);
+      const currentIndex = matches ? parseInt(matches[1]) : 1;
+      const newTitle = original.title.replace(/\s\d+$/, '').trim() + ' ' + (currentIndex + 1);
+
+      const duplicate = JSON.parse(JSON.stringify(original));
+      duplicate.id = itemId++;
+      duplicate.title = newTitle;
+
+      const originalIndex = items.findIndex(i => i.id === itemId - 1);
+      items.splice(originalIndex + 1, 0, duplicate);
+
+      saveData();
       render();
     }
 
@@ -493,6 +533,7 @@
       const item = items.find(i => i.id === itemId);
       if (item) {
         item.links[index] = value;
+        saveData();
         updatePreview();
       }
     }
@@ -502,6 +543,7 @@
       const item = items.find(i => i.id === itemId);
       if (item) {
         item.links.push('');
+        saveData();
         render();
       }
     }
@@ -511,6 +553,7 @@
       const item = items.find(i => i.id === itemId);
       if (item && item.links.length > 1) {
         item.links.splice(index, 1);
+        saveData();
         render();
       }
     }
@@ -520,6 +563,7 @@
       const item = items.find(i => i.id === itemId);
       if (item) {
         item.texts[index] = value;
+        saveData();
         autoResizeTextarea(event.target);
         updatePreview();
       }
@@ -530,6 +574,7 @@
       const item = items.find(i => i.id === itemId);
       if (item) {
         item.texts.push('');
+        saveData();
         render();
       }
     }
@@ -540,6 +585,7 @@
       if (item && item.texts.length > 1) {
         item.texts.splice(index, 1);
         delete item.textExpanded[index];
+        saveData();
         render();
       }
     }
@@ -550,6 +596,7 @@
       if (item) {
         item.textExpanded[index] = !item.textExpanded[index];
         localStorage.setItem(`textExpanded_${itemId}_${index}`, item.textExpanded[index]);
+        saveData();
         render();
       }
     }
@@ -567,21 +614,29 @@
       }
     }
 
-    // Добавить картинку
+    // Добавить картинку (множественный выбор)
     function addImage(itemId) {
       const item = items.find(i => i.id === itemId);
       if (item) {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
+        input.multiple = true;
         input.onchange = (e) => {
-          const file = e.target.files[0];
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            item.images.push(event.target.result);
-            render();
-          };
-          reader.readAsDataURL(file);
+          let loaded = 0;
+          const files = Array.from(e.target.files);
+          files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              item.images.push(event.target.result);
+              loaded++;
+              if (loaded === files.length) {
+                saveData();
+                render();
+              }
+            };
+            reader.readAsDataURL(file);
+          });
         };
         input.click();
       }
@@ -592,6 +647,7 @@
       const item = items.find(i => i.id === itemId);
       if (item) {
         item.images.splice(index, 1);
+        saveData();
         render();
       }
     }
@@ -601,6 +657,7 @@
       const item = items.find(i => i.id === itemId);
       if (item) {
         item.expanded = !item.expanded;
+        saveData();
         render();
       }
     }
@@ -608,6 +665,7 @@
     // Удалить объект
     function deleteItem(itemId) {
       items = items.filter(i => i.id !== itemId);
+      saveData();
       render();
     }
 
@@ -624,7 +682,10 @@
       menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
       menu.style.zIndex = '10001';
       menu.style.minWidth = '150px';
-      menu.innerHTML = `<button onclick="deleteItem(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>`;
+      menu.innerHTML = `
+        <button onclick="duplicateItem(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #007bff; cursor: pointer; text-align: left; font-size: 13px;">Дублировать</button>
+        <button onclick="deleteItem(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>
+      `;
       document.body.appendChild(menu);
       document.addEventListener('click', function closeMenu() {
         if (menu.parentElement) document.body.removeChild(menu);
@@ -637,6 +698,7 @@
       const item = items.find(i => i.id === itemId);
       if (item) {
         item.title = value;
+        saveData();
         render();
       }
     }
@@ -899,6 +961,7 @@
     }
 
     // Инициализация
+    loadData();
     render();
   </script>
 </body>
