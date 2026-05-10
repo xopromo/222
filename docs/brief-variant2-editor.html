@@ -371,12 +371,20 @@
       renderDocsList();
     }
 
-    // Функция переизвлечения данных через Mistral API
+    // Функция переизвлечения данных через Mistral API (напрямую)
     async function reExtractData() {
       const briefText = briefTextarea.value.trim();
       if (!briefText) {
         alert('Введи текст брифа!');
         return;
+      }
+
+      // Проверяем ключ
+      const apiKey = localStorage.getItem('mistral_api_key');
+      if (!apiKey) {
+        const key = prompt('Введи Mistral API ключ (сохранится локально):');
+        if (!key) return;
+        localStorage.setItem('mistral_api_key', key);
       }
 
       // Отключаем кнопку и показываем загрузку
@@ -386,18 +394,56 @@
       btn.disabled = true;
 
       try {
-        const response = await fetch('/api/v1/brief/extract', {
+        const prompt = `Analyze the following brief text and extract the following information.
+Return ONLY valid JSON, no markdown code blocks.
+
+Brief text:
+---
+${briefText}
+---
+
+Extract and return this JSON structure (use null for missing fields):
+{
+  "campaign_name": {"value": "...", "confidence": 0.95},
+  "budget_rub": {"value": 50000, "confidence": 0.95},
+  "start_date": {"value": "2024-06-01", "confidence": 0.95},
+  "end_date": {"value": "2024-06-30", "confidence": 0.95},
+  "age_from": {"value": 18, "confidence": 0.95},
+  "age_to": {"value": 45, "confidence": 0.95},
+  "message": {"value": "...", "confidence": 0.85},
+  "cta": {"value": "...", "confidence": 0.90}
+}
+
+Guidelines:
+- confidence is 0-100 (as decimal, e.g., 0.95 = 95%)
+- Extract dates in YYYY-MM-DD format
+- Numbers without currency notation
+- Be conservative with confidence (lower if uncertain)
+- Return ONLY the JSON object, no extra text`;
+
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: briefText })
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('mistral_api_key')}`
+          },
+          body: JSON.stringify({
+            model: 'mistral-small-latest',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.1
+          })
         });
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.detail || 'Ошибка при обработке');
+          throw new Error(error.message || 'Ошибка API Mistral');
         }
 
-        const data = await response.json();
+        const result = await response.json();
+        const responseText = result.choices[0].message.content.trim();
+
+        // Парсим JSON
+        const data = JSON.parse(responseText);
 
         // Обновляем поля с извлеченными данными
         updateFieldsFromExtraction(data);
@@ -414,48 +460,57 @@
 
     // Обновить поля формы с извлеченными данными
     function updateFieldsFromExtraction(data) {
-      const fieldMap = {
-        campaign_name: 'Название кампании',
-        budget_rub: 'Бюджет (₽)',
-        start_date: 'Период (начало)',
-        end_date: 'Период (конец)',
-        age_from: 'Возраст (от)',
-        age_to: 'Возраст (до)',
-        message: 'Основное сообщение / Слоган',
-        cta: 'CTA (призыв к действию)'
-      };
+      // Обновляем "Название кампании"
+      if (data.campaign_name?.value) {
+        document.querySelectorAll('.field')[0].querySelector('input').value = data.campaign_name.value;
+        updateBadge(0, data.campaign_name.confidence);
+      }
 
-      for (const [apiField, label] of Object.entries(fieldMap)) {
-        if (data[apiField] && data[apiField].value !== null) {
-          const value = data[apiField].value;
-          const confidence = Math.round(data[apiField].confidence * 100);
+      // Обновляем "Бюджет"
+      if (data.budget_rub?.value) {
+        document.querySelectorAll('.field')[1].querySelector('input').value = data.budget_rub.value;
+        updateBadge(1, data.budget_rub.confidence);
+      }
 
-          // Находим соответствующее input поле и обновляем его
-          const inputs = document.querySelectorAll('.field input, .field select');
-          for (let input of inputs) {
-            if (input.placeholder && input.placeholder.includes(label)) {
-              input.value = value;
-            }
-          }
+      // Обновляем "Период"
+      if (data.start_date?.value) {
+        const dateInputs = document.querySelectorAll('.field')[2].querySelectorAll('input');
+        dateInputs[0].value = data.start_date.value;
+        updateBadge(2, data.start_date.confidence);
+      }
+      if (data.end_date?.value) {
+        const dateInputs = document.querySelectorAll('.field')[2].querySelectorAll('input');
+        dateInputs[1].value = data.end_date.value;
+      }
 
-          // Обновляем badge уверенности
-          updateConfidenceBadge(label, confidence);
-        }
+      // Обновляем "Возраст"
+      if (data.age_from?.value || data.age_to?.value) {
+        const ageInputs = document.querySelectorAll('.field')[3].querySelectorAll('input');
+        if (data.age_from?.value) ageInputs[0].value = data.age_from.value;
+        if (data.age_to?.value) ageInputs[1].value = data.age_to.value;
+        updateBadge(3, data.age_from?.confidence || 0.8);
+      }
+
+      // Обновляем "Слоган"
+      if (data.message?.value) {
+        document.querySelectorAll('.field')[4].querySelector('input').value = data.message.value;
+        updateBadge(4, data.message.confidence);
+      }
+
+      // Обновляем "CTA"
+      if (data.cta?.value) {
+        document.querySelectorAll('.field')[5].querySelector('input').value = data.cta.value;
+        updateBadge(5, data.cta.confidence);
       }
     }
 
     // Обновить badge с процентом уверенности
-    function updateConfidenceBadge(label, confidence) {
-      const fields = document.querySelectorAll('.field');
-      for (let field of fields) {
-        const labelElement = field.querySelector('label');
-        if (labelElement && labelElement.textContent.includes(label)) {
-          const badge = field.querySelector('.confidence');
-          if (badge) {
-            badge.textContent = confidence + '%';
-            badge.className = 'confidence ' + (confidence >= 85 ? 'high' : confidence >= 70 ? 'medium' : 'low');
-          }
-        }
+    function updateBadge(fieldIndex, confidence) {
+      const badge = document.querySelectorAll('.field')[fieldIndex]?.querySelector('.confidence');
+      if (badge) {
+        const percent = Math.round(confidence * 100);
+        badge.textContent = percent + '%';
+        badge.className = 'confidence ' + (percent >= 85 ? 'high' : percent >= 70 ? 'medium' : 'low');
       }
     }
 
