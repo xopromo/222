@@ -1591,6 +1591,72 @@
       document.querySelectorAll('.segment-item').forEach(el => el.classList.remove('selected'));
       const item = document.querySelector(`[data-segment-idx="${idx}"]`);
       if (item) item.classList.add('selected');
+
+      // Показать детали сегмента в правой панели
+      renderSegmentDetails(idx);
+    }
+
+    function renderSegmentDetails(idx) {
+      const segment = segments[idx];
+      const container = document.getElementById('segmentDetailsContainer');
+
+      let html = `
+        <h2>${segment.name}</h2>
+        <div style="margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+          <div style="font-size: 13px; color: #666; margin-bottom: 8px;">Рейтинг: <span style="font-weight: 600; color: #28a745;">${segment.rating || 5}/10</span></div>
+          <div style="font-size: 13px; color: #666;">
+            <strong>Описание:</strong><br>
+            ${segment.description}
+          </div>
+        </div>
+      `;
+
+      // Показать сгенерированные заголовки
+      if (segment.titles && segment.titles.length > 0) {
+        html += `<div style="margin-bottom: 20px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 14px;">Заголовки</h3>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+        `;
+        segment.titles.forEach((title, tIdx) => {
+          const charCount = title.length;
+          html += `
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+              <textarea class="segment-title-input" data-segment-idx="${idx}" data-title-idx="${tIdx}" onchange="updateSegmentTitle(${idx}, ${tIdx}, this.value)" oninput="updateCharCounter(this)" onkeyup="autoResizeSegmentTextarea(this)" style="flex: 1; min-height: 40px; padding: 8px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 13px; font-family: inherit; resize: none; overflow: hidden;">${title}</textarea>
+              <span class="char-counter" style="flex-shrink: 0; padding: 8px 12px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666; white-space: nowrap; margin-top: 4px;">${charCount} симв.</span>
+            </div>
+          `;
+        });
+        html += `</div></div>`;
+      }
+
+      // Показать сгенерированные открывашки
+      if (segment.openings && segment.openings.length > 0) {
+        html += `<div style="margin-bottom: 20px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 14px;">Открывашки</h3>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+        `;
+        segment.openings.forEach((opening, oIdx) => {
+          const charCount = opening.length;
+          html += `
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+              <textarea class="segment-opening-input" data-segment-idx="${idx}" data-opening-idx="${oIdx}" onchange="updateSegmentOpening(${idx}, ${oIdx}, this.value)" oninput="updateCharCounter(this)" onkeyup="autoResizeSegmentTextarea(this)" style="flex: 1; min-height: 60px; padding: 8px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 13px; font-family: inherit; resize: none; overflow: hidden;">${opening}</textarea>
+              <span class="char-counter" style="flex-shrink: 0; padding: 8px 12px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666; white-space: nowrap; margin-top: 4px;">${charCount} симв.</span>
+            </div>
+          `;
+        });
+        html += `</div></div>`;
+      }
+
+      container.innerHTML = html;
+      // Авторезайз всех текстареа
+      document.querySelectorAll('.segment-title-input, .segment-opening-input').forEach(ta => autoResizeSegmentTextarea(ta));
+    }
+
+    function updateCharCounter(textarea) {
+      const counter = textarea.nextElementSibling;
+      if (counter && counter.classList.contains('char-counter')) {
+        counter.textContent = textarea.value.length + ' симв.';
+      }
     }
 
     function toggleSegmentSelection(idx) {
@@ -1693,12 +1759,61 @@
     }
 
     function generateTitles() {
-      const segment = segments[currentGeneratingSegmentIdx];
+      const idx = currentGeneratingSegmentIdx;
+      const segment = segments[idx];
       const titleCount = parseInt(document.getElementById('titleCount').value) || 5;
       const generateOpenings = document.getElementById('generateOpenings').checked;
-      console.log('Генерирование заголовков для сегмента:', segment.name, 'Количество:', titleCount, 'Открывашки:', generateOpenings);
-      // TODO: добавить функцию генерации заголовков через AI
+
+      let prompt = '';
+      if (selectedTitleTemplate) {
+        const template = titleTemplates.find(t => t.id === selectedTitleTemplate);
+        prompt = template.prompt.replace('[SEGMENT]', segment.name);
+      } else {
+        prompt = document.getElementById('customTitlePrompt').value || titleTemplates[0].prompt.replace('[SEGMENT]', segment.name);
+      }
+
+      // Добавить к промпту информацию о количестве заголовков
+      prompt = prompt.replace('N', titleCount);
+      if (generateOpenings) {
+        prompt += ' Также для каждого заголовка создай первые 3 предложения (открывашку) для использования в основном тексте объявления.';
+      }
+
+      console.log('Генерирование заголовков для сегмента:', segment.name);
+      console.log('Промпт:', prompt);
+
+      // TODO: отправить запрос к AI и получить заголовки
+      // Пока добавляем тестовые данные
+      const mockTitles = [
+        `Специально для ${segment.name} - революционное решение`,
+        'Откройте новые возможности вместе с нами',
+        'Идеально подходит для ваших потребностей',
+        'Проверено и рекомендовано экспертами',
+        'Первоклассное качество по доступной цене'
+      ];
+
+      const mockOpenings = generateOpenings ? [
+        `Мы понимаем, что ${segment.name} нуждаются в инновационных решениях. Наш продукт специально разработан с учетом ваших потребностей. Присоединитесь к тысячам довольных клиентов.`,
+        'Каждый день люди открывают для себя новые возможности благодаря нашему сервису. Вы не исключение - вперед к успеху. Начните прямо сейчас.',
+        'Качество - это наш приоритет, и мы это доказываем ежедневно. Ваша удовлетворенность - наша главная цель. Испытайте разницу уже сегодня.'
+      ] : [];
+
+      segment.titles = mockTitles.slice(0, titleCount);
+      segment.openings = mockOpenings;
+      saveData();
       closeTitlesModal();
+      renderSegmentDetails(idx);
+    }
+
+    function updateSegmentTitle(idx, titleIdx, value) {
+      if (!segments[idx].titles) segments[idx].titles = [];
+      segments[idx].titles[titleIdx] = value;
+      saveData();
+    }
+
+    function updateSegmentOpening(idx, openingIdx, value) {
+      if (!segments[idx].openings) segments[idx].openings = [];
+      segments[idx].openings[openingIdx] = value;
+      saveData();
     }
 
     // Обновить заголовок
