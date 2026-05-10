@@ -979,6 +979,12 @@
         </label>
       </div>
 
+      <div class="modal-section">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="includeSourceData" checked /> Учитывать исходные данные сегмента (приоритет)
+        </label>
+      </div>
+
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeTitlesModal()">Отмена</button>
         <button class="btn-primary" onclick="generateTitles()">Сгенерировать</button>
@@ -1520,6 +1526,8 @@
         // Рассчитать рейтинг для каждого нового сегмента и добавить в начало
         newSegments.forEach(segment => {
           segment.rating = calculateSegmentRating(segment.name, segment.description);
+          // Сохранить исходные данные, на основе которых был создан сегмент
+          segment.sourceData = collectSelectedData();
         });
         segments = newSegments.concat(segments);
         saveData();
@@ -1761,6 +1769,7 @@
       const segment = segments[idx];
       const titleCount = parseInt(document.getElementById('titleCount').value) || 5;
       const generateOpenings = document.getElementById('generateOpenings').checked;
+      const includeSourceData = document.getElementById('includeSourceData').checked;
 
       let prompt = '';
       if (selectedTitleTemplate) {
@@ -1768,6 +1777,11 @@
         prompt = template.prompt.replace('[SEGMENT]', segment.name);
       } else {
         prompt = document.getElementById('customTitlePrompt').value || titleTemplates[0].prompt.replace('[SEGMENT]', segment.name);
+      }
+
+      // Добавить исходные данные в начало промпта если они включены
+      if (includeSourceData && segment.sourceData) {
+        prompt = `ВАЖНО! Учти в первую очередь эти исходные данные сегмента:\n${segment.sourceData}\n\n${prompt}`;
       }
 
       // Добавить к промпту информацию о количестве заголовков
