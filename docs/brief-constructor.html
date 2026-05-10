@@ -548,8 +548,8 @@
     }
 
     // Дублировать объект
-    function duplicateItem(itemId) {
-      const original = items.find(i => i.id === itemId);
+    function duplicateItem(originalItemId) {
+      const original = items.find(i => i.id === originalItemId);
       if (!original) return;
 
       // Найти текущий индекс
@@ -558,10 +558,10 @@
       const newTitle = original.title.replace(/\s\d+$/, '').trim() + ' ' + (currentIndex + 1);
 
       const duplicate = JSON.parse(JSON.stringify(original));
-      duplicate.id = itemId++;
+      duplicate.id = itemId++;  // Используем глобальный счетчик
       duplicate.title = newTitle;
 
-      const originalIndex = items.findIndex(i => i.id === itemId - 1);
+      const originalIndex = items.findIndex(i => i.id === originalItemId);
       items.splice(originalIndex + 1, 0, duplicate);
 
       saveData();
