@@ -1197,6 +1197,47 @@
       return data.candidates[0].content.parts[0].text;
     }
 
+    // Парсить JSON из текста
+    function extractJSON(text) {
+      try {
+        // Попытка 1: поискать JSON массив
+        const arrayMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (arrayMatch) {
+          return JSON.parse(arrayMatch[0]);
+        }
+
+        // Попытка 2: поискать JSON объект и обернуть в массив
+        const objectMatch = text.match(/\{\s*"name"[\s\S]*?\}\s*(?:,\s*\{\s*"name"[\s\S]*?\})*\s*\]/);
+        if (objectMatch) {
+          return JSON.parse(objectMatch[0]);
+        }
+
+        // Попытка 3: найти все JSON объекты и объединить в массив
+        const objects = [];
+        const objMatches = text.matchAll(/\{\s*"name"\s*:\s*"([^"]*)"\s*,\s*"description"\s*:\s*"([^"]*)"\s*\}/g);
+        for (const match of objMatches) {
+          objects.push({
+            name: match[1],
+            description: match[2]
+          });
+        }
+        if (objects.length > 0) {
+          return objects;
+        }
+
+        // Попытка 4: простой парсинг JSON
+        const jsonStr = text.trim();
+        if (jsonStr.startsWith('[') && jsonStr.endsWith(']')) {
+          return JSON.parse(jsonStr);
+        }
+
+        return null;
+      } catch (e) {
+        console.error('Ошибка парсинга JSON:', e);
+        return null;
+      }
+    }
+
     // Анализировать и создать сегменты с fallback между API
     async function analyzeAndCreateSegments() {
       if (!selectedTemplate && !document.getElementById('customPrompt').value.trim()) {
@@ -1210,7 +1251,7 @@
       const prompt = basePrompt.replace('N', segmentCount);
 
       const selectedData = collectSelectedData();
-      const fullPrompt = `${prompt}\n\nДанные для анализа:\n${selectedData}\n\nОтветь ТОЛЬКО JSON массивом объектов с полями: name (название сегмента), description (описание). Пример: [{"name": "Сегмент 1", "description": "Описание"}, {"name": "Сегмент 2", "description": "Описание"}]`;
+      const fullPrompt = `${prompt}\n\nДанные для анализа:\n${selectedData}\n\nОтветь ТОЛЬКО JSON массивом. Формат: [{"name":"Название сегмента","description":"Описание"},...]. БЕЗ никакого другого текста!`;
 
       const apis = [
         { name: 'Mistral', fn: callMistralAPI },
@@ -1220,12 +1261,14 @@
 
       let lastError = null;
       let content = null;
+      let successfulAPI = null;
 
       for (const api of apis) {
         try {
           console.log(`Пробую ${api.name} API...`);
           content = await api.fn(fullPrompt);
-          console.log(`${api.name} API успешно!`);
+          console.log(`${api.name} API успешно! Ответ:`, content);
+          successfulAPI = api.name;
           break;
         } catch (error) {
           console.log(`${api.name} API ошибка: ${error.message}`);
@@ -1240,21 +1283,23 @@
       }
 
       try {
-        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        const newSegments = extractJSON(content);
 
-        if (!jsonMatch) {
-          alert('Не удалось распарсить ответ API. Попробуйте еще раз.');
+        if (!newSegments || newSegments.length === 0) {
+          console.error('Не удалось распарсить JSON. Полный ответ:', content);
+          alert('Не удалось распарсить ответ API. Попробуйте еще раз или используйте другой промпт.');
           return;
         }
 
-        const newSegments = JSON.parse(jsonMatch[0]);
+        console.log('Распарсено сегментов:', newSegments);
         segments = segments.concat(newSegments);
         saveData();
+        alert(`✓ Сегменты успешно созданы через ${successfulAPI} API!`);
         closePromptModal();
         switchTab('segments');
       } catch (error) {
-        console.error('Ошибка парсинга:', error);
-        alert('Ошибка при обработке результата. Проверьте формат ответа.');
+        console.error('Ошибка парсинга:', error, 'Ответ:', content);
+        alert('Ошибка при обработке результата.\n\nОтвет от API: ' + content.substring(0, 200));
       }
     }
 
