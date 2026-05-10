@@ -726,6 +726,11 @@
       line-height: 1.5;
       overflow: hidden;
       color: #333;
+      outline: none;
+    }
+    .segment-description:focus {
+      outline: none;
+      border: none;
     }
     .empty-state {
       text-align: center;
@@ -1620,15 +1625,21 @@
       // Показать сгенерированные заголовки
       if (segment.titles && segment.titles.length > 0) {
         html += `<div style="margin-bottom: 20px;">
-          <h3 style="margin: 0 0 12px 0; font-size: 14px;">Заголовки</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 14px;">Заголовки</h3>
+            <button onclick="deleteAllTitles(${idx})" style="background: #ff6b6b; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Удалить все</button>
+          </div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
         `;
         segment.titles.forEach((title, tIdx) => {
           const charCount = title.length;
           html += `
             <div style="display: flex; gap: 8px; align-items: flex-start;">
-              <textarea class="segment-title-input" data-segment-idx="${idx}" data-title-idx="${tIdx}" onchange="updateSegmentTitle(${idx}, ${tIdx}, this.value)" oninput="updateCharCounter(this)" onkeyup="autoResizeSegmentTextarea(this)" style="flex: 1; min-height: 40px; padding: 8px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 13px; font-family: inherit; resize: none; overflow: hidden;">${title}</textarea>
-              <span class="char-counter" style="flex-shrink: 0; padding: 8px 12px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666; white-space: nowrap; margin-top: 4px;">${charCount} симв.</span>
+              <textarea class="segment-title-input" data-segment-idx="${idx}" data-title-idx="${tIdx}" onchange="updateSegmentTitle(${idx}, ${tIdx}, this.value)" oninput="updateCharCounter(this)" onkeyup="autoResizeSegmentTextarea(this)" style="flex: 1; min-height: 40px; padding: 8px; border: none; background: transparent; border-bottom: 1px solid #e0e0e0; border-radius: 0; font-size: 13px; font-family: inherit; resize: none; overflow: hidden;">${title}</textarea>
+              <div style="display: flex; gap: 4px; flex-shrink: 0; margin-top: 4px;">
+                <span class="char-counter" style="padding: 4px 8px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666; white-space: nowrap;">${charCount}</span>
+                <button onclick="deleteTitle(${idx}, ${tIdx})" style="background: #ff6b6b; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">×</button>
+              </div>
             </div>
           `;
         });
@@ -1638,15 +1649,21 @@
       // Показать сгенерированные открывашки
       if (segment.openings && segment.openings.length > 0) {
         html += `<div style="margin-bottom: 20px;">
-          <h3 style="margin: 0 0 12px 0; font-size: 14px;">Открывашки</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 14px;">Открывашки</h3>
+            <button onclick="deleteAllOpenings(${idx})" style="background: #ff6b6b; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Удалить все</button>
+          </div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
         `;
         segment.openings.forEach((opening, oIdx) => {
           const charCount = opening.length;
           html += `
             <div style="display: flex; gap: 8px; align-items: flex-start;">
-              <textarea class="segment-opening-input" data-segment-idx="${idx}" data-opening-idx="${oIdx}" onchange="updateSegmentOpening(${idx}, ${oIdx}, this.value)" oninput="updateCharCounter(this)" onkeyup="autoResizeSegmentTextarea(this)" style="flex: 1; min-height: 60px; padding: 8px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 13px; font-family: inherit; resize: none; overflow: hidden;">${opening}</textarea>
-              <span class="char-counter" style="flex-shrink: 0; padding: 8px 12px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666; white-space: nowrap; margin-top: 4px;">${charCount} симв.</span>
+              <textarea class="segment-opening-input" data-segment-idx="${idx}" data-opening-idx="${oIdx}" onchange="updateSegmentOpening(${idx}, ${oIdx}, this.value)" oninput="updateCharCounter(this)" onkeyup="autoResizeSegmentTextarea(this)" style="flex: 1; min-height: 60px; padding: 8px; border: none; background: transparent; border-bottom: 1px solid #e0e0e0; border-radius: 0; font-size: 13px; font-family: inherit; resize: none; overflow: hidden;">${opening}</textarea>
+              <div style="display: flex; gap: 4px; flex-shrink: 0; margin-top: 4px;">
+                <span class="char-counter" style="padding: 4px 8px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666; white-space: nowrap;">${charCount}</span>
+                <button onclick="deleteOpening(${idx}, ${oIdx})" style="background: #ff6b6b; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">×</button>
+              </div>
             </div>
           `;
         });
@@ -1659,10 +1676,34 @@
     }
 
     function updateCharCounter(textarea) {
-      const counter = textarea.nextElementSibling;
-      if (counter && counter.classList.contains('char-counter')) {
-        counter.textContent = textarea.value.length + ' симв.';
+      const counter = textarea.nextElementSibling?.querySelector('.char-counter');
+      if (counter) {
+        counter.textContent = textarea.value.length;
       }
+    }
+
+    function deleteTitle(idx, titleIdx) {
+      segments[idx].titles.splice(titleIdx, 1);
+      saveData();
+      renderSegmentDetails(idx);
+    }
+
+    function deleteAllTitles(idx) {
+      segments[idx].titles = [];
+      saveData();
+      renderSegmentDetails(idx);
+    }
+
+    function deleteOpening(idx, openingIdx) {
+      segments[idx].openings.splice(openingIdx, 1);
+      saveData();
+      renderSegmentDetails(idx);
+    }
+
+    function deleteAllOpenings(idx) {
+      segments[idx].openings = [];
+      saveData();
+      renderSegmentDetails(idx);
     }
 
     function toggleSegmentSelection(idx) {
@@ -2089,9 +2130,15 @@
 
     // Закрыть модальное окно при клике вне его
     window.onclick = function(event) {
-      const modal = document.getElementById('promptModal');
-      if (event.target == modal) {
-        closePromptModal();
+      // Закрывать любое модальное окно при клике вне его
+      if (event.target.classList.contains('modal')) {
+        if (event.target.id === 'promptModal') {
+          closePromptModal();
+        } else if (event.target.id === 'titlesModal') {
+          closeTitlesModal();
+        } else if (event.target.id === 'cardsSettingsModal') {
+          closeCardsSettings();
+        }
       }
     }
 
