@@ -1124,7 +1124,80 @@
       renderTemplateList();
     }
 
-    // Анализировать и создать сегменты
+    // API ключи (из предоставленных параметров)
+    const apiKeys = {
+      mistral: 'see-your-key-from-env',
+      cerebras: 'see-your-key-from-env',
+      gemini: 'see-your-key-from-env'
+    };
+
+    // Функция для обращения к Mistral API
+    async function callMistralAPI(prompt) {
+      const key = localStorage.getItem('mistralKey') || apiKeys.mistral;
+      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: 'mistral-small-latest',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) throw new Error(`Mistral API error: ${response.status}`);
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    // Функция для обращения к Cerebras API
+    async function callCerebrasAPI(prompt) {
+      const key = localStorage.getItem('cerebrasKey') || apiKeys.cerebras;
+      const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-70b',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) throw new Error(`Cerebras API error: ${response.status}`);
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    // Функция для обращения к Google Gemini API
+    async function callGeminiAPI(prompt) {
+      const key = localStorage.getItem('geminiKey') || apiKeys.gemini;
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2000
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    // Анализировать и создать сегменты с fallback между API
     async function analyzeAndCreateSegments() {
       if (!selectedTemplate && !document.getElementById('customPrompt').value.trim()) {
         alert('Пожалуйста, выберите шаблон или напишите свой промпт');
@@ -1137,33 +1210,40 @@
       const prompt = basePrompt.replace('N', segmentCount);
 
       const selectedData = collectSelectedData();
-      const fullPrompt = `${prompt}\n\nДанные для анализа:\n${selectedData}\n\nОтветь в формате JSON массива объектов с полями: name (название сегмента), description (описание)`;
+      const fullPrompt = `${prompt}\n\nДанные для анализа:\n${selectedData}\n\nОтветь ТОЛЬКО JSON массивом объектов с полями: name (название сегмента), description (описание). Пример: [{"name": "Сегмент 1", "description": "Описание"}, {"name": "Сегмент 2", "description": "Описание"}]`;
+
+      const apis = [
+        { name: 'Mistral', fn: callMistralAPI },
+        { name: 'Cerebras', fn: callCerebrasAPI },
+        { name: 'Gemini', fn: callGeminiAPI }
+      ];
+
+      let lastError = null;
+      let content = null;
+
+      for (const api of apis) {
+        try {
+          console.log(`Пробую ${api.name} API...`);
+          content = await api.fn(fullPrompt);
+          console.log(`${api.name} API успешно!`);
+          break;
+        } catch (error) {
+          console.log(`${api.name} API ошибка: ${error.message}`);
+          lastError = error;
+          continue;
+        }
+      }
+
+      if (!content) {
+        alert(`Ошибка при обращении ко всем API. Проверьте ключи доступа.\nПоследняя ошибка: ${lastError?.message}`);
+        return;
+      }
 
       try {
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('mistralApiKey') || 'YOUR_API_KEY'}`
-          },
-          body: JSON.stringify({
-            model: 'mistral-small',
-            messages: [{ role: 'user', content: fullPrompt }],
-            temperature: 0.7
-          })
-        });
-
-        if (!response.ok) {
-          alert('Ошибка при обращении к API Mistral. Проверьте ключ доступа.');
-          return;
-        }
-
-        const data = await response.json();
-        const content = data.choices[0].message.content;
         const jsonMatch = content.match(/\[[\s\S]*\]/);
 
         if (!jsonMatch) {
-          alert('Не удалось распарсить ответ API');
+          alert('Не удалось распарсить ответ API. Попробуйте еще раз.');
           return;
         }
 
@@ -1173,8 +1253,8 @@
         closePromptModal();
         switchTab('segments');
       } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Произошла ошибка при анализе данных');
+        console.error('Ошибка парсинга:', error);
+        alert('Ошибка при обработке результата. Проверьте формат ответа.');
       }
     }
 
@@ -1479,7 +1559,28 @@
       }
     }
 
+    // Инициализировать API ключи
+    function initializeAPIKeys() {
+      const defaultKeys = {
+        mistralKey: '1Xl3lcBIS5TTV0bkHEvmhTwnIM6AJ3VY',
+        cerebrasKey: 'csk-wn5mpv6jp5yy5phkc65xfwwt8t8rrthxrfxd4trcfttx5hck',
+        geminiKey: 'AIzaSyDemJMre4p3BFlWyiXCc9aK_XdVnOcOagk'
+      };
+
+      for (const [key, defaultValue] of Object.entries(defaultKeys)) {
+        if (!localStorage.getItem(key)) {
+          localStorage.setItem(key, defaultValue);
+        }
+      }
+
+      // Обновить глобальные ключи
+      apiKeys.mistral = localStorage.getItem('mistralKey') || defaultKeys.mistralKey;
+      apiKeys.cerebras = localStorage.getItem('cerebrasKey') || defaultKeys.cerebrasKey;
+      apiKeys.gemini = localStorage.getItem('geminiKey') || defaultKeys.geminiKey;
+    }
+
     // Инициализация
+    initializeAPIKeys();
     loadData();
     render();
   </script>
