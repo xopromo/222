@@ -2003,17 +2003,33 @@
       const generateOpenings = document.getElementById('generateOpenings').checked;
       const includeSourceData = document.getElementById('includeSourceData').checked;
 
-      let prompt = '';
+      let basePrompt = '';
       if (selectedTitleTemplate) {
         const template = titleTemplates.find(t => t.id === selectedTitleTemplate);
-        prompt = template.prompt.replace('[SEGMENT]', segment.name).replace('[DESCRIPTION]', segment.description);
+        basePrompt = template.prompt.replace('[SEGMENT]', segment.name).replace('[DESCRIPTION]', segment.description);
       } else {
-        prompt = document.getElementById('customTitlePrompt').value || titleTemplates[0].prompt.replace('[SEGMENT]', segment.name).replace('[DESCRIPTION]', segment.description);
+        basePrompt = document.getElementById('customTitlePrompt').value || titleTemplates[0].prompt.replace('[SEGMENT]', segment.name).replace('[DESCRIPTION]', segment.description);
       }
 
-      // Добавить исходные данные в начало промпта если они включены
+      // Исходные данные ВСЕГДА добавляются в промпт для более точной генерации
+      let sourceDataSection = '';
+      if (segment.sourceData) {
+        sourceDataSection = `ИСХОДНЫЕ ДАННЫЕ (документы/информация, на основе которых создан сегмент):\n${segment.sourceData}\n\n`;
+      }
+
+      // Добавить опцию "Приоритет исходных данных" если нужно подчеркнуть важность
+      let importanceNote = '';
       if (includeSourceData && segment.sourceData) {
-        prompt = `ВАЖНО! Учти в первую очередь эти исходные данные сегмента:\n${segment.sourceData}\n\n${prompt}`;
+        importanceNote = 'ВАЖНО! Учти ВСЕ исходные данные в первую очередь при генерации.\n\n';
+      }
+
+      let prompt = '';
+      if (generateOpenings) {
+        // Если генерируем открывашки - добавляем дополнительный контекст
+        prompt = `${importanceNote}${sourceDataSection}${basePrompt}\n\nДополнительно: При генерации учти специфику и особенности целевой аудитории из исходных данных.`;
+      } else {
+        // Без открывашек - всё равно передаём исходные данные
+        prompt = `${importanceNote}${sourceDataSection}${basePrompt}`;
       }
 
       // Добавить к промпту информацию о количестве заголовков
