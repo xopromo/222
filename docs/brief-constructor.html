@@ -1038,6 +1038,28 @@
     </div>
   </div>
 
+  <div class="modal" id="promptEditorModal">
+    <div class="modal-content">
+      <div class="modal-header">Редактировать промпт</div>
+
+      <div class="modal-section">
+        <label class="modal-label">Текущий промпт:</label>
+        <textarea id="promptEditorText" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; min-height: 150px; font-family: 'Courier New', monospace;"></textarea>
+      </div>
+
+      <div class="modal-section" style="font-size: 12px; color: #999;">
+        <p><strong>Доступные переменные:</strong></p>
+        <p>[SEGMENT] — имя целевой аудитории</p>
+        <p>[DESCRIPTION] — описание целевой аудитории</p>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closePromptEditor()">Отмена</button>
+        <button class="btn-primary" onclick="savePromptChanges()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="textsModal">
     <div class="modal-content">
       <div class="modal-header">Сгенерировать тексты (открывашки)</div>
@@ -1077,13 +1099,14 @@
     let selectedTemplate = null;
     let selectedItemsForAnalysis = null;
     let titleTemplates = [
-      { id: 1, name: 'Классические заголовки', prompt: 'Создай N привлекательных заголовков для рекламной кампании, ориентированных на аудиторию: [SEGMENT]. Заголовки должны быть краткими, убедительными и вызывать интерес.' },
-      { id: 2, name: 'Заголовки с преимуществами', prompt: 'Напиши N заголовков, которые подчеркивают основные преимущества и выгоды для аудитории [SEGMENT]. Заголовки должны четко описывать ценность предложения.' },
-      { id: 3, name: 'Заголовки с вопросом', prompt: 'Создай N привлекающих внимание заголовков в форме вопросов для аудитории [SEGMENT]. Вопросы должны быть актуальными и вызывать желание узнать ответ.' }
+      { id: 1, name: 'Классические заголовки', prompt: 'Аудитория: [SEGMENT]\nОписание: [DESCRIPTION]\n\nСоздай N привлекательных заголовков для рекламной кампании, ориентированных на эту аудиторию. Заголовки должны быть краткими, убедительными, вызывать интерес и соответствовать описанию целевой аудитории.' },
+      { id: 2, name: 'Заголовки с преимуществами', prompt: 'Аудитория: [SEGMENT]\nОписание: [DESCRIPTION]\n\nНапиши N заголовков, которые подчеркивают основные преимущества и выгоды для этой аудитории. Заголовки должны четко описывать ценность предложения и решать проблемы, актуальные для целевой аудитории.' },
+      { id: 3, name: 'Заголовки с вопросом', prompt: 'Аудитория: [SEGMENT]\nОписание: [DESCRIPTION]\n\nСоздай N привлекающих внимание заголовков в форме вопросов для этой аудитории. Вопросы должны быть актуальными для описанной целевой аудитории, соответствовать их проблемам и вызывать желание узнать ответ.' }
     ];
     let selectedTitleTemplate = null;
     let currentGeneratingSegmentIdx = null;
     let currentGeneratingTextSegmentIdx = null;
+    let currentEditingTemplateId = null;
 
     // Переключение вкладок
     function switchTab(tabName) {
@@ -1115,12 +1138,16 @@
       const saved = localStorage.getItem('constructorItems');
       const savedId = localStorage.getItem('constructorItemId');
       const savedSegments = localStorage.getItem('segments');
+      const savedTemplates = localStorage.getItem('titleTemplates');
       if (saved) {
         items = JSON.parse(saved);
         itemId = parseInt(savedId) || 0;
       }
       if (savedSegments) {
         segments = JSON.parse(savedSegments);
+      }
+      if (savedTemplates) {
+        titleTemplates = JSON.parse(savedTemplates);
       }
     }
 
@@ -1929,8 +1956,11 @@
     function renderTitleTemplateList() {
       const list = document.getElementById('titleTemplateList');
       list.innerHTML = titleTemplates.map(template => `
-        <div class="template-item ${selectedTitleTemplate === template.id ? 'selected' : ''}" onclick="selectTitleTemplate(${template.id})">
-          ${template.name}
+        <div class="template-item ${selectedTitleTemplate === template.id ? 'selected' : ''}" style="display: flex; justify-content: space-between; align-items: center;">
+          <div onclick="selectTitleTemplate(${template.id})" style="flex: 1; cursor: pointer;">
+            ${template.name}
+          </div>
+          <a onclick="editTemplatePrompt(${template.id}); event.stopPropagation();" style="color: #007bff; font-size: 12px; cursor: pointer; text-decoration: none; white-space: nowrap; margin-left: 8px;">Промпт ↗</a>
         </div>
       `).join('');
     }
@@ -1938,6 +1968,32 @@
     function selectTitleTemplate(templateId) {
       selectedTitleTemplate = selectedTitleTemplate === templateId ? null : templateId;
       renderTitleTemplateList();
+    }
+
+    function editTemplatePrompt(templateId) {
+      const template = titleTemplates.find(t => t.id === templateId);
+      if (template) {
+        currentEditingTemplateId = templateId;
+        document.getElementById('promptEditorText').value = template.prompt;
+        document.getElementById('promptEditorModal').classList.add('active');
+      }
+    }
+
+    function closePromptEditor() {
+      document.getElementById('promptEditorModal').classList.remove('active');
+      currentEditingTemplateId = null;
+    }
+
+    function savePromptChanges() {
+      if (currentEditingTemplateId) {
+        const template = titleTemplates.find(t => t.id === currentEditingTemplateId);
+        if (template) {
+          template.prompt = document.getElementById('promptEditorText').value;
+          localStorage.setItem('titleTemplates', JSON.stringify(titleTemplates));
+          closePromptEditor();
+          renderTitleTemplateList();
+        }
+      }
     }
 
     async function generateTitles() {
@@ -1950,9 +2006,9 @@
       let prompt = '';
       if (selectedTitleTemplate) {
         const template = titleTemplates.find(t => t.id === selectedTitleTemplate);
-        prompt = template.prompt.replace('[SEGMENT]', segment.name);
+        prompt = template.prompt.replace('[SEGMENT]', segment.name).replace('[DESCRIPTION]', segment.description);
       } else {
-        prompt = document.getElementById('customTitlePrompt').value || titleTemplates[0].prompt.replace('[SEGMENT]', segment.name);
+        prompt = document.getElementById('customTitlePrompt').value || titleTemplates[0].prompt.replace('[SEGMENT]', segment.name).replace('[DESCRIPTION]', segment.description);
       }
 
       // Добавить исходные данные в начало промпта если они включены
@@ -2383,6 +2439,8 @@
           closeTitlesModal();
         } else if (event.target.id === 'textsModal') {
           closeTextsModal();
+        } else if (event.target.id === 'promptEditorModal') {
+          closePromptEditor();
         } else if (event.target.id === 'cardsSettingsModal') {
           closeCardsSettings();
         }
