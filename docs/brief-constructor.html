@@ -2347,6 +2347,10 @@
 
     // Drag and Drop функции
     function startDrag(itemId, e) {
+      // Не начинаем drag, если клик на текстовом поле - позволяет выделять текст
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+        return;
+      }
       draggedItem = itemId;
       const item = document.querySelector(`[data-item-id="${itemId}"]`);
       item.classList.add('dragging');
