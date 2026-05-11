@@ -716,11 +716,8 @@
       text-align: left;
       border-radius: 6px;
       padding: 12px;
-      position: absolute;
-      z-index: 1000;
-      bottom: 125%;
-      left: 50%;
-      margin-left: -125px;
+      position: fixed;
+      z-index: 10000;
       opacity: 0;
       transition: opacity 0.3s;
       font-size: 12px;
@@ -728,13 +725,11 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       white-space: normal;
       word-break: break-word;
+      pointer-events: none;
     }
     .segment-rating-tooltip::after {
       content: "";
       position: absolute;
-      top: 100%;
-      left: 50%;
-      margin-left: -5px;
       border-width: 5px;
       border-style: solid;
       border-color: #333 transparent transparent transparent;
@@ -746,6 +741,11 @@
     .segment-rating-value-details:hover > div {
       visibility: visible;
       opacity: 1;
+    }
+    .segment-rating-tooltip-details {
+      position: fixed !important;
+      z-index: 10000 !important;
+      pointer-events: none;
     }
     .segment-content {
       padding: 12px;
@@ -1745,7 +1745,7 @@
             Рейтинг:
             <span class="segment-rating-value-details" style="font-weight: 600; color: #28a745; cursor: help; position: relative; display: inline-block;">
               ${segment.rating || 5}/10
-              <div style="visibility: hidden; width: 250px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 12px; position: absolute; z-index: 1000; bottom: 125%; left: 50%; margin-left: -125px; opacity: 0; transition: opacity 0.3s; font-size: 12px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: normal; word-break: break-word; pointer-events: none;">
+              <div style="visibility: hidden; width: 250px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 12px; position: fixed; z-index: 10000; opacity: 0; transition: opacity 0.3s; font-size: 12px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: normal; word-break: break-word; pointer-events: none;" class="segment-rating-tooltip-details">
                 ${(segment.ratingExplanation || 'Сегмент четко определен').split('\n• ').join('<br>• ')}
               </div>
             </span>
@@ -1814,6 +1814,25 @@
       container.innerHTML = html;
       // Авторезайз всех текстареа
       document.querySelectorAll('.segment-title-input, .segment-opening-input').forEach(ta => autoResizeSegmentTextarea(ta));
+
+      // Добавить обработчики для позиционирования tooltip
+      const ratingElement = document.querySelector('.segment-rating-value-details');
+      const tooltip = document.querySelector('.segment-rating-tooltip-details');
+
+      if (ratingElement && tooltip) {
+        ratingElement.addEventListener('mouseenter', () => {
+          const rect = ratingElement.getBoundingClientRect();
+          tooltip.style.top = (rect.top - 140) + 'px';
+          tooltip.style.left = (rect.left + rect.width / 2 - 125) + 'px';
+          tooltip.style.visibility = 'visible';
+          tooltip.style.opacity = '1';
+        });
+
+        ratingElement.addEventListener('mouseleave', () => {
+          tooltip.style.visibility = 'hidden';
+          tooltip.style.opacity = '0';
+        });
+      }
     }
 
     function updateCharCounter(textarea) {
