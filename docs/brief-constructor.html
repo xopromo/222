@@ -1292,11 +1292,20 @@
 
     function generateCreatives(segment) {
       const creatives = [];
-      const getImageUrl = () => {
-        if (items.length > 0 && items[0].type === 'images' && items[0].images.length > 0) {
-          return items[0].images[0];
+
+      // Собрать все доступные картинки
+      const allImages = [];
+      items.forEach(item => {
+        if (item.type === 'images' && item.images.length > 0) {
+          allImages.push(...item.images);
         }
-        return 'https://via.placeholder.com/300x200?text=Креатив';
+      });
+
+      const getRandomImage = () => {
+        if (allImages.length === 0) {
+          return 'https://via.placeholder.com/300x200?text=Креатив';
+        }
+        return allImages[Math.floor(Math.random() * allImages.length)];
       };
 
       if (segment.titles && segment.titles.length > 0) {
@@ -1304,7 +1313,7 @@
           creatives.push({
             title: title,
             opening: segment.openings && segment.openings[idx] ? segment.openings[idx] : '',
-            image: getImageUrl(),
+            image: getRandomImage(),
             number: idx + 1
           });
         });
