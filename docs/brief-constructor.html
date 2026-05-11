@@ -1651,13 +1651,22 @@
 
         console.log('Распарсено сегментов:', newSegments);
         // Рассчитать рейтинг для каждого нового сегмента и добавить в начало
-        newSegments.forEach(segment => {
+        // Также генерировать расширенные объяснения через AI
+        for (const segment of newSegments) {
           const ratingInfo = calculateSegmentRating(segment.name, segment.description);
           segment.rating = ratingInfo.rating;
           segment.ratingExplanation = ratingInfo.explanation;
           // Сохранить исходные данные, на основе которых был создан сегмент
           segment.sourceData = collectSelectedData();
-        });
+
+          // Генерировать расширенное объяснение через AI
+          try {
+            segment.aiExplanation = await generateSegmentAIExplanation(segment.name, segment.description, segment.sourceData);
+          } catch (error) {
+            console.error('Ошибка при генерации объяснения:', error);
+            segment.aiExplanation = segment.ratingExplanation; // Fallback на обычное объяснение
+          }
+        }
         segments = newSegments.concat(segments);
         saveData();
         closePromptModal();
@@ -1741,15 +1750,18 @@
       let html = `
         <h2>${segment.name}</h2>
         <div style="margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
-          <div style="font-size: 13px; color: #666; margin-bottom: 8px;">
+          <div style="font-size: 13px; color: #666; margin-bottom: 12px;">
             Рейтинг:
             <span class="segment-rating-value-details" style="font-weight: 600; color: #28a745; cursor: help; position: relative; display: inline-block;">
               ${segment.rating || 5}/10
               <div style="visibility: hidden; width: 250px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 12px; position: fixed; z-index: 10000; opacity: 0; transition: opacity 0.3s; font-size: 12px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: normal; word-break: break-word; pointer-events: none;" class="segment-rating-tooltip-details">
-                ${(segment.ratingExplanation || 'Сегмент четко определен').split('\n• ').join('<br>• ')}
+                ${(segment.aiExplanation || segment.ratingExplanation || 'Сегмент четко определен')}
               </div>
             </span>
           </div>
+          ${segment.aiExplanation ? `<div style="font-size: 13px; color: #444; line-height: 1.6;">
+            ${segment.aiExplanation}
+          </div>` : ''}
         </div>
       `;
 
@@ -1909,6 +1921,39 @@
       segments.splice(idx, 1);
       saveData();
       renderSegments();
+    }
+
+    async function generateSegmentAIExplanation(segmentName, segmentDescription, sourceData) {
+      const prompt = `Целевой сегмент: "${segmentName}"
+Описание: ${segmentDescription}
+
+Исходные данные, на основе которых создан сегмент:
+${sourceData}
+
+Сгенерируй уникальное, детальное объяснение (2-3 абзаца):
+1. Почему этот сегмент имеет высокий потенциал для покупки на основе исходных данных
+2. Какие конкретные боли/интересы этого сегмента видны из данных
+3. Почему они будут заинтересованы в продукте/услуге на основе их характеристик
+
+Ответ должен быть практичным, конкретным и ориентироваться на исходные данные. БЕЗ лишних вводных фраз, только текст объяснения!`;
+
+      const apis = [
+        { name: 'Mistral', fn: callMistralAPI },
+        { name: 'Cerebras', fn: callCerebrasAPI },
+        { name: 'Gemini', fn: callGeminiAPI }
+      ];
+
+      for (const api of apis) {
+        try {
+          const response = await api.fn(prompt);
+          return response.trim();
+        } catch (error) {
+          console.log(`${api.name} API ошибка при генерации объяснения: ${error.message}`);
+          continue;
+        }
+      }
+
+      throw new Error('Не удалось получить объяснение от всех API');
     }
 
     function calculateSegmentRating(name, description) {
