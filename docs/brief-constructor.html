@@ -931,9 +931,26 @@
       <!-- Вкладка "Креативы" -->
       <div class="tab-page" id="tab-creatives">
         <div class="right-panel">
-          <h1>Креативы</h1>
-          <div class="empty-state">
-            <p>Раздел в разработке</p>
+          <h1>Превью креативов</h1>
+
+          <div style="margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+            <label class="modal-label">Выберите способ размещения:</label>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 10px;" id="layoutButtons">
+              <!-- Кнопки будут добавлены JavaScript'ом -->
+            </div>
+          </div>
+
+          <div style="margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+            <label class="modal-label">Сегмент для превью:</label>
+            <select id="segmentSelect" onchange="updateCreativesPreview()" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+              <option value="">Выберите сегмент...</option>
+            </select>
+          </div>
+
+          <div id="creativesContainer" style="border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; background: white; min-height: 300px;">
+            <div class="empty-state">
+              <p>Выберите сегмент и способ размещения для просмотра креативов</p>
+            </div>
           </div>
         </div>
       </div>
@@ -1132,6 +1149,187 @@
       if (tabName === 'segments') {
         renderSegments();
       }
+
+      if (tabName === 'creatives') {
+        initCreativesTab();
+      }
+    }
+
+    // Инициализация вкладки Креативы
+    function initCreativesTab() {
+      const layouts = [
+        { id: 'grid1', name: '1 колонка', cols: 1 },
+        { id: 'grid2', name: '2 колонки', cols: 2 },
+        { id: 'grid3', name: '3 колонки', cols: 3 },
+        { id: 'grid4', name: '4 колонки', cols: 4 },
+        { id: 'carousel', name: 'Карусель', type: 'carousel' },
+        { id: 'list', name: 'Список', type: 'list' },
+        { id: 'masonry', name: 'Кладка', type: 'masonry' },
+        { id: 'compact', name: 'Компактный', type: 'compact' },
+        { id: 'large2', name: 'Большие 2', cols: 2 },
+        { id: 'board', name: 'Доска', type: 'board' }
+      ];
+
+      // Заполнить кнопки способов размещения
+      const buttonsContainer = document.getElementById('layoutButtons');
+      buttonsContainer.innerHTML = layouts.map(layout => `
+        <button onclick="setCreativesLayout('${layout.id}')" style="padding: 8px 12px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;" id="btn-${layout.id}">
+          ${layout.name}
+        </button>
+      `).join('');
+
+      // Заполнить селект сегментов
+      const selectElement = document.getElementById('segmentSelect');
+      selectElement.innerHTML = '<option value="">Выберите сегмент...</option>' +
+        segments.map((seg, idx) => `<option value="${idx}">${seg.name}</option>`).join('');
+
+      // Выбрать первый способ по умолчанию
+      currentCreativesLayout = 'grid2';
+      document.getElementById('btn-grid2').style.background = '#007bff';
+      document.getElementById('btn-grid2').style.color = 'white';
+    }
+
+    let currentCreativesLayout = 'grid2';
+
+    function setCreativesLayout(layoutId) {
+      currentCreativesLayout = layoutId;
+
+      // Обновить стили кнопок
+      document.querySelectorAll('#layoutButtons button').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = 'black';
+      });
+      document.getElementById('btn-' + layoutId).style.background = '#007bff';
+      document.getElementById('btn-' + layoutId).style.color = 'white';
+
+      updateCreativesPreview();
+    }
+
+    function updateCreativesPreview() {
+      const segmentIdx = document.getElementById('segmentSelect').value;
+      if (segmentIdx === '') {
+        document.getElementById('creativesContainer').innerHTML = `
+          <div class="empty-state">
+            <p>Выберите сегмент для просмотра креативов</p>
+          </div>
+        `;
+        return;
+      }
+
+      const segment = segments[parseInt(segmentIdx)];
+      if (!segment || !segment.titles || segment.titles.length === 0) {
+        document.getElementById('creativesContainer').innerHTML = `
+          <div class="empty-state">
+            <p>Сначала сгенерируйте заголовки для этого сегмента</p>
+          </div>
+        `;
+        return;
+      }
+
+      renderCreativesLayout(segment);
+    }
+
+    function renderCreativesLayout(segment) {
+      const container = document.getElementById('creativesContainer');
+      const creatives = generateCreatives(segment);
+
+      let html = '';
+
+      switch (currentCreativesLayout) {
+        case 'grid1':
+          html = `<div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c)).join('')}
+          </div>`;
+          break;
+        case 'grid2':
+          html = `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c)).join('')}
+          </div>`;
+          break;
+        case 'grid3':
+          html = `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c)).join('')}
+          </div>`;
+          break;
+        case 'grid4':
+          html = `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+            ${creatives.map(c => renderCreativeCard(c, 'small')).join('')}
+          </div>`;
+          break;
+        case 'carousel':
+          html = `<div style="display: flex; gap: 20px; overflow-x: auto; padding-bottom: 10px;">
+            ${creatives.map(c => renderCreativeCard(c, 'carousel')).join('')}
+          </div>`;
+          break;
+        case 'list':
+          html = `<div style="display: flex; flex-direction: column; gap: 12px;">
+            ${creatives.map(c => renderCreativeCard(c, 'list')).join('')}
+          </div>`;
+          break;
+        case 'compact':
+          html = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">
+            ${creatives.map(c => renderCreativeCard(c, 'compact')).join('')}
+          </div>`;
+          break;
+        case 'large2':
+          html = `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px;">
+            ${creatives.map(c => renderCreativeCard(c, 'large')).join('')}
+          </div>`;
+          break;
+        case 'board':
+          html = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c, 'board')).join('')}
+          </div>`;
+          break;
+        default:
+          html = `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c)).join('')}
+          </div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function generateCreatives(segment) {
+      const creatives = [];
+      const getImageUrl = () => {
+        if (items.length > 0 && items[0].type === 'images' && items[0].images.length > 0) {
+          return items[0].images[0];
+        }
+        return 'https://via.placeholder.com/300x200?text=Креатив';
+      };
+
+      if (segment.titles && segment.titles.length > 0) {
+        segment.titles.forEach((title, idx) => {
+          creatives.push({
+            title: title,
+            opening: segment.openings && segment.openings[idx] ? segment.openings[idx] : '',
+            image: getImageUrl(),
+            number: idx + 1
+          });
+        });
+      }
+
+      return creatives;
+    }
+
+    function renderCreativeCard(creative, style = 'default') {
+      const aspectRatio = style === 'carousel' ? '300x200' : style === 'compact' ? '150x100' : style === 'list' ? '400x150' : '300x200';
+      const cardWidth = style === 'carousel' ? 'min-width: 300px;' : '';
+      const imageHeight = style === 'compact' ? '100px' : style === 'carousel' ? '200px' : style === 'list' ? '150px' : style === 'large' ? '350px' : '200px';
+      const fontSize = style === 'compact' ? '12px' : style === 'list' ? '13px' : '14px';
+      const padding = style === 'compact' ? '8px' : style === 'list' ? '12px' : '16px';
+      const layout = style === 'list' ? 'flex; gap: 12px; align-items: flex-start;' : 'flex-direction: column;';
+
+      return `
+        <div style="border: 1px solid #ddd; border-radius: 6px; overflow: hidden; background: white; ${cardWidth} display: flex; ${layout}">
+          <img src="${creative.image}" alt="Креатив" style="width: ${style === 'list' ? '150px' : '100%'}; height: ${imageHeight}; object-fit: cover;">
+          <div style="padding: ${padding}; flex: 1;">
+            <div style="font-weight: 600; font-size: ${fontSize}; margin-bottom: 6px; line-height: 1.3;">${creative.title}</div>
+            ${creative.opening ? `<div style="font-size: ${parseInt(fontSize) - 1}px; color: #666; line-height: 1.4;">${creative.opening.substring(0, 60)}...</div>` : ''}
+          </div>
+        </div>
+      `;
     }
 
     // Сохранить данные в localStorage
