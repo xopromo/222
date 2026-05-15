@@ -9,10 +9,15 @@ Integrates with video-use project to perform AI-powered video editing tasks:
 """
 
 import json
+import subprocess
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import anthropic
+import librosa
+import numpy as np
 
 
 @dataclass
@@ -32,6 +37,195 @@ class VideoProcessor:
         """Initialize the video processor with Anthropic client."""
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = "claude-haiku-4-5-20251001"
+
+    def process_video_file(self, video_path: str, task_description: str = "Remove filler words and optimize pacing") -> dict[str, Any]:
+        """
+        Full pipeline: video file → analysis → edit plan.
+
+        Steps:
+        1. Extract video info
+        2. Extract audio
+        3. Detect silence/speech
+        4. Analyze with Haiku
+        5. Generate edit script
+        """
+        video_path = Path(video_path)
+        if not video_path.exists():
+            return {"error": f"Video file not found: {video_path}"}
+
+        print(f"📹 Processing video: {video_path.name}")
+
+        # Get video info
+        info = self.get_video_info(str(video_path))
+        print(f"   Duration: {info['duration']:.1f}s, FPS: {info['fps']}, Size: {info['resolution']}")
+
+        # Extract audio
+        audio_path = self._extract_audio(str(video_path))
+        print(f"   Audio extracted to: {audio_path}")
+
+        # Detect speech/silence
+        segments = self._detect_speech_segments(audio_path)
+        print(f"   Found {len(segments)} speech segments")
+
+        # Build transcript-like description
+        transcript_description = self._build_transcript_from_segments(segments)
+
+        # Analyze with Haiku
+        analysis = self.analyze_video(transcript_description)
+        print(f"   Analysis complete: {len(analysis.get('fillers', []))} fillers, {len(analysis.get('pauses', []))} pauses")
+
+        # Generate edit plan
+        task = VideoEditTask(
+            video_path=str(video_path),
+            task_type="remove_fillers",
+            description=task_description,
+            parameters={"analysis": analysis}
+        )
+        edit_plan = self.generate_edit_plan(task)
+
+        # Cleanup
+        Path(audio_path).unlink(missing_ok=True)
+
+        return {
+            "success": True,
+            "video": {
+                "path": str(video_path),
+                "duration": info["duration"],
+                "fps": info["fps"],
+                "resolution": info["resolution"],
+            },
+            "analysis": analysis,
+            "segments": segments,
+            "edit_plan": edit_plan,
+            "ready_for_editing": True,
+        }
+
+    def get_video_info(self, video_path: str) -> dict[str, Any]:
+        """Get video information: duration, fps, resolution."""
+        try:
+            cmd = [
+                "ffprobe",
+                "-v", "error",
+                "-show_entries", "format=duration,size,bit_rate:stream=width,height,r_frame_rate",
+                "-of", "json",
+                video_path
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+
+            if result.returncode != 0:
+                return {"error": f"ffprobe failed: {result.stderr}"}
+
+            data = json.loads(result.stdout)
+            fmt = data.get("format", {})
+            stream = data.get("streams", [{}])[0]
+
+            duration = float(fmt.get("duration", 0))
+            width = stream.get("width", 0)
+            height = stream.get("height", 0)
+            fps_str = stream.get("r_frame_rate", "30/1")
+            fps_parts = fps_str.split("/")
+            fps = float(fps_parts[0]) / float(fps_parts[1]) if len(fps_parts) == 2 else 30.0
+
+            return {
+                "duration": duration,
+                "fps": fps,
+                "resolution": (width, height),
+                "format": Path(video_path).suffix,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _extract_audio(self, video_path: str) -> str:
+        """Extract audio from video file using ffmpeg."""
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            audio_path = tmp.name
+
+        try:
+            cmd = [
+                "ffmpeg",
+                "-i", video_path,
+                "-q:a", "9",
+                "-n",  # Don't overwrite
+                audio_path
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+
+            if result.returncode == 0:
+                return audio_path
+            else:
+                print(f"Error extracting audio: {result.stderr}")
+                return ""
+        except Exception as e:
+            print(f"Error extracting audio: {e}")
+            return ""
+
+    def _detect_speech_segments(self, audio_path: str) -> list[dict[str, Any]]:
+        """Detect speech vs silence segments using librosa."""
+        try:
+            y, sr = librosa.load(audio_path, sr=None)
+
+            # Detect energy levels
+            S = librosa.feature.melspectrogram(y=y, sr=sr)
+            S_db = librosa.power_to_db(S, ref=np.max)
+            energy = np.mean(S_db, axis=0)
+
+            # Threshold for silence
+            threshold = np.median(energy) - 10
+            is_speech = energy > threshold
+
+            # Find segments
+            segments = []
+            segment_start = None
+
+            for i, is_speaking in enumerate(is_speech):
+                time = librosa.frames_to_time(i, sr=sr)
+
+                if is_speaking and segment_start is None:
+                    segment_start = time
+                elif not is_speaking and segment_start is not None:
+                    segments.append({
+                        "start": round(segment_start, 2),
+                        "end": round(time, 2),
+                        "duration": round(time - segment_start, 2),
+                        "type": "speech"
+                    })
+                    segment_start = None
+
+            # Handle last segment
+            if segment_start is not None:
+                end_time = len(y) / sr
+                segments.append({
+                    "start": round(segment_start, 2),
+                    "end": round(end_time, 2),
+                    "duration": round(end_time - segment_start, 2),
+                    "type": "speech"
+                })
+
+            return segments[:20]  # Limit to 20 segments for API
+        except Exception as e:
+            print(f"Error detecting speech: {e}")
+            return []
+
+    def _build_transcript_from_segments(self, segments: list[dict[str, Any]]) -> str:
+        """Build a descriptive transcript from detected segments."""
+        if not segments:
+            return "No speech detected in video"
+
+        description = f"Video with {len(segments)} speech segments:\n"
+        for i, seg in enumerate(segments, 1):
+            duration = seg["duration"]
+            description += f"Segment {i}: {seg['start']:.1f}s - {seg['end']:.1f}s ({duration:.1f}s)\n"
+
+        # Add pauses between segments
+        description += "\nDetected pauses:\n"
+        for i in range(len(segments) - 1):
+            pause_start = segments[i]["end"]
+            pause_end = segments[i + 1]["start"]
+            pause_duration = pause_end - pause_start
+            if pause_duration > 0.5:
+                description += f"Pause at {pause_start:.1f}s (duration: {pause_duration:.1f}s)\n"
+
+        return description
 
     def analyze_video(self, transcript: str) -> dict[str, Any]:
         """
