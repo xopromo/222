@@ -15,13 +15,34 @@ function App() {
   const [transcript, setTranscript] = useState(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
+  const [progressInfo, setProgressInfo] = useState({ stage: '', elapsed: 0, estimated: 0 });
   const { addToHistory, history, clearHistory } = useHistory();
+  const startTimeRef = useRef(null);
+  const stageTimingsRef = useRef({});
 
   useEffect(() => {
     console.log('🎙️ Transcribe App v1.1.0 - Real Whisper in Browser');
     console.log('📅 Last updated: 2026-05-16');
     console.log('✨ Features: Real Whisper transcription, All model sizes (tiny→large), Offline processing');
   }, []);
+
+  // Обновляем прогноз времени каждую секунду
+  useEffect(() => {
+    if (!isProcessing || !startTimeRef.current) return;
+
+    const timer = setInterval(() => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const estimated = progress > 0 ? Math.round((elapsed / progress) * 100) : 0;
+
+      setProgressInfo(prev => ({
+        ...prev,
+        elapsed: Math.round(elapsed),
+        estimated: Math.max(estimated, 0)
+      }));
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [isProcessing, progress]);
 
   const MODELS = {
     tiny: { size: '39MB', speed: 'Очень быстро', accuracy: 'Низкая', url: 'https://huggingface.co/ggerganov/whisper.cpp/releases/download/v1.0/ggml-tiny.bin' },
@@ -76,30 +97,32 @@ function App() {
       return;
     }
 
+    startTimeRef.current = Date.now();
     setIsProcessing(true);
     setProgress(0);
     setError(null);
+    stageTimingsRef.current = {};
 
     try {
+      // Шаг 1: Загрузка модели
+      setProgressInfo({ stage: '📥 Загрузка модели Whisper...', elapsed: 0, estimated: 0 });
       setProgress(5);
-      setProgress(10);
 
-      // Шаг 1: Инициализируем Whisper модель
       const modelName = `Xenova/whisper-${selectedModel}`;
-      setProgress(15);
-
       const transcriber = await pipeline('automatic-speech-recognition', modelName);
-      setProgress(40);
+      setProgress(35);
 
-      // Шаг 2: Извлекаем аудио из видео
+      // Шаг 2: Извлечение аудио
+      setProgressInfo({ stage: '🎵 Извлечение аудио из видео...', elapsed: 0, estimated: 0 });
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const arrayBuffer = await videoFile.arrayBuffer();
 
       try {
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        setProgress(60);
+        setProgress(50);
 
         // Конвертируем в моно PCM для Whisper
+        setProgressInfo({ stage: '🔧 Подготовка аудиоформата...', elapsed: 0, estimated: 0 });
         const offlineContext = new OfflineAudioContext(1, audioBuffer.length, audioBuffer.sampleRate);
         const source = offlineContext.createBufferSource();
         source.buffer = audioBuffer;
@@ -107,9 +130,10 @@ function App() {
         source.start(0);
 
         const monoAudioBuffer = await offlineContext.startRendering();
-        setProgress(75);
+        setProgress(65);
 
-        // Шаг 3: Запускаем транскрибацию с реальным Whisper
+        // Шаг 3: Транскрибация
+        setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
         const result = await transcriber(monoAudioBuffer);
         setProgress(95);
 
@@ -123,6 +147,7 @@ function App() {
         };
 
         setProgress(100);
+        setProgressInfo({ stage: '✅ Готово!', elapsed: Math.round((Date.now() - startTimeRef.current) / 1000), estimated: 0 });
         setTranscript(transcript);
 
         // Добавляем в историю
@@ -190,10 +215,17 @@ function App() {
             {/* Progress bar */}
             {isProcessing && (
               <div className="progress-container">
+                <div className="progress-stage">{progressInfo.stage}</div>
                 <div className="progress-bar">
                   <div className="progress-fill" style={{ width: `${progress}%` }}></div>
                 </div>
-                <p className="progress-text">Обработка: {progress}%</p>
+                <div className="progress-stats">
+                  <span className="progress-percent">{progress}%</span>
+                  <span className="progress-time">
+                    ⏱️ Прошло: {progressInfo.elapsed}с
+                    {progressInfo.estimated > 0 && ` | Осталось: ~${Math.max(0, progressInfo.estimated - progressInfo.elapsed)}с`}
+                  </span>
+                </div>
               </div>
             )}
 
