@@ -161,10 +161,29 @@ function App() {
 
       setProgress(65);
 
+      // Конвертируем AudioBuffer в Float32Array для Whisper
+      setProgressInfo({ stage: '🔧 Подготовка для Whisper...', elapsed: 0, estimated: 0 });
+      const audioData = audioBuffer.getChannelData(0); // Берём первый канал (моно)
+
+      // Если стерео, смешиваем в моно
+      let float32Data = audioData;
+      if (audioBuffer.numberOfChannels > 1) {
+        float32Data = new Float32Array(audioBuffer.length);
+        for (let i = 0; i < audioBuffer.length; i++) {
+          let sum = 0;
+          for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+            sum += audioBuffer.getChannelData(ch)[i];
+          }
+          float32Data[i] = sum / audioBuffer.numberOfChannels;
+        }
+      }
+
+      setProgress(70);
+
       // Шаг 3: Транскрибация
       setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
-      const result = await transcriber(audioBuffer);
+      const result = await transcriber(float32Data);
       setProgress(95);
 
       // Формируем результат
