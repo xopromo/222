@@ -294,14 +294,13 @@ function App() {
         }
         setProgress(95);
       } else {
-        // Для больших моделей используем чанки
-        const modelSizes = { base: 30, small: 60, medium: 60, large: 60 };
+        // Для больших моделей используем чанки без перекрытия — перекрытие вызывало повторения
+        const modelSizes = { base: 30, small: 30, medium: 30, large: 30 };
         const chunkDuration = modelSizes[selectedModel] || 30;
         const chunkLength = chunkDuration * 16000;
-        const overlapLength = 5 * 16000;
         const chunks = [];
 
-        for (let i = 0; i < audioData.length; i += (chunkLength - overlapLength)) {
+        for (let i = 0; i < audioData.length; i += chunkLength) {
           const chunkEnd = Math.min(i + chunkLength, audioData.length);
           chunks.push({
             data: audioData.slice(i, chunkEnd),
@@ -329,12 +328,7 @@ function App() {
           console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
           const result = await transcriber(chunks[i].data);
 
-          let textToAdd = result.text || '';
-          if (i > 0 && textToAdd.length > 0) {
-            const words = textToAdd.split(' ');
-            textToAdd = words.slice(Math.max(1, Math.floor(words.length / 6))).join(' ');
-          }
-
+          const textToAdd = (result.text || '').trim();
           fullText += (fullText && textToAdd ? ' ' : '') + textToAdd;
 
           if (result.chunks) {
