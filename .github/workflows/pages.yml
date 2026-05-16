@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/vk-ads-service-7PmJ7
+      - claude/new-task-fBlY1
   workflow_dispatch:
 
 permissions:
