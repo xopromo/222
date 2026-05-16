@@ -272,66 +272,79 @@ function App() {
       // Шаг 3: Транскрибация
       setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
-      // Для больших моделей используем более длинные чанки (60 сек вместо 30)
-      // Это снижает нагрузку на память и количество итераций
-      const modelSizes = { tiny: 30, base: 30, small: 60, medium: 60, large: 60 };
-      const chunkDuration = modelSizes[selectedModel] || 30;
-      const chunkLength = chunkDuration * 16000;
-      const overlapLength = 5 * 16000; // 5 секунд перекрытия
-      const chunks = [];
-
-      for (let i = 0; i < audioData.length; i += (chunkLength - overlapLength)) {
-        const chunkEnd = Math.min(i + chunkLength, audioData.length);
-        chunks.push({
-          data: audioData.slice(i, chunkEnd),
-          startTime: i / 16000
-        });
-
-        if (chunkEnd === audioData.length) break;
-      }
-
-      console.log(`📦 Разбито на ${chunks.length} чанков по ${chunkDuration}сек для модели ${selectedModel}`);
-
+      // Для tiny модели не разбиваем - передаём весь аудиобуфер
+      // Для других моделей используем чанки
       let fullText = '';
       let allSegments = [];
 
-      for (let i = 0; i < chunks.length; i++) {
-        const progressPercent = 75 + (i / chunks.length) * 20;
-        setProgress(progressPercent);
+      if (selectedModel === 'tiny') {
+        // Tiny модель обрабатывает весь аудиобуфер целиком
+        console.log('⏳ Обработка tiny модели (весь аудиобуфер целиком)');
         setProgressInfo(prev => ({
           ...prev,
-          stage: `🤖 Обработка чанка ${i + 1}/${chunks.length}...`
+          stage: '🤖 Обработка tiny модели (это быстро)...'
         }));
 
-        console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
-        const result = await transcriber(chunks[i].data);
-
-        // Для первого чанка берём весь текст
-        // Для остальных - пропускаем первые слова (из перекрытия)
-        let textToAdd = result.text || '';
-        if (i > 0 && textToAdd.length > 0) {
-          const words = textToAdd.split(' ');
-          textToAdd = words.slice(Math.max(1, Math.floor(words.length / 6))).join(' ');
-        }
-
-        fullText += (fullText && textToAdd ? ' ' : '') + textToAdd;
-
+        const result = await transcriber(audioData);
+        fullText = result.text || '';
         if (result.chunks) {
-          const timeOffset = chunks[i].startTime;
-          allSegments.push(...result.chunks.map(chunk => ({
-            ...chunk,
-            start: (chunk.start || 0) + timeOffset,
-            end: (chunk.end || 0) + timeOffset
-          })));
+          allSegments = result.chunks || [];
+        }
+        setProgress(95);
+      } else {
+        // Для больших моделей используем чанки
+        const modelSizes = { base: 30, small: 60, medium: 60, large: 60 };
+        const chunkDuration = modelSizes[selectedModel] || 30;
+        const chunkLength = chunkDuration * 16000;
+        const overlapLength = 5 * 16000;
+        const chunks = [];
+
+        for (let i = 0; i < audioData.length; i += (chunkLength - overlapLength)) {
+          const chunkEnd = Math.min(i + chunkLength, audioData.length);
+          chunks.push({
+            data: audioData.slice(i, chunkEnd),
+            startTime: i / 16000
+          });
+
+          if (chunkEnd === audioData.length) break;
         }
 
-        console.log(`✅ Чанк ${i + 1} готов. Текст: "${(result.text || '').substring(0, 50)}..."`);
+        console.log(`📦 Разбито на ${chunks.length} чанков по ${chunkDuration}сек для модели ${selectedModel}`);
 
-        // Даём браузеру время на обновление UI между чанками
-        await new Promise(resolve => setTimeout(resolve, 100));
+        for (let i = 0; i < chunks.length; i++) {
+          const progressPercent = 75 + (i / chunks.length) * 20;
+          setProgress(progressPercent);
+          setProgressInfo(prev => ({
+            ...prev,
+            stage: `🤖 Обработка чанка ${i + 1}/${chunks.length}...`
+          }));
+
+          console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
+          const result = await transcriber(chunks[i].data);
+
+          let textToAdd = result.text || '';
+          if (i > 0 && textToAdd.length > 0) {
+            const words = textToAdd.split(' ');
+            textToAdd = words.slice(Math.max(1, Math.floor(words.length / 6))).join(' ');
+          }
+
+          fullText += (fullText && textToAdd ? ' ' : '') + textToAdd;
+
+          if (result.chunks) {
+            const timeOffset = chunks[i].startTime;
+            allSegments.push(...result.chunks.map(chunk => ({
+              ...chunk,
+              start: (chunk.start || 0) + timeOffset,
+              end: (chunk.end || 0) + timeOffset
+            })));
+          }
+
+          console.log(`✅ Чанк ${i + 1} готов. Текст: "${(result.text || '').substring(0, 50)}..."`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        setProgress(95);
       }
-
-      setProgress(95);
 
       // Формируем результат
       const transcript = {
