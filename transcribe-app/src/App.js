@@ -273,9 +273,17 @@ function App() {
       setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
       const chunkLength = 30 * 16000; // 30 секунд при 16kHz
+      const overlapLength = 5 * 16000; // 5 секунд перекрытия
       const chunks = [];
-      for (let i = 0; i < audioData.length; i += chunkLength) {
-        chunks.push(audioData.slice(i, i + chunkLength));
+
+      for (let i = 0; i < audioData.length; i += (chunkLength - overlapLength)) {
+        const chunkEnd = Math.min(i + chunkLength, audioData.length);
+        chunks.push({
+          data: audioData.slice(i, chunkEnd),
+          startTime: i / 16000
+        });
+
+        if (chunkEnd === audioData.length) break;
       }
 
       let fullText = '';
@@ -283,10 +291,21 @@ function App() {
 
       for (let i = 0; i < chunks.length; i++) {
         setProgress(75 + (i / chunks.length) * 20);
-        const result = await transcriber(chunks[i]);
-        fullText += (fullText ? ' ' : '') + (result.text || '');
+        const result = await transcriber(chunks[i].data);
+
+        // Для первого чанка берём весь текст
+        // Для остальных - пропускаем первые слова (из перекрытия)
+        let textToAdd = result.text || '';
+        if (i > 0 && textToAdd.length > 0) {
+          // Пропускаем примерно первое слово/несколько слов из перекрытия
+          const words = textToAdd.split(' ');
+          textToAdd = words.slice(Math.max(1, Math.floor(words.length / 6))).join(' ');
+        }
+
+        fullText += (fullText && textToAdd ? ' ' : '') + textToAdd;
+
         if (result.chunks) {
-          const timeOffset = i * 30;
+          const timeOffset = chunks[i].startTime;
           allSegments.push(...result.chunks.map(chunk => ({
             ...chunk,
             start: (chunk.start || 0) + timeOffset,
