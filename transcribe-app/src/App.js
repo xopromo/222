@@ -37,6 +37,7 @@ function App() {
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
+  const stopRef = useRef(false);
 
   useEffect(() => {
     console.log('🎙️ Transcribe App v1.1.0 - Real Whisper in Browser');
@@ -184,6 +185,7 @@ function App() {
     setProgress(0);
     setError(null);
     stageTimingsRef.current = {};
+    stopRef.current = false;
 
     try {
       // Шаг 1: Загрузка модели
@@ -312,6 +314,11 @@ function App() {
         console.log(`📦 Разбито на ${chunks.length} чанков по ${chunkDuration}сек для модели ${selectedModel}`);
 
         for (let i = 0; i < chunks.length; i++) {
+          if (stopRef.current) {
+            setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено на чанке ${i}/${chunks.length}` }));
+            break;
+          }
+
           const progressPercent = 75 + (i / chunks.length) * 20;
           setProgress(progressPercent);
           setProgressInfo(prev => ({
@@ -439,14 +446,34 @@ function App() {
               </div>
             )}
 
-            {/* Кнопка транскрибации */}
-            <button
-              className="transcribe-btn"
-              onClick={handleTranscribe}
-              disabled={!videoFile || isProcessing}
-            >
-              {isProcessing ? '⏳ Обработка...' : '🚀 Начать транскрибацию'}
-            </button>
+            {/* Кнопки управления */}
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                className="transcribe-btn"
+                style={{ flex: 1, marginBottom: 0 }}
+                onClick={handleTranscribe}
+                disabled={!videoFile || isProcessing}
+              >
+                {isProcessing ? '⏳ Обработка...' : '🚀 Начать транскрибацию'}
+              </button>
+              {isProcessing && (
+                <button
+                  onClick={() => { stopRef.current = true; }}
+                  style={{
+                    padding: '1rem 1.5rem',
+                    background: '#f44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⏹️ Стоп
+                </button>
+              )}
+            </div>
 
             {/* Ошибки */}
             {error && (
