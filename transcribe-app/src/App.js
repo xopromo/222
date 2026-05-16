@@ -17,6 +17,12 @@ function App() {
   const [error, setError] = useState(null);
   const { addToHistory, history, clearHistory } = useHistory();
 
+  useEffect(() => {
+    console.log('🎙️ Transcribe App v1.1.0 - Real Whisper in Browser');
+    console.log('📅 Last updated: 2026-05-16');
+    console.log('✨ Features: Real Whisper transcription, All model sizes (tiny→large), Offline processing');
+  }, []);
+
   const MODELS = {
     tiny: { size: '39MB', speed: 'Очень быстро', accuracy: 'Низкая', url: 'https://huggingface.co/ggerganov/whisper.cpp/releases/download/v1.0/ggml-tiny.bin' },
     base: { size: '140MB', speed: 'Быстро', accuracy: 'Хорошо', url: 'https://huggingface.co/ggerganov/whisper.cpp/releases/download/v1.0/ggml-base.bin' },
@@ -219,7 +225,12 @@ function App() {
 
       <footer className="footer">
         <p>💚 Приватность: Все обработки происходят в вашем браузере. Видео не отправляется на серверы.</p>
-        <p>📊 Версия 1.0 - MVP</p>
+        <p>
+          📊 v1.1.0 • Обновлено: 16 мая 2026 •
+          <span title="Реальный Whisper в браузере | Transformers.js" style={{cursor: 'help'}}>
+            ✨ Whisper актуален
+          </span>
+        </p>
       </footer>
     </div>
   );

@@ -1,7 +1,8 @@
 {
   "name": "transcribe-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
+  "lastUpdated": "2026-05-16T17:45:00Z",
   "homepage": "/222/transcribe/",
   "dependencies": {
     "react": "^18.2.0",
