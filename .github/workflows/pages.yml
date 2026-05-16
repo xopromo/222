@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - claude/vk-ads-service-7PmJ7
+      - main
   workflow_dispatch:
 
 permissions:
