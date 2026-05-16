@@ -37,6 +37,7 @@ function App() {
   const [chunkConfig, setChunkConfig] = useState(null); // { totalChunks, userChunks, isConfirmed }
   const [streamingText, setStreamingText] = useState(''); // Текст по мере обработки чанков
   const [shouldStop, setShouldStop] = useState(false); // Флаг для остановки обработки
+  const audioBufferRef = useRef(null); // Сохраняем audioBuffer между функциями
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
@@ -224,6 +225,9 @@ function App() {
       setProgress(65);
       setProgressInfo({ stage: '🔧 Подготовка для Whisper...', elapsed: 0, estimated: 0 });
 
+      // Сохраняем audioBuffer для использования в handleStartChunkProcessing
+      audioBufferRef.current = audioBuffer;
+
       // Конвертируем AudioBuffer в Float32Array
       let monoAudio;
       const sampleRate = audioBuffer.sampleRate;
@@ -390,13 +394,10 @@ function App() {
 
       setProgress(95);
 
-      const audioBuffer = await new Promise((resolve, reject) => {
-        const arrayBuffer = videoFile.arrayBuffer();
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        arrayBuffer.then(ab => {
-          audioContext.decodeAudioData(ab, resolve, reject);
-        });
-      });
+      const audioBuffer = audioBufferRef.current;
+      if (!audioBuffer) {
+        throw new Error('Ошибка: аудиобуфер не найден');
+      }
 
       const transcript = {
         text: fullText,
