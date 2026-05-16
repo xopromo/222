@@ -53,6 +53,61 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Load preferences from localStorage on mount
+  useEffect(() => {
+    const savedModel = localStorage.getItem('selected-model');
+    if (savedModel) {
+      setSelectedModel(savedModel);
+    }
+
+    // Load file from IndexedDB if available
+    const dbRequest = indexedDB.open('transcribe-app', 1);
+    dbRequest.onerror = () => console.error('IndexedDB error');
+    dbRequest.onsuccess = (event) => {
+      const db = event.target.result;
+      const store = db.transaction('files', 'readonly').objectStore('files');
+      const getRequest = store.get('last-file');
+      getRequest.onsuccess = (e) => {
+        if (e.target.result) {
+          const file = new File([e.target.result.blob], e.target.result.name, { type: e.target.result.type });
+          setVideoFile(file);
+        }
+      };
+    };
+
+    dbRequest.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('files')) {
+        db.createObjectStore('files');
+      }
+    };
+  }, []);
+
+  // Save model selection to localStorage
+  useEffect(() => {
+    localStorage.setItem('selected-model', selectedModel);
+  }, [selectedModel]);
+
+  // Save file to IndexedDB when it changes
+  useEffect(() => {
+    if (videoFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dbRequest = indexedDB.open('transcribe-app', 1);
+        dbRequest.onsuccess = (event) => {
+          const db = event.target.result;
+          const store = db.transaction('files', 'readwrite').objectStore('files');
+          store.put({
+            blob: reader.result,
+            name: videoFile.name,
+            type: videoFile.type
+          }, 'last-file');
+        };
+      };
+      reader.readAsArrayBuffer(videoFile);
+    }
+  }, [videoFile]);
+
   // Обновляем прогноз времени каждую секунду
   useEffect(() => {
     if (!isProcessing || !startTimeRef.current) return;
@@ -217,7 +272,10 @@ function App() {
       // Шаг 3: Транскрибация
       setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
-      const result = await transcriber(audioData);
+      const result = await transcriber(audioData, {
+        chunk_length_s: 30,
+        stride_length_s: [10, 5]
+      });
       setProgress(95);
 
       // Формируем результат
