@@ -272,7 +272,11 @@ function App() {
       // Шаг 3: Транскрибация
       setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
-      const chunkLength = 30 * 16000; // 30 секунд при 16kHz
+      // Для больших моделей используем более длинные чанки (60 сек вместо 30)
+      // Это снижает нагрузку на память и количество итераций
+      const modelSizes = { tiny: 30, base: 30, small: 60, medium: 60, large: 60 };
+      const chunkDuration = modelSizes[selectedModel] || 30;
+      const chunkLength = chunkDuration * 16000;
       const overlapLength = 5 * 16000; // 5 секунд перекрытия
       const chunks = [];
 
@@ -286,18 +290,26 @@ function App() {
         if (chunkEnd === audioData.length) break;
       }
 
+      console.log(`📦 Разбито на ${chunks.length} чанков по ${chunkDuration}сек для модели ${selectedModel}`);
+
       let fullText = '';
       let allSegments = [];
 
       for (let i = 0; i < chunks.length; i++) {
-        setProgress(75 + (i / chunks.length) * 20);
+        const progressPercent = 75 + (i / chunks.length) * 20;
+        setProgress(progressPercent);
+        setProgressInfo(prev => ({
+          ...prev,
+          stage: `🤖 Обработка чанка ${i + 1}/${chunks.length}...`
+        }));
+
+        console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
         const result = await transcriber(chunks[i].data);
 
         // Для первого чанка берём весь текст
         // Для остальных - пропускаем первые слова (из перекрытия)
         let textToAdd = result.text || '';
         if (i > 0 && textToAdd.length > 0) {
-          // Пропускаем примерно первое слово/несколько слов из перекрытия
           const words = textToAdd.split(' ');
           textToAdd = words.slice(Math.max(1, Math.floor(words.length / 6))).join(' ');
         }
@@ -312,6 +324,11 @@ function App() {
             end: (chunk.end || 0) + timeOffset
           })));
         }
+
+        console.log(`✅ Чанк ${i + 1} готов. Текст: "${(result.text || '').substring(0, 50)}..."`);
+
+        // Даём браузеру время на обновление UI между чанками
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       setProgress(95);
