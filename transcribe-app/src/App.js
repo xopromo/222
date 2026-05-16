@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import VideoUploader from './components/VideoUploader';
 import ModelSelector from './components/ModelSelector';
 import TranscriptViewer from './components/TranscriptViewer';
 import History from './components/History';
 import { useHistory } from './hooks/useHistory';
+import { pipeline } from '@xenova/transformers';
 
 function App() {
   const [activeTab, setActiveTab] = useState('transcribe');
@@ -74,60 +75,64 @@ function App() {
     setError(null);
 
     try {
-      // Шаг 1: Загрузить модель (30%)
-      setProgress(30);
+      setProgress(5);
+      setProgress(10);
 
-      // Шаг 2: Извлечь аудио (50%)
-      setProgress(50);
+      // Шаг 1: Инициализируем Whisper модель
+      const modelName = `Xenova/whisper-${selectedModel}`;
+      setProgress(15);
+
+      const transcriber = await pipeline('automatic-speech-recognition', modelName);
+      setProgress(40);
+
+      // Шаг 2: Извлекаем аудио из видео
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const arrayBuffer = await videoFile.arrayBuffer();
 
-      // Шаг 3: Обработать (70%)
-      setProgress(70);
+      try {
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        setProgress(60);
 
-      // Для MVP используем Web Speech API (быстро)
-      // В полной версии добавим Whisper.cpp
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognition.lang = 'ru-RU';
-      recognition.continuous = true;
+        // Конвертируем в моно PCM для Whisper
+        const offlineContext = new OfflineAudioContext(1, audioBuffer.length, audioBuffer.sampleRate);
+        const source = offlineContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(offlineContext.destination);
+        source.start(0);
 
-      let transcriptText = '';
+        const monoAudioBuffer = await offlineContext.startRendering();
+        setProgress(75);
 
-      recognition.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcriptText += event.results[i][0].transcript + ' ';
-        }
-      };
+        // Шаг 3: Запускаем транскрибацию с реальным Whisper
+        const result = await transcriber(monoAudioBuffer);
+        setProgress(95);
 
-      recognition.onerror = (event) => {
-        throw new Error(`Ошибка распознавания: ${event.error}`);
-      };
+        // Формируем результат
+        const transcript = {
+          text: result.text || '',
+          segments: result.chunks || [],
+          language: 'ru',
+          duration: audioBuffer.duration,
+          model: selectedModel
+        };
 
-      // Для видео файла нужна более сложная обработка
-      // Это placeholder - в полной версии будет Whisper.cpp
-      const mockTranscript = {
-        text: 'Демонстрационная транскрипция. В полной версии используется Whisper.cpp для точной транскрибации.',
-        segments: [
-          { start: 0, end: 5, text: 'Демонстрационная' },
-          { start: 5, end: 10, text: 'транскрипция' }
-        ],
-        language: 'ru',
-        duration: videoFile.size
-      };
+        setProgress(100);
+        setTranscript(transcript);
 
-      setProgress(100);
-      setTranscript(mockTranscript);
+        // Добавляем в историю
+        addToHistory({
+          filename: videoFile.name,
+          model: selectedModel,
+          timestamp: new Date().toLocaleString('ru-RU'),
+          transcript: transcript.text
+        });
 
-      // Добавляем в историю
-      addToHistory({
-        filename: videoFile.name,
-        model: selectedModel,
-        timestamp: new Date().toLocaleString('ru-RU'),
-        transcript: mockTranscript.text
-      });
+      } catch (audioError) {
+        throw new Error('Не удалось обработать аудио из видео. Попробуйте другой файл.');
+      }
 
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Ошибка при транскрибации');
     } finally {
       setIsProcessing(false);
     }
