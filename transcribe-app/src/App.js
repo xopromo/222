@@ -163,27 +163,60 @@ function App() {
 
       // Конвертируем AudioBuffer в Float32Array для Whisper
       setProgressInfo({ stage: '🔧 Подготовка для Whisper...', elapsed: 0, estimated: 0 });
-      const audioData = audioBuffer.getChannelData(0); // Берём первый канал (моно)
 
-      // Если стерео, смешиваем в моно
-      let float32Data = audioData;
-      if (audioBuffer.numberOfChannels > 1) {
-        float32Data = new Float32Array(audioBuffer.length);
-        for (let i = 0; i < audioBuffer.length; i++) {
-          let sum = 0;
-          for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
-            sum += audioBuffer.getChannelData(ch)[i];
+      // Whisper требует mono Float32Array с 16kHz sampling rate
+      let monoAudio;
+      const sampleRate = audioBuffer.sampleRate;
+
+      if (audioBuffer.numberOfChannels === 1) {
+        // Уже моно
+        monoAudio = audioBuffer.getChannelData(0);
+      } else {
+        // Смешиваем каналы в моно
+        monoAudio = new Float32Array(audioBuffer.length);
+        for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+          const channelData = audioBuffer.getChannelData(ch);
+          for (let i = 0; i < audioBuffer.length; i++) {
+            monoAudio[i] += channelData[i];
           }
-          float32Data[i] = sum / audioBuffer.numberOfChannels;
+        }
+        // Нормализуем уровень после смешивания
+        for (let i = 0; i < monoAudio.length; i++) {
+          monoAudio[i] /= audioBuffer.numberOfChannels;
         }
       }
 
-      setProgress(70);
+      // Ресемплируем к 16kHz если нужно (Whisper стандарт)
+      let audioData = monoAudio;
+      if (sampleRate !== 16000) {
+        const ratio = 16000 / sampleRate;
+        const newLength = Math.round(monoAudio.length * ratio);
+        audioData = new Float32Array(newLength);
+
+        let newIndex = 0;
+        for (let i = 0; i < monoAudio.length; i++) {
+          const oldIndex = i / ratio;
+          const nextIndex = Math.ceil(oldIndex);
+
+          if (nextIndex >= monoAudio.length) {
+            audioData[newIndex] = monoAudio[monoAudio.length - 1];
+          } else {
+            // Линейная интерполяция
+            const fraction = oldIndex - Math.floor(oldIndex);
+            audioData[newIndex] =
+              monoAudio[Math.floor(oldIndex)] * (1 - fraction) +
+              monoAudio[nextIndex] * fraction;
+          }
+          newIndex++;
+        }
+      }
+
+      setProgress(75);
 
       // Шаг 3: Транскрибация
       setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
-      const result = await transcriber(float32Data);
+      const result = await transcriber(audioData);
       setProgress(95);
 
       // Формируем результат
