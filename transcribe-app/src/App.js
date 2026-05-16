@@ -7,6 +7,22 @@ import History from './components/History';
 import { useHistory } from './hooks/useHistory';
 import { pipeline } from '@xenova/transformers';
 
+const LAST_UPDATE = new Date('2026-05-16T17:45:00Z');
+
+function getUpdateTimeString() {
+  const now = new Date();
+  const diffMs = now - LAST_UPDATE;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'только что';
+  if (diffMins < 60) return `${diffMins}м назад`;
+  if (diffHours < 24) return `${diffHours}ч назад`;
+  if (diffDays === 1) return 'вчера';
+  return `${diffDays}д назад`;
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('transcribe');
   const [selectedModel, setSelectedModel] = useState('base');
@@ -16,14 +32,24 @@ function App() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [progressInfo, setProgressInfo] = useState({ stage: '', elapsed: 0, estimated: 0 });
+  const [updateTime, setUpdateTime] = useState(getUpdateTimeString());
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
 
   useEffect(() => {
     console.log('🎙️ Transcribe App v1.1.0 - Real Whisper in Browser');
-    console.log('📅 Last updated: 2026-05-16');
+    console.log('📅 Last updated: 2026-05-16 17:45 UTC');
     console.log('✨ Features: Real Whisper transcription, All model sizes (tiny→large), Offline processing');
+  }, []);
+
+  useEffect(() => {
+    // Обновляем время с момента последнего обновления каждую минуту
+    const timer = setInterval(() => {
+      setUpdateTime(getUpdateTimeString());
+    }, 60000);
+
+    return () => clearInterval(timer);
   }, []);
 
   // Обновляем прогноз времени каждую секунду
@@ -258,7 +284,11 @@ function App() {
       <footer className="footer">
         <p>💚 Приватность: Все обработки происходят в вашем браузере. Видео не отправляется на серверы.</p>
         <p>
-          📊 v1.1.0 • Обновлено: 16 мая 2026 •
+          📊 v1.1.0 •
+          <span title="Последнее обновление кода" style={{cursor: 'help'}}>
+            ⏰ {updateTime}
+          </span>
+          {' '} •
           <span title="Реальный Whisper в браузере | Transformers.js" style={{cursor: 'help'}}>
             ✨ Whisper актуален
           </span>
