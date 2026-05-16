@@ -11,8 +11,9 @@
     "@xenova/transformers": "^2.6.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "update-build-time": "node scripts/update-build-time.js",
+    "start": "npm run update-build-time && react-scripts start",
+    "build": "npm run update-build-time && react-scripts build",
     "deploy": "npm run build && gh-pages -d build"
   },
   "eslintConfig": {

@@ -6,8 +6,9 @@ import TranscriptViewer from './components/TranscriptViewer';
 import History from './components/History';
 import { useHistory } from './hooks/useHistory';
 import { pipeline } from '@xenova/transformers';
+import { BUILD_TIME } from './BUILD_TIME';
 
-const LAST_UPDATE = new Date('2026-05-16T17:45:00Z');
+const LAST_UPDATE = new Date(BUILD_TIME);
 
 function getUpdateTimeString() {
   const now = new Date();
@@ -250,6 +251,11 @@ function App() {
   return (
     <div className="app">
       <header className="header">
+        <div className="header-badge">
+          <span title="Последнее обновление кода" style={{cursor: 'help'}}>
+            ⏰ {updateTime}
+          </span>
+        </div>
         <div className="header-content">
           <h1>🎙️ Transcribe</h1>
           <p>Бесплатная транскрибация видео - Offline, Приватно</p>
@@ -335,16 +341,7 @@ function App() {
 
       <footer className="footer">
         <p>💚 Приватность: Все обработки происходят в вашем браузере. Видео не отправляется на серверы.</p>
-        <p>
-          📊 v1.1.0 •
-          <span title="Последнее обновление кода" style={{cursor: 'help'}}>
-            ⏰ {updateTime}
-          </span>
-          {' '} •
-          <span title="Реальный Whisper в браузере | Transformers.js" style={{cursor: 'help'}}>
-            ✨ Whisper актуален
-          </span>
-        </p>
+        <p>📊 v1.1.0 • ✨ Real Whisper in Browser</p>
       </footer>
     </div>
   );
