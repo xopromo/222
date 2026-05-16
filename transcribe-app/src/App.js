@@ -38,6 +38,8 @@ function App() {
   const [streamingText, setStreamingText] = useState(''); // Текст по мере обработки чанков
   const [shouldStop, setShouldStop] = useState(false); // Флаг для остановки обработки
   const audioBufferRef = useRef(null); // Сохраняем audioBuffer между функциями
+  const transcriberRef = useRef(null); // Сохраняем transcriber
+  const chunksRef = useRef(null); // Сохраняем chunks
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
@@ -302,13 +304,15 @@ function App() {
           if (chunkEnd === audioData.length) break;
         }
 
+        // Сохраняем transcriber и chunks в refs
+        transcriberRef.current = transcriber;
+        chunksRef.current = chunks;
+
         // Показываем диалог выбора количества чанков
         setChunkConfig({
           totalChunks: chunks.length,
           userChunks: chunks.length,
-          isConfirmed: false,
-          transcriber,
-          chunks
+          isConfirmed: false
         });
         return; // Ждём выбора пользователя
       }
@@ -342,9 +346,10 @@ function App() {
   };
 
   const handleStartChunkProcessing = async (numChunks) => {
-    if (!chunkConfig) return;
+    if (!transcriberRef.current || !chunksRef.current) return;
 
-    const { transcriber, chunks } = chunkConfig;
+    const transcriber = transcriberRef.current;
+    const chunks = chunksRef.current;
     const chunkStep = Math.ceil(chunks.length / numChunks);
     const selectedChunks = chunks.filter((_, i) => i % chunkStep === 0).slice(0, numChunks);
 
