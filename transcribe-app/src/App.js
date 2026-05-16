@@ -272,16 +272,35 @@ function App() {
       // Шаг 3: Транскрибация
       setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
-      const result = await transcriber(audioData, {
-        chunk_length_s: 30,
-        stride_length_s: [10, 5]
-      });
+      const chunkLength = 30 * 16000; // 30 секунд при 16kHz
+      const chunks = [];
+      for (let i = 0; i < audioData.length; i += chunkLength) {
+        chunks.push(audioData.slice(i, i + chunkLength));
+      }
+
+      let fullText = '';
+      let allSegments = [];
+
+      for (let i = 0; i < chunks.length; i++) {
+        setProgress(75 + (i / chunks.length) * 20);
+        const result = await transcriber(chunks[i]);
+        fullText += (fullText ? ' ' : '') + (result.text || '');
+        if (result.chunks) {
+          const timeOffset = i * 30;
+          allSegments.push(...result.chunks.map(chunk => ({
+            ...chunk,
+            start: (chunk.start || 0) + timeOffset,
+            end: (chunk.end || 0) + timeOffset
+          })));
+        }
+      }
+
       setProgress(95);
 
       // Формируем результат
       const transcript = {
-        text: result.text || '',
-        segments: result.chunks || [],
+        text: fullText,
+        segments: allSegments,
         language: 'ru',
         duration: audioBuffer.duration,
         model: selectedModel
