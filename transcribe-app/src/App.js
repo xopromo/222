@@ -138,55 +138,55 @@ function App() {
       const transcriber = await pipeline('automatic-speech-recognition', modelName);
       setProgress(35);
 
-      // Шаг 2: Извлечение аудио
-      setProgressInfo({ stage: '🎵 Извлечение аудио из видео...', elapsed: 0, estimated: 0 });
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      // Шаг 2: Загрузка аудиобуфера
+      setProgressInfo({ stage: '🎵 Загрузка видеофайла...', elapsed: 0, estimated: 0 });
+
       const arrayBuffer = await videoFile.arrayBuffer();
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-      try {
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        setProgress(50);
+      setProgress(50);
+      setProgressInfo({ stage: '🔧 Декодирование аудио...', elapsed: 0, estimated: 0 });
 
-        // Конвертируем в моно PCM для Whisper
-        setProgressInfo({ stage: '🔧 Подготовка аудиоформата...', elapsed: 0, estimated: 0 });
-        const offlineContext = new OfflineAudioContext(1, audioBuffer.length, audioBuffer.sampleRate);
-        const source = offlineContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(offlineContext.destination);
-        source.start(0);
+      // Декодируем аудиобуфер
+      const audioBuffer = await new Promise((resolve, reject) => {
+        audioContext.decodeAudioData(
+          arrayBuffer,
+          (buffer) => resolve(buffer),
+          (error) => {
+            console.error('Decode error:', error);
+            reject(new Error(`Ошибка декодирования: ${error.message || 'неподдерживаемый формат'}`));
+          }
+        );
+      });
 
-        const monoAudioBuffer = await offlineContext.startRendering();
-        setProgress(65);
+      setProgress(65);
 
-        // Шаг 3: Транскрибация
-        setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
-        const result = await transcriber(monoAudioBuffer);
-        setProgress(95);
+      // Шаг 3: Транскрибация
+      setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
-        // Формируем результат
-        const transcript = {
-          text: result.text || '',
-          segments: result.chunks || [],
-          language: 'ru',
-          duration: audioBuffer.duration,
-          model: selectedModel
-        };
+      const result = await transcriber(audioBuffer);
+      setProgress(95);
 
-        setProgress(100);
-        setProgressInfo({ stage: '✅ Готово!', elapsed: Math.round((Date.now() - startTimeRef.current) / 1000), estimated: 0 });
-        setTranscript(transcript);
+      // Формируем результат
+      const transcript = {
+        text: result.text || '',
+        segments: result.chunks || [],
+        language: 'ru',
+        duration: audioBuffer.duration,
+        model: selectedModel
+      };
 
-        // Добавляем в историю
-        addToHistory({
-          filename: videoFile.name,
-          model: selectedModel,
-          timestamp: new Date().toLocaleString('ru-RU'),
-          transcript: transcript.text
-        });
+      setProgress(100);
+      setProgressInfo({ stage: '✅ Готово!', elapsed: Math.round((Date.now() - startTimeRef.current) / 1000), estimated: 0 });
+      setTranscript(transcript);
 
-      } catch (audioError) {
-        throw new Error('Не удалось обработать аудио из видео. Попробуйте другой файл.');
-      }
+      // Добавляем в историю
+      addToHistory({
+        filename: videoFile.name,
+        model: selectedModel,
+        timestamp: new Date().toLocaleString('ru-RU'),
+        transcript: transcript.text
+      });
 
     } catch (err) {
       setError(err.message || 'Ошибка при транскрибации');
