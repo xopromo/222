@@ -34,16 +34,9 @@ function App() {
   const [error, setError] = useState(null);
   const [progressInfo, setProgressInfo] = useState({ stage: '', elapsed: 0, estimated: 0 });
   const [updateTime, setUpdateTime] = useState(getUpdateTimeString());
-  const [chunkConfig, setChunkConfig] = useState(null); // { totalChunks, userChunks, isConfirmed }
-  const [streamingText, setStreamingText] = useState(''); // Текст по мере обработки чанков
-  const [shouldStop, setShouldStop] = useState(false); // Флаг для остановки обработки
-  const audioBufferRef = useRef(null); // Сохраняем audioBuffer между функциями
-  const transcriberRef = useRef(null); // Сохраняем transcriber
-  const chunksRef = useRef(null); // Сохраняем chunks
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
-  const shouldStopRef = useRef(false); // Для быстрого доступа из async функций
 
   useEffect(() => {
     console.log('🎙️ Transcribe App v1.1.0 - Real Whisper in Browser');
@@ -190,9 +183,6 @@ function App() {
     setIsProcessing(true);
     setProgress(0);
     setError(null);
-    setStreamingText('');
-    setShouldStop(false);
-    shouldStopRef.current = false;
     stageTimingsRef.current = {};
 
     try {
@@ -213,6 +203,7 @@ function App() {
       setProgress(50);
       setProgressInfo({ stage: '🔧 Декодирование аудио...', elapsed: 0, estimated: 0 });
 
+      // Декодируем аудиобуфер
       const audioBuffer = await new Promise((resolve, reject) => {
         audioContext.decodeAudioData(
           arrayBuffer,
@@ -225,18 +216,19 @@ function App() {
       });
 
       setProgress(65);
+
+      // Конвертируем AudioBuffer в Float32Array для Whisper
       setProgressInfo({ stage: '🔧 Подготовка для Whisper...', elapsed: 0, estimated: 0 });
 
-      // Сохраняем audioBuffer для использования в handleStartChunkProcessing
-      audioBufferRef.current = audioBuffer;
-
-      // Конвертируем AudioBuffer в Float32Array
+      // Whisper требует mono Float32Array с 16kHz sampling rate
       let monoAudio;
       const sampleRate = audioBuffer.sampleRate;
 
       if (audioBuffer.numberOfChannels === 1) {
+        // Уже моно
         monoAudio = audioBuffer.getChannelData(0);
       } else {
+        // Смешиваем каналы в моно
         monoAudio = new Float32Array(audioBuffer.length);
         for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
           const channelData = audioBuffer.getChannelData(ch);
@@ -244,11 +236,13 @@ function App() {
             monoAudio[i] += channelData[i];
           }
         }
+        // Нормализуем уровень после смешивания
         for (let i = 0; i < monoAudio.length; i++) {
           monoAudio[i] /= audioBuffer.numberOfChannels;
         }
       }
 
+      // Ресемплируем к 16kHz если нужно (Whisper стандарт)
       let audioData = monoAudio;
       if (sampleRate !== 16000) {
         const ratio = 16000 / sampleRate;
@@ -263,6 +257,7 @@ function App() {
           if (nextIndex >= monoAudio.length) {
             audioData[newIndex] = monoAudio[monoAudio.length - 1];
           } else {
+            // Линейная интерполяция
             const fraction = oldIndex - Math.floor(oldIndex);
             audioData[newIndex] =
               monoAudio[Math.floor(oldIndex)] * (1 - fraction) +
@@ -274,20 +269,30 @@ function App() {
 
       setProgress(75);
 
-      // Шаг 3: Расчет количества чанков и выбор
+      // Шаг 3: Транскрибация
+      setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
+
+      // Для tiny модели не разбиваем - передаём весь аудиобуфер
+      // Для других моделей используем чанки
       let fullText = '';
       let allSegments = [];
 
       if (selectedModel === 'tiny') {
-        setProgressInfo({ stage: '🤖 Обработка tiny модели...', elapsed: 0, estimated: 0 });
+        // Tiny модель обрабатывает весь аудиобуфер целиком
+        console.log('⏳ Обработка tiny модели (весь аудиобуфер целиком)');
+        setProgressInfo(prev => ({
+          ...prev,
+          stage: '🤖 Обработка tiny модели (это быстро)...'
+        }));
+
         const result = await transcriber(audioData);
         fullText = result.text || '';
         if (result.chunks) {
           allSegments = result.chunks || [];
         }
-        setStreamingText(fullText);
         setProgress(95);
       } else {
+        // Для больших моделей используем чанки
         const modelSizes = { base: 30, small: 60, medium: 60, large: 60 };
         const chunkDuration = modelSizes[selectedModel] || 30;
         const chunkLength = chunkDuration * 16000;
@@ -304,20 +309,44 @@ function App() {
           if (chunkEnd === audioData.length) break;
         }
 
-        // Сохраняем transcriber и chunks в refs
-        transcriberRef.current = transcriber;
-        chunksRef.current = chunks;
+        console.log(`📦 Разбито на ${chunks.length} чанков по ${chunkDuration}сек для модели ${selectedModel}`);
 
-        // Показываем диалог выбора количества чанков
-        setChunkConfig({
-          totalChunks: chunks.length,
-          userChunks: chunks.length,
-          isConfirmed: false
-        });
-        return; // Ждём выбора пользователя
+        for (let i = 0; i < chunks.length; i++) {
+          const progressPercent = 75 + (i / chunks.length) * 20;
+          setProgress(progressPercent);
+          setProgressInfo(prev => ({
+            ...prev,
+            stage: `🤖 Обработка чанка ${i + 1}/${chunks.length}...`
+          }));
+
+          console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
+          const result = await transcriber(chunks[i].data);
+
+          let textToAdd = result.text || '';
+          if (i > 0 && textToAdd.length > 0) {
+            const words = textToAdd.split(' ');
+            textToAdd = words.slice(Math.max(1, Math.floor(words.length / 6))).join(' ');
+          }
+
+          fullText += (fullText && textToAdd ? ' ' : '') + textToAdd;
+
+          if (result.chunks) {
+            const timeOffset = chunks[i].startTime;
+            allSegments.push(...result.chunks.map(chunk => ({
+              ...chunk,
+              start: (chunk.start || 0) + timeOffset,
+              end: (chunk.end || 0) + timeOffset
+            })));
+          }
+
+          console.log(`✅ Чанк ${i + 1} готов. Текст: "${(result.text || '').substring(0, 50)}..."`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        setProgress(95);
       }
 
-      // Формируем финальный результат
+      // Формируем результат
       const transcript = {
         text: fullText,
         segments: allSegments,
@@ -330,6 +359,7 @@ function App() {
       setProgressInfo({ stage: '✅ Готово!', elapsed: Math.round((Date.now() - startTimeRef.current) / 1000), estimated: 0 });
       setTranscript(transcript);
 
+      // Добавляем в историю
       addToHistory({
         filename: videoFile.name,
         model: selectedModel,
@@ -341,93 +371,6 @@ function App() {
       setError(err.message || 'Ошибка при транскрибации');
     } finally {
       setIsProcessing(false);
-      setChunkConfig(null);
-    }
-  };
-
-  const handleStartChunkProcessing = async (numChunks) => {
-    if (!transcriberRef.current || !chunksRef.current) return;
-
-    const transcriber = transcriberRef.current;
-    const chunks = chunksRef.current;
-    const chunkStep = Math.ceil(chunks.length / numChunks);
-    const selectedChunks = chunks.filter((_, i) => i % chunkStep === 0).slice(0, numChunks);
-
-    let fullText = '';
-    let allSegments = [];
-    setStreamingText('');
-    setChunkConfig(null);
-
-    try {
-      for (let i = 0; i < selectedChunks.length; i++) {
-        if (shouldStopRef.current) break;
-
-        const progressPercent = 75 + (i / selectedChunks.length) * 20;
-        setProgress(progressPercent);
-        setProgressInfo(prev => ({
-          ...prev,
-          stage: `🤖 Обработка чанка ${i + 1}/${selectedChunks.length}...`
-        }));
-
-        console.log(`⏳ Обработка чанка ${i + 1}/${selectedChunks.length}`);
-        const result = await transcriber(selectedChunks[i].data);
-
-        let textToAdd = result.text || '';
-        if (i > 0 && textToAdd.length > 0) {
-          const words = textToAdd.split(' ');
-          textToAdd = words.slice(Math.max(1, Math.floor(words.length / 6))).join(' ');
-        }
-
-        fullText += (fullText && textToAdd ? ' ' : '') + textToAdd;
-        setStreamingText(fullText);
-
-        if (result.chunks) {
-          const timeOffset = selectedChunks[i].startTime;
-          allSegments.push(...result.chunks.map(chunk => ({
-            ...chunk,
-            start: (chunk.start || 0) + timeOffset,
-            end: (chunk.end || 0) + timeOffset
-          })));
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      if (shouldStopRef.current) {
-        setStreamingText(fullText + '\n\n[Обработка остановлена пользователем]');
-      }
-
-      setProgress(95);
-
-      const audioBuffer = audioBufferRef.current;
-      if (!audioBuffer) {
-        throw new Error('Ошибка: аудиобуфер не найден');
-      }
-
-      const transcript = {
-        text: fullText,
-        segments: allSegments,
-        language: 'ru',
-        duration: audioBuffer.duration,
-        model: selectedModel
-      };
-
-      setProgress(100);
-      setProgressInfo({ stage: '✅ Готово!', elapsed: Math.round((Date.now() - startTimeRef.current) / 1000), estimated: 0 });
-      setTranscript(transcript);
-
-      addToHistory({
-        filename: videoFile.name,
-        model: selectedModel,
-        timestamp: new Date().toLocaleString('ru-RU'),
-        transcript: transcript.text
-      });
-
-    } catch (err) {
-      setError(err.message || 'Ошибка при транскрибации');
-    } finally {
-      setIsProcessing(false);
-      setShouldStop(false);
     }
   };
 
@@ -479,51 +422,6 @@ function App() {
               selectedFile={videoFile}
             />
 
-            {/* Диалог выбора количества чанков */}
-            {chunkConfig && !chunkConfig.isConfirmed && (
-              <div className="chunk-dialog">
-                <div className="chunk-dialog-content">
-                  <h3>⚙️ Выбор количества чанков</h3>
-                  <p>Видео разбито на <strong>{chunkConfig.totalChunks}</strong> чанков</p>
-                  <p>Сколько чанков обработать?</p>
-                  <div className="chunk-options">
-                    <input
-                      type="range"
-                      min="1"
-                      max={chunkConfig.totalChunks}
-                      value={chunkConfig.userChunks}
-                      onChange={(e) => setChunkConfig(prev => ({...prev, userChunks: parseInt(e.target.value)}))}
-                      className="chunk-slider"
-                    />
-                    <div className="chunk-value">{chunkConfig.userChunks} / {chunkConfig.totalChunks}</div>
-                  </div>
-                  <div className="chunk-buttons">
-                    <button
-                      className="chunk-btn-all"
-                      onClick={() => handleStartChunkProcessing(chunkConfig.totalChunks)}
-                    >
-                      ✅ Все {chunkConfig.totalChunks} чанков
-                    </button>
-                    <button
-                      className="chunk-btn-selected"
-                      onClick={() => handleStartChunkProcessing(chunkConfig.userChunks)}
-                    >
-                      ▶️ Начать с {chunkConfig.userChunks} чанками
-                    </button>
-                    <button
-                      className="chunk-btn-cancel"
-                      onClick={() => {
-                        setChunkConfig(null);
-                        setIsProcessing(false);
-                      }}
-                    >
-                      ❌ Отмена
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Progress bar */}
             {isProcessing && (
               <div className="progress-container">
@@ -541,37 +439,14 @@ function App() {
               </div>
             )}
 
-            {/* Потоковый результат */}
-            {streamingText && (
-              <div className="streaming-result">
-                <h3>📝 Результат (обновляется в реальном времени)</h3>
-                <div className="streaming-text">
-                  {streamingText}
-                </div>
-              </div>
-            )}
-
-            {/* Кнопки управления */}
-            <div className="button-group">
-              <button
-                className="transcribe-btn"
-                onClick={handleTranscribe}
-                disabled={!videoFile || isProcessing}
-              >
-                {isProcessing ? '⏳ Обработка...' : '🚀 Начать транскрибацию'}
-              </button>
-              {isProcessing && (
-                <button
-                  className="stop-btn"
-                  onClick={() => {
-                    setShouldStop(true);
-                    shouldStopRef.current = true;
-                  }}
-                >
-                  ⏹️ Остановить
-                </button>
-              )}
-            </div>
+            {/* Кнопка транскрибации */}
+            <button
+              className="transcribe-btn"
+              onClick={handleTranscribe}
+              disabled={!videoFile || isProcessing}
+            >
+              {isProcessing ? '⏳ Обработка...' : '🚀 Начать транскрибацию'}
+            </button>
 
             {/* Ошибки */}
             {error && (
