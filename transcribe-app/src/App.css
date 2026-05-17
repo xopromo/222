@@ -536,6 +536,349 @@ body.theme-minimal ::-webkit-scrollbar-thumb {
   background: #CBD5E1;
 }
 
+/* ============ LAYOUT SWITCHER ============ */
+.layout-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.layout-select {
+  background: rgba(255, 255, 255, 0.05);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.layout-select:hover {
+  border-color: var(--color-primary);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.layout-select:focus {
+  outline: none;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
+}
+
+body.theme-minimal .layout-select {
+  background: #f0f0f0;
+  color: #1e293b;
+  border-color: #e2e8f0;
+}
+
+/* ============ LAYOUT VARIANTS ============ */
+
+/* Default: Grid (2x2) */
+body.layout-grid .transcribe-panel {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Vertical: Single column */
+body.layout-vertical .transcribe-panel {
+  grid-template-columns: 1fr;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+body.layout-vertical .model-selector {
+  grid-column: 1;
+  grid-row: 1;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+body.layout-vertical .video-uploader {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* Sidebar: Model on left, upload on right, content below */
+body.layout-sidebar .transcribe-panel {
+  grid-template-columns: 250px 1fr;
+}
+
+body.layout-sidebar .model-selector {
+  grid-column: 1;
+  grid-row: 1 / 4;
+}
+
+body.layout-sidebar .video-uploader {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
+
+body.layout-sidebar .transcribe-btn {
+  grid-column: 1 / 3;
+}
+
+body.layout-sidebar .progress-container {
+  grid-column: 1 / 3;
+}
+
+body.layout-sidebar .error-message {
+  grid-column: 1 / 3;
+}
+
+body.layout-sidebar .transcript-viewer {
+  grid-column: 1 / 3;
+}
+
+/* Compact: Very small, stacked efficiently */
+body.layout-compact .transcribe-panel {
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+}
+
+body.layout-compact .model-selector {
+  grid-column: 1 / 2;
+  padding: var(--spacing-md);
+}
+
+body.layout-compact .model-selector h3 {
+  font-size: var(--font-size-sm);
+}
+
+body.layout-compact .model-options {
+  grid-template-columns: 1fr;
+}
+
+body.layout-compact .video-uploader {
+  grid-column: 2 / 4;
+}
+
+body.layout-compact .upload-area {
+  min-height: 80px;
+  padding: var(--spacing-md);
+}
+
+body.layout-compact .transcribe-btn {
+  grid-column: 4;
+  margin-bottom: 0;
+}
+
+body.layout-compact .progress-container {
+  grid-column: 1 / 5;
+  padding: var(--spacing-sm);
+}
+
+body.layout-compact .error-message {
+  grid-column: 1 / 5;
+}
+
+body.layout-compact .transcript-viewer {
+  grid-column: 1 / 5;
+}
+
+/* Cards: Individual card-like layout */
+body.layout-cards .transcribe-panel {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+body.layout-cards .model-selector,
+body.layout-cards .video-uploader,
+body.layout-cards .progress-container {
+  grid-column: auto;
+  border: var(--border-width) solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+body.layout-cards .transcribe-btn {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+body.layout-cards .error-message {
+  grid-column: 1 / -1;
+}
+
+body.layout-cards .transcript-viewer {
+  grid-column: 1 / -1;
+}
+
+/* Split: Left-right split */
+body.layout-split .transcribe-panel {
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+body.layout-split .model-selector {
+  grid-column: 1;
+  grid-row: 1;
+  border-right: var(--border-width) solid var(--color-primary);
+  padding-right: var(--spacing-lg);
+}
+
+body.layout-split .video-uploader {
+  grid-column: 2;
+  grid-row: 1;
+  padding-left: var(--spacing-lg);
+}
+
+body.layout-split .transcribe-btn {
+  grid-column: 1 / 3;
+}
+
+body.layout-split .progress-container {
+  grid-column: 1 / 3;
+}
+
+body.layout-split .error-message {
+  grid-column: 1 / 3;
+}
+
+body.layout-split .transcript-viewer {
+  grid-column: 1 / 3;
+}
+
+/* Accordion: Expandable sections - using CSS grid but styled like accordion */
+body.layout-accordion .transcribe-panel {
+  grid-template-columns: 1fr;
+  gap: var(--spacing-sm);
+}
+
+body.layout-accordion .model-selector,
+body.layout-accordion .video-uploader {
+  grid-column: 1;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: rgba(74, 222, 128, 0.08);
+  border: var(--border-width) solid var(--color-border);
+}
+
+body.layout-accordion .transcribe-btn {
+  grid-column: 1;
+  width: 100%;
+}
+
+body.layout-accordion .progress-container {
+  grid-column: 1;
+}
+
+body.layout-accordion .error-message {
+  grid-column: 1;
+}
+
+body.layout-accordion .transcript-viewer {
+  grid-column: 1;
+}
+
+/* Columns: 3-column layout */
+body.layout-columns .transcribe-panel {
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-lg);
+}
+
+body.layout-columns .model-selector {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+body.layout-columns .video-uploader {
+  grid-column: 2 / 4;
+  grid-row: 1;
+}
+
+body.layout-columns .transcribe-btn {
+  grid-column: 1 / 4;
+}
+
+body.layout-columns .progress-container {
+  grid-column: 1 / 4;
+}
+
+body.layout-columns .error-message {
+  grid-column: 1 / 4;
+}
+
+body.layout-columns .transcript-viewer {
+  grid-column: 1 / 4;
+}
+
+/* Hero: Large upload area in focus */
+body.layout-hero .transcribe-panel {
+  grid-template-columns: 1fr;
+  gap: var(--spacing-lg);
+}
+
+body.layout-hero .model-selector {
+  grid-column: 1;
+  grid-row: 1;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+body.layout-hero .video-uploader {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 300px;
+}
+
+body.layout-hero .upload-area {
+  min-height: 250px;
+}
+
+body.layout-hero .transcribe-btn {
+  grid-column: 1;
+  font-size: var(--font-size-md);
+  padding: var(--spacing-lg);
+}
+
+body.layout-hero .progress-container {
+  grid-column: 1;
+}
+
+body.layout-hero .error-message {
+  grid-column: 1;
+}
+
+body.layout-hero .transcript-viewer {
+  grid-column: 1;
+}
+
+/* Flow: Flowing vertical layout with varied widths */
+body.layout-flow .transcribe-panel {
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-lg);
+}
+
+body.layout-flow .model-selector {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+}
+
+body.layout-flow .video-uploader {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  min-height: 200px;
+}
+
+body.layout-flow .transcribe-btn {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+}
+
+body.layout-flow .progress-container {
+  grid-column: 1 / 3;
+}
+
+body.layout-flow .error-message {
+  grid-column: 1 / 3;
+}
+
+body.layout-flow .transcript-viewer {
+  grid-column: 1 / 3;
+}
+
 /* ============ RESPONSIVE ============ */
 @media (max-width: 768px) {
   .transcribe-panel {
@@ -554,9 +897,68 @@ body.theme-minimal ::-webkit-scrollbar-thumb {
 
   .header {
     flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .header-content {
+    order: 1;
   }
 
   .theme-switcher {
-    order: -1;
+    order: 2;
+  }
+
+  .layout-switcher {
+    order: 3;
+    width: 100%;
+  }
+
+  .layout-select {
+    width: 100%;
+  }
+
+  body.layout-sidebar .transcribe-panel {
+    grid-template-columns: 1fr;
+  }
+
+  body.layout-sidebar .model-selector,
+  body.layout-sidebar .video-uploader {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  body.layout-split .transcribe-panel {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+
+  body.layout-split .model-selector {
+    border-right: none;
+    border-bottom: var(--border-width) solid var(--color-primary);
+    padding-right: 0;
+    padding-bottom: var(--spacing-md);
+  }
+
+  body.layout-split .video-uploader {
+    padding-left: 0;
+  }
+
+  body.layout-columns .transcribe-panel {
+    grid-template-columns: 1fr;
+  }
+
+  body.layout-columns .model-selector,
+  body.layout-columns .video-uploader {
+    grid-column: 1;
+  }
+
+  body.layout-flow .transcribe-panel {
+    grid-template-columns: 1fr;
+  }
+
+  body.layout-flow .model-selector,
+  body.layout-flow .video-uploader,
+  body.layout-flow .transcribe-btn {
+    grid-column: 1;
   }
 }

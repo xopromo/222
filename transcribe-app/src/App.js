@@ -35,6 +35,7 @@ function App() {
   const [progressInfo, setProgressInfo] = useState({ stage: '', elapsed: 0, estimated: 0 });
   const [updateTime, setUpdateTime] = useState(getUpdateTimeString());
   const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'glass');
+  const [layout, setLayout] = useState(localStorage.getItem('app-layout') || 'grid');
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
@@ -48,8 +49,13 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('app-theme', theme);
-    document.body.className = `theme-${theme}`;
-  }, [theme]);
+    document.body.className = `theme-${theme} layout-${layout}`;
+  }, [theme, layout]);
+
+  useEffect(() => {
+    localStorage.setItem('app-layout', layout);
+    document.body.className = `theme-${theme} layout-${layout}`;
+  }, [layout]);
 
   useEffect(() => {
     // Обновляем время с момента последнего обновления каждую минуту
@@ -397,6 +403,20 @@ function App() {
           <button onClick={() => setTheme('glass')} className={theme === 'glass' ? 'active' : ''} title="Dark Glass">🌙</button>
           <button onClick={() => setTheme('minimal')} className={theme === 'minimal' ? 'active' : ''} title="Minimal">☀️</button>
           <button onClick={() => setTheme('vibrant')} className={theme === 'vibrant' ? 'active' : ''} title="Vibrant">✨</button>
+        </div>
+        <div className="layout-switcher">
+          <select value={layout} onChange={(e) => setLayout(e.target.value)} className="layout-select">
+            <option value="grid">📐 Grid (2x2)</option>
+            <option value="vertical">📋 Vertical</option>
+            <option value="sidebar">📌 Sidebar</option>
+            <option value="compact">🎯 Compact</option>
+            <option value="cards">🃏 Cards</option>
+            <option value="split">📂 Split</option>
+            <option value="accordion">🎨 Accordion</option>
+            <option value="columns">📊 3 Columns</option>
+            <option value="hero">🎭 Hero</option>
+            <option value="flow">🌊 Flow</option>
+          </select>
         </div>
       </header>
 
