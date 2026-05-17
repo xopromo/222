@@ -242,6 +242,7 @@ body.theme-minimal .transcribe-panel {
   flex-direction: column;
   gap: var(--spacing-lg);
   min-height: 0;
+  width: 100%;
 }
 
 /* Model Selector - Compact */
@@ -304,16 +305,32 @@ body.theme-minimal .transcribe-panel {
   opacity: 0.6;
 }
 
+/* Toolbar model selector - compact */
 .toolbar-left .model-selector h3 {
-  display: none;
+  font-size: 0.85rem;
+  margin-bottom: var(--spacing-sm);
 }
 
 .toolbar-left .model-selector p {
   display: none;
 }
 
+.toolbar-left .model-option {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 0.7rem;
+}
+
 .toolbar-left .model-details {
-  display: none;
+  font-size: 0.65rem;
+  opacity: 0.5;
+}
+
+/* Video Uploader */
+.video-uploader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  width: 100%;
 }
 
 /* Upload Area - HERO */
@@ -321,15 +338,13 @@ body.theme-minimal .transcribe-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 350px;
   gap: var(--spacing-lg);
+  min-height: 300px;
+  width: 100%;
 }
 
 .upload-area {
   width: 100%;
-  max-width: 600px;
   background: linear-gradient(135deg, rgba(74, 222, 128, 0.12) 0%, rgba(52, 211, 153, 0.08) 100%);
   border: var(--border-width) dashed var(--color-primary);
   border-radius: var(--radius-md);
@@ -342,6 +357,7 @@ body.theme-minimal .transcribe-panel {
   align-items: center;
   justify-content: center;
   color: var(--color-text-primary);
+  min-height: 200px;
 }
 
 .upload-area:hover {
@@ -374,6 +390,65 @@ body.theme-minimal .transcribe-panel {
   display: none;
 }
 
+/* Google Drive Section */
+.google-drive-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: rgba(74, 222, 128, 0.05);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+
+.google-drive-section h4 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.google-drive-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  width: 100%;
+  transition: all var(--transition);
+}
+
+.google-drive-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.2);
+}
+
+.google-drive-btn {
+  background: rgba(74, 222, 128, 0.2);
+  border: var(--border-width) solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  transition: all var(--transition);
+}
+
+.google-drive-btn:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.3);
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.25);
+}
+
+.google-drive-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .selected-file {
   display: flex;
   align-items: center;
@@ -384,9 +459,9 @@ body.theme-minimal .transcribe-panel {
   padding: var(--spacing-md) var(--spacing-lg);
   color: var(--color-primary);
   font-size: var(--font-size-sm);
-  margin-top: var(--spacing-lg);
   width: 100%;
-  max-width: 600px;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
 }
 
 .selected-file-name {
@@ -414,7 +489,6 @@ body.theme-minimal .transcribe-panel {
 /* Progress */
 .progress-container {
   width: 100%;
-  max-width: 600px;
   background: rgba(74, 222, 128, 0.1);
   border: var(--border-width) solid var(--color-primary);
   border-radius: var(--radius-md);
@@ -503,7 +577,6 @@ body.theme-minimal .transcribe-panel {
   color: #ff9999;
   font-size: var(--font-size-sm);
   width: 100%;
-  max-width: 600px;
 }
 
 /* ============ EDITOR SECTION ============ */
@@ -731,6 +804,21 @@ body.theme-minimal ::-webkit-scrollbar-thumb {
 
   .transcribe-panel {
     padding: var(--spacing-md);
+    gap: var(--spacing-md);
+  }
+
+  .transcribe-toolbar {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+  }
+
+  .toolbar-left {
+    width: 100%;
+  }
+
+  .toolbar-right {
+    width: 100%;
   }
 
   .header {
@@ -745,12 +833,13 @@ body.theme-minimal ::-webkit-scrollbar-thumb {
   }
 
   .hero-upload {
-    min-height: 300px;
+    min-height: 250px;
     gap: var(--spacing-md);
   }
 
   .upload-area {
-    padding: var(--spacing-xl);
+    min-height: 150px;
+    padding: var(--spacing-lg);
   }
 
   .upload-icon {
@@ -761,15 +850,28 @@ body.theme-minimal ::-webkit-scrollbar-thumb {
     font-size: 1rem;
   }
 
+  .upload-hint {
+    font-size: var(--font-size-sm);
+  }
+
+  .google-drive-section {
+    padding: var(--spacing-md);
+  }
+
   .editor-content {
     max-height: 300px;
   }
 
-  .toolbar-right {
+  .transcribe-btn {
     width: 100%;
   }
 
-  .transcribe-btn {
+  .stop-btn {
     width: 100%;
+  }
+
+  .model-option {
+    flex: 1;
+    min-width: 80px;
   }
 }

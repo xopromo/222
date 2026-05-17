@@ -448,49 +448,38 @@ function App() {
 
             {/* Main Content Area */}
             <div className="upload-section">
-              {/* Hero Upload Area */}
-              {!videoFile && (
-                <div className="hero-upload">
-                  <VideoUploader
-                    onFileSelect={handleVideoSelect}
-                    onGoogleDriveUrl={handleGoogleDriveUrl}
-                    disabled={isProcessing}
-                    selectedFile={videoFile}
-                  />
+              {/* Upload Area */}
+              <div className="hero-upload">
+                <VideoUploader
+                  onFileSelect={handleVideoSelect}
+                  onGoogleDriveUrl={handleGoogleDriveUrl}
+                  disabled={isProcessing}
+                  selectedFile={videoFile}
+                />
+              </div>
+
+              {/* Progress */}
+              {isProcessing && (
+                <div className="progress-container">
+                  <div className="progress-stage">{progressInfo.stage}</div>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                  </div>
+                  <div className="progress-stats">
+                    <span className="progress-percent">{progress}%</span>
+                    <span className="progress-time">
+                      ⏱️ Прошло: {progressInfo.elapsed}с
+                      {progressInfo.estimated > 0 && ` | Осталось: ~${Math.max(0, progressInfo.estimated - progressInfo.elapsed)}с`}
+                    </span>
+                  </div>
                 </div>
               )}
 
-              {/* File Info */}
-              {videoFile && (
-                <>
-                  <div className="selected-file">
-                    <span className="selected-file-name">
-                      📹 {videoFile.name}
-                    </span>
-                  </div>
-
-                  {isProcessing && (
-                    <div className="progress-container">
-                      <div className="progress-stage">{progressInfo.stage}</div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-                      </div>
-                      <div className="progress-stats">
-                        <span className="progress-percent">{progress}%</span>
-                        <span className="progress-time">
-                          ⏱️ Прошло: {progressInfo.elapsed}с
-                          {progressInfo.estimated > 0 && ` | Осталось: ~${Math.max(0, progressInfo.estimated - progressInfo.elapsed)}с`}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {error && (
-                    <div className="error-message">
-                      ❌ {error}
-                    </div>
-                  )}
-                </>
+              {/* Error */}
+              {error && (
+                <div className="error-message">
+                  ❌ {error}
+                </div>
               )}
 
               {/* Transcript Editor */}
