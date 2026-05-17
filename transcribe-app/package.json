@@ -2,7 +2,7 @@
   "name": "transcribe-app",
   "version": "1.0.0",
   "private": true,
-  "homepage": "/transcribe/",
+  "homepage": "/222/transcribe/",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
