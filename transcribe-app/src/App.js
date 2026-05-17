@@ -283,86 +283,65 @@ function App() {
       // Шаг 3: Транскрибация
       setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
 
-      // Для tiny модели не разбиваем - передаём весь аудиобуфер
-      // Для других моделей используем чанки
+      // Для всех моделей используем чанки (с разными размерами)
       let fullText = '';
       let allSegments = [];
 
-      if (selectedModel === 'tiny') {
-        // Tiny модель обрабатывает весь аудиобуфер целиком
-        console.log('⏳ Обработка tiny модели (весь аудиобуфер целиком)');
+      const modelSizes = {
+        tiny: 60,    // Tiny может обрабатывать более длинные чанки
+        base: 30,
+        small: 30,
+        medium: 25,
+        large: 20
+      };
+      const chunkDuration = modelSizes[selectedModel] || 30;
+      const chunkLength = chunkDuration * 16000;
+      const chunks = [];
+
+      for (let i = 0; i < audioData.length; i += chunkLength) {
+        const chunkEnd = Math.min(i + chunkLength, audioData.length);
+        chunks.push({
+          data: audioData.slice(i, chunkEnd),
+          startTime: i / 16000
+        });
+
+        if (chunkEnd === audioData.length) break;
+      }
+
+      console.log(`📦 Разбито на ${chunks.length} чанков по ${chunkDuration}сек для модели ${selectedModel}`);
+
+      for (let i = 0; i < chunks.length; i++) {
+        if (stopRef.current) {
+          setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено пользователем` }));
+          break;
+        }
+
+        const progressPercent = 75 + (i / chunks.length) * 20;
+        setProgress(progressPercent);
         setProgressInfo(prev => ({
           ...prev,
-          stage: '🤖 Обработка tiny модели (это быстро)...'
+          stage: `🤖 Обработка чанка ${i + 1}/${chunks.length}...`
         }));
 
-        if (!stopRef.current) {
-          const result = await transcriber(audioData);
+        console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
+        const result = await transcriber(chunks[i].data);
 
-          if (!stopRef.current) {
-            fullText = result.text || '';
-            if (result.chunks) {
-              allSegments = result.chunks || [];
-            }
-          } else {
-            setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено пользователем` }));
-          }
-        } else {
-          setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено пользователем` }));
-        }
-        setProgress(95);
-      } else {
-        // Для больших моделей используем чанки без перекрытия — перекрытие вызывало повторения
-        const modelSizes = { base: 30, small: 30, medium: 30, large: 30 };
-        const chunkDuration = modelSizes[selectedModel] || 30;
-        const chunkLength = chunkDuration * 16000;
-        const chunks = [];
-
-        for (let i = 0; i < audioData.length; i += chunkLength) {
-          const chunkEnd = Math.min(i + chunkLength, audioData.length);
-          chunks.push({
-            data: audioData.slice(i, chunkEnd),
-            startTime: i / 16000
-          });
-
-          if (chunkEnd === audioData.length) break;
+        const textToAdd = (result.text || '').trim();
+        if (textToAdd) {
+          fullText += (fullText ? ' ' : '') + textToAdd;
         }
 
-        console.log(`📦 Разбито на ${chunks.length} чанков по ${chunkDuration}сек для модели ${selectedModel}`);
-
-        for (let i = 0; i < chunks.length; i++) {
-          if (stopRef.current) {
-            setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено пользователем` }));
-            break;
-          }
-
-          const progressPercent = 75 + (i / chunks.length) * 20;
-          setProgress(progressPercent);
-          setProgressInfo(prev => ({
-            ...prev,
-            stage: `🤖 Обработка чанка ${i + 1}/${chunks.length}...`
-          }));
-
-          console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
-          const result = await transcriber(chunks[i].data);
-
-          const textToAdd = (result.text || '').trim();
-          fullText += (fullText && textToAdd ? ' ' : '') + textToAdd;
-
-          if (result.chunks) {
-            const timeOffset = chunks[i].startTime;
-            allSegments.push(...result.chunks.map(chunk => ({
-              ...chunk,
-              start: (chunk.start || 0) + timeOffset,
-              end: (chunk.end || 0) + timeOffset
-            })));
-          }
-
-          console.log(`✅ Чанк ${i + 1} готов. Текст: "${(result.text || '').substring(0, 50)}..."`);
-          await new Promise(resolve => setTimeout(resolve, 100));
+        if (result.chunks) {
+          const timeOffset = chunks[i].startTime;
+          allSegments.push(...result.chunks.map(chunk => ({
+            ...chunk,
+            start: (chunk.start || 0) + timeOffset,
+            end: (chunk.end || 0) + timeOffset
+          })));
         }
 
-        setProgress(95);
+        console.log(`✅ Чанк ${i + 1} готов. Текст: "${(result.text || '').substring(0, 50)}..."`);
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Формируем результат
