@@ -289,16 +289,18 @@ function App() {
 
       const modelSizes = {
         tiny: 60,
-        base: 60,
-        small: 60,
-        medium: 45,
-        large: 30
+        base: 45,
+        small: 45,
+        medium: 20,
+        large: 15
       };
       const chunkDuration = modelSizes[selectedModel] || 30;
+      const overlapDuration = Math.floor(chunkDuration * 0.2); // 20% перекрытие
       const chunkLength = chunkDuration * 16000;
+      const overlapLength = overlapDuration * 16000;
       const chunks = [];
 
-      for (let i = 0; i < audioData.length; i += chunkLength) {
+      for (let i = 0; i < audioData.length; i += (chunkLength - overlapLength)) {
         const chunkEnd = Math.min(i + chunkLength, audioData.length);
         chunks.push({
           data: audioData.slice(i, chunkEnd),
