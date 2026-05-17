@@ -1,16 +1,19 @@
 {
   "name": "transcribe-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
+  "lastUpdated": "2026-05-16T17:45:00Z",
   "homepage": "/222/transcribe/",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "@xenova/transformers": "^2.6.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "update-build-time": "node scripts/update-build-time.js",
+    "start": "npm run update-build-time && react-scripts start",
+    "build": "npm run update-build-time && react-scripts build",
     "deploy": "npm run build && gh-pages -d build"
   },
   "eslintConfig": {
