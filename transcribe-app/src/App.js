@@ -416,8 +416,8 @@ function App() {
         </div>
 
         {activeTab === 'transcribe' ? (
-          <div className={`transcribe-panel ${transcript ? 'with-transcript' : ''}`}>
-            {/* Toolbar */}
+          <div className="transcribe-panel">
+            {/* Toolbar with Model Selector */}
             <div className="transcribe-toolbar">
               <div className="toolbar-left">
                 <ModelSelector
@@ -437,17 +437,8 @@ function App() {
                 </button>
                 {isProcessing && (
                   <button
+                    className="stop-btn"
                     onClick={() => { stopRef.current = true; }}
-                    style={{
-                      padding: '0.8rem 1rem',
-                      background: '#f44336',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '0.9rem',
-                      fontWeight: 'bold',
-                      cursor: 'pointer'
-                    }}
                   >
                     ⏹️ Стоп
                   </button>
@@ -455,65 +446,81 @@ function App() {
               </div>
             </div>
 
-            {/* Upload Section (Left Panel) */}
+            {/* Main Content Area */}
             <div className="upload-section">
-              <VideoUploader
-                onFileSelect={handleVideoSelect}
-                onGoogleDriveUrl={handleGoogleDriveUrl}
-                disabled={isProcessing}
-                selectedFile={videoFile}
-              />
-
-              {isProcessing && (
-                <div className="progress-container">
-                  <div className="progress-stage">{progressInfo.stage}</div>
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-                  </div>
-                  <div className="progress-stats">
-                    <span className="progress-percent">{progress}%</span>
-                    <span className="progress-time">
-                      ⏱️ Прошло: {progressInfo.elapsed}с
-                      {progressInfo.estimated > 0 && ` | Осталось: ~${Math.max(0, progressInfo.estimated - progressInfo.elapsed)}с`}
-                    </span>
-                  </div>
+              {/* Hero Upload Area */}
+              {!videoFile && (
+                <div className="hero-upload">
+                  <VideoUploader
+                    onFileSelect={handleVideoSelect}
+                    onGoogleDriveUrl={handleGoogleDriveUrl}
+                    disabled={isProcessing}
+                    selectedFile={videoFile}
+                  />
                 </div>
               )}
 
-              {error && (
-                <div className="error-message">
-                  ❌ {error}
+              {/* File Info */}
+              {videoFile && (
+                <>
+                  <div className="selected-file">
+                    <span className="selected-file-name">
+                      📹 {videoFile.name}
+                    </span>
+                  </div>
+
+                  {isProcessing && (
+                    <div className="progress-container">
+                      <div className="progress-stage">{progressInfo.stage}</div>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                      </div>
+                      <div className="progress-stats">
+                        <span className="progress-percent">{progress}%</span>
+                        <span className="progress-time">
+                          ⏱️ Прошло: {progressInfo.elapsed}с
+                          {progressInfo.estimated > 0 && ` | Осталось: ~${Math.max(0, progressInfo.estimated - progressInfo.elapsed)}с`}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="error-message">
+                      ❌ {error}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Transcript Editor */}
+              {transcript && (
+                <div className="editor-section">
+                  <div className="editor-header">
+                    <h3>✨ Транскрипция готова</h3>
+                    <div className="editor-actions">
+                      <button className="editor-btn" onClick={() => navigator.clipboard.writeText(transcript.text)}>
+                        📋 Копировать
+                      </button>
+                      <button className="editor-btn" onClick={() => {
+                        const element = document.createElement('a');
+                        const file = new Blob([transcript.text], { type: 'text/plain' });
+                        element.href = URL.createObjectURL(file);
+                        element.download = `transcript-${Date.now()}.txt`;
+                        document.body.appendChild(element);
+                        element.click();
+                        document.body.removeChild(element);
+                      }}>
+                        📥 Скачать
+                      </button>
+                    </div>
+                  </div>
+                  <div className="editor-content">
+                    {transcript.text}
+                  </div>
                 </div>
               )}
             </div>
-
-            {/* Editor Section (Right Panel) */}
-            {transcript && (
-              <div className="editor-section">
-                <div className="editor-header">
-                  <h3>✨ Транскрипция</h3>
-                  <div className="editor-actions">
-                    <button className="editor-btn" onClick={() => navigator.clipboard.writeText(transcript.text)}>
-                      📋 Копировать
-                    </button>
-                    <button className="editor-btn" onClick={() => {
-                      const element = document.createElement('a');
-                      const file = new Blob([transcript.text], { type: 'text/plain' });
-                      element.href = URL.createObjectURL(file);
-                      element.download = `transcript-${Date.now()}.txt`;
-                      document.body.appendChild(element);
-                      element.click();
-                      document.body.removeChild(element);
-                    }}>
-                      📥 Скачать
-                    </button>
-                  </div>
-                </div>
-                <div className="editor-content">
-                  {transcript.text}
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <History history={history} onClear={clearHistory} />
