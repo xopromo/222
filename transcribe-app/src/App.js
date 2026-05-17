@@ -323,24 +323,36 @@ function App() {
           stage: `🤖 Обработка чанка ${i + 1}/${chunks.length}...`
         }));
 
-        console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
-        const result = await transcriber(chunks[i].data);
+        console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length} (${chunks[i].data.length} сэмплов)`);
 
-        const textToAdd = (result.text || '').trim();
-        if (textToAdd) {
-          fullText += (fullText ? ' ' : '') + textToAdd;
+        try {
+          const result = await transcriber({
+            raw: chunks[i].data,
+            sampling_rate: 16000
+          });
+
+          const textToAdd = (result.text || '').trim();
+          console.log(`📝 Результат: "${textToAdd.substring(0, 100)}"`);
+
+          if (textToAdd) {
+            fullText += (fullText ? ' ' : '') + textToAdd;
+          }
+
+          if (result.chunks) {
+            const timeOffset = chunks[i].startTime;
+            allSegments.push(...result.chunks.map(chunk => ({
+              ...chunk,
+              start: (chunk.start || 0) + timeOffset,
+              end: (chunk.end || 0) + timeOffset
+            })));
+          }
+
+          console.log(`✅ Чанк ${i + 1} готов. Итого текста: ${fullText.length} символов`);
+        } catch (chunkError) {
+          console.error(`❌ Ошибка на чанке ${i + 1}:`, chunkError);
+          throw chunkError;
         }
 
-        if (result.chunks) {
-          const timeOffset = chunks[i].startTime;
-          allSegments.push(...result.chunks.map(chunk => ({
-            ...chunk,
-            start: (chunk.start || 0) + timeOffset,
-            end: (chunk.end || 0) + timeOffset
-          })));
-        }
-
-        console.log(`✅ Чанк ${i + 1} готов. Текст: "${(result.text || '').substring(0, 50)}..."`);
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
