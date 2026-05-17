@@ -34,6 +34,7 @@ function App() {
   const [error, setError] = useState(null);
   const [progressInfo, setProgressInfo] = useState({ stage: '', elapsed: 0, estimated: 0 });
   const [updateTime, setUpdateTime] = useState(getUpdateTimeString());
+  const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'glass');
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
@@ -44,6 +45,11 @@ function App() {
     console.log('📅 Last updated: 2026-05-16 17:45 UTC');
     console.log('✨ Features: Real Whisper transcription, All model sizes (tiny→large), Offline processing');
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('app-theme', theme);
+    document.body.className = `theme-${theme}`;
+  }, [theme]);
 
   useEffect(() => {
     // Обновляем время с момента последнего обновления каждую минуту
@@ -386,6 +392,11 @@ function App() {
         <div className="header-content">
           <h1>🎙️ Transcribe</h1>
           <p>Бесплатная транскрибация видео - Offline, Приватно</p>
+        </div>
+        <div className="theme-switcher">
+          <button onClick={() => setTheme('glass')} className={theme === 'glass' ? 'active' : ''} title="Dark Glass">🌙</button>
+          <button onClick={() => setTheme('minimal')} className={theme === 'minimal' ? 'active' : ''} title="Minimal">☀️</button>
+          <button onClick={() => setTheme('vibrant')} className={theme === 'vibrant' ? 'active' : ''} title="Vibrant">✨</button>
         </div>
       </header>
 
