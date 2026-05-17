@@ -288,11 +288,11 @@ function App() {
       let allSegments = [];
 
       const modelSizes = {
-        tiny: 60,    // Tiny может обрабатывать более длинные чанки
-        base: 30,
-        small: 30,
-        medium: 25,
-        large: 20
+        tiny: 60,
+        base: 60,
+        small: 60,
+        medium: 45,
+        large: 30
       };
       const chunkDuration = modelSizes[selectedModel] || 30;
       const chunkLength = chunkDuration * 16000;
