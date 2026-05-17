@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import VideoUploader from './components/VideoUploader';
 import ModelSelector from './components/ModelSelector';
-import TranscriptViewer from './components/TranscriptViewer';
 import History from './components/History';
 import { useHistory } from './hooks/useHistory';
 import { pipeline } from '@xenova/transformers';
@@ -35,7 +34,6 @@ function App() {
   const [progressInfo, setProgressInfo] = useState({ stage: '', elapsed: 0, estimated: 0 });
   const [updateTime, setUpdateTime] = useState(getUpdateTimeString());
   const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'glass');
-  const [layout, setLayout] = useState(localStorage.getItem('app-layout') || 'grid');
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
@@ -49,13 +47,8 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('app-theme', theme);
-    document.body.className = `theme-${theme} layout-${layout}`;
-  }, [theme, layout]);
-
-  useEffect(() => {
-    localStorage.setItem('app-layout', layout);
-    document.body.className = `theme-${theme} layout-${layout}`;
-  }, [layout]);
+    document.body.className = `theme-${theme}`;
+  }, [theme]);
 
   useEffect(() => {
     // Обновляем время с момента последнего обновления каждую минуту
@@ -404,20 +397,6 @@ function App() {
           <button onClick={() => setTheme('minimal')} className={theme === 'minimal' ? 'active' : ''} title="Minimal">☀️</button>
           <button onClick={() => setTheme('vibrant')} className={theme === 'vibrant' ? 'active' : ''} title="Vibrant">✨</button>
         </div>
-        <div className="layout-switcher">
-          <select value={layout} onChange={(e) => setLayout(e.target.value)} className="layout-select">
-            <option value="grid">📐 Grid (2x2)</option>
-            <option value="vertical">📋 Vertical</option>
-            <option value="sidebar">📌 Sidebar</option>
-            <option value="compact">🎯 Compact</option>
-            <option value="cards">🃏 Cards</option>
-            <option value="split">📂 Split</option>
-            <option value="accordion">🎨 Accordion</option>
-            <option value="columns">📊 3 Columns</option>
-            <option value="hero">🎭 Hero</option>
-            <option value="flow">🌊 Flow</option>
-          </select>
-        </div>
       </header>
 
       <main className="container">
@@ -437,79 +416,103 @@ function App() {
         </div>
 
         {activeTab === 'transcribe' ? (
-          <div className="transcribe-panel">
-            {/* Выбор модели */}
-            <ModelSelector
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              models={MODELS}
-              disabled={isProcessing}
-            />
-
-            {/* Загрузка видео */}
-            <VideoUploader
-              onFileSelect={handleVideoSelect}
-              onGoogleDriveUrl={handleGoogleDriveUrl}
-              disabled={isProcessing}
-              selectedFile={videoFile}
-            />
-
-            {/* Progress bar */}
-            {isProcessing && (
-              <div className="progress-container">
-                <div className="progress-stage">{progressInfo.stage}</div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-                </div>
-                <div className="progress-stats">
-                  <span className="progress-percent">{progress}%</span>
-                  <span className="progress-time">
-                    ⏱️ Прошло: {progressInfo.elapsed}с
-                    {progressInfo.estimated > 0 && ` | Осталось: ~${Math.max(0, progressInfo.estimated - progressInfo.elapsed)}с`}
-                  </span>
-                </div>
+          <div className={`transcribe-panel ${transcript ? 'with-transcript' : ''}`}>
+            {/* Toolbar */}
+            <div className="transcribe-toolbar">
+              <div className="toolbar-left">
+                <ModelSelector
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  models={MODELS}
+                  disabled={isProcessing}
+                />
               </div>
-            )}
-
-            {/* Кнопки управления */}
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button
-                className="transcribe-btn"
-                style={{ flex: 1, marginBottom: 0 }}
-                onClick={handleTranscribe}
-                disabled={!videoFile || isProcessing}
-              >
-                {isProcessing ? '⏳ Обработка...' : '🚀 Начать транскрибацию'}
-              </button>
-              {isProcessing && (
+              <div className="toolbar-right">
                 <button
-                  onClick={() => { stopRef.current = true; }}
-                  style={{
-                    padding: '1rem 1.5rem',
-                    background: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
+                  className="transcribe-btn"
+                  onClick={handleTranscribe}
+                  disabled={!videoFile || isProcessing}
                 >
-                  ⏹️ Стоп
+                  {isProcessing ? '⏳ Обработка...' : '🚀 Транскрибировать'}
                 </button>
+                {isProcessing && (
+                  <button
+                    onClick={() => { stopRef.current = true; }}
+                    style={{
+                      padding: '0.8rem 1rem',
+                      background: '#f44336',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '0.9rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ⏹️ Стоп
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Upload Section (Left Panel) */}
+            <div className="upload-section">
+              <VideoUploader
+                onFileSelect={handleVideoSelect}
+                onGoogleDriveUrl={handleGoogleDriveUrl}
+                disabled={isProcessing}
+                selectedFile={videoFile}
+              />
+
+              {isProcessing && (
+                <div className="progress-container">
+                  <div className="progress-stage">{progressInfo.stage}</div>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                  </div>
+                  <div className="progress-stats">
+                    <span className="progress-percent">{progress}%</span>
+                    <span className="progress-time">
+                      ⏱️ Прошло: {progressInfo.elapsed}с
+                      {progressInfo.estimated > 0 && ` | Осталось: ~${Math.max(0, progressInfo.estimated - progressInfo.elapsed)}с`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="error-message">
+                  ❌ {error}
+                </div>
               )}
             </div>
 
-            {/* Ошибки */}
-            {error && (
-              <div className="error-message">
-                ❌ {error}
-              </div>
-            )}
-
-            {/* Результат */}
+            {/* Editor Section (Right Panel) */}
             {transcript && (
-              <TranscriptViewer transcript={transcript} />
+              <div className="editor-section">
+                <div className="editor-header">
+                  <h3>✨ Транскрипция</h3>
+                  <div className="editor-actions">
+                    <button className="editor-btn" onClick={() => navigator.clipboard.writeText(transcript.text)}>
+                      📋 Копировать
+                    </button>
+                    <button className="editor-btn" onClick={() => {
+                      const element = document.createElement('a');
+                      const file = new Blob([transcript.text], { type: 'text/plain' });
+                      element.href = URL.createObjectURL(file);
+                      element.download = `transcript-${Date.now()}.txt`;
+                      document.body.appendChild(element);
+                      element.click();
+                      document.body.removeChild(element);
+                    }}>
+                      📥 Скачать
+                    </button>
+                  </div>
+                </div>
+                <div className="editor-content">
+                  {transcript.text}
+                </div>
+              </div>
             )}
           </div>
         ) : (
