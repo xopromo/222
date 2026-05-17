@@ -331,8 +331,11 @@ function App() {
             sampling_rate: 16000
           });
 
+          console.log(`📥 Полный результат от transcriber:`, result);
+
           const textToAdd = (result.text || '').trim();
-          console.log(`📝 Результат: "${textToAdd.substring(0, 100)}"`);
+          console.log(`📝 Извлечённый текст: "${textToAdd.substring(0, 150)}"`);
+          console.log(`📏 Длина текста: ${textToAdd.length} символов`);
 
           if (textToAdd) {
             fullText += (fullText ? ' ' : '') + textToAdd;
