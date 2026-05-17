@@ -581,8 +581,9 @@ body.theme-vibrant .error-message {
 
 .transcript-viewer {
   grid-column: 1 / 3;
-  padding: 1rem;
+  padding: 0;
   border-radius: 8px;
+  max-height: 350px;
 }
 
 body.theme-glass .transcript-viewer {

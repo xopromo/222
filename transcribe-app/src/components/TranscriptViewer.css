@@ -1,0 +1,425 @@
+.transcript-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  height: 100%;
+}
+
+body.theme-glass .transcript-viewer {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-minimal .transcript-viewer {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+body.theme-vibrant .transcript-viewer {
+  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* ============ HEADER ============ */
+.transcript-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+body.theme-glass .transcript-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.theme-minimal .transcript-header {
+  border-bottom-color: #e0e0e0;
+  background: #fafafa;
+}
+
+body.theme-vibrant .transcript-header {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.transcript-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.3rem;
+  border-radius: 8px;
+}
+
+body.theme-minimal .view-tabs {
+  background: #f0f0f0;
+}
+
+body.theme-vibrant .view-tabs {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.tab-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s;
+  color: inherit;
+  opacity: 0.6;
+}
+
+body.theme-glass .tab-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0.8;
+}
+
+body.theme-glass .tab-btn.active {
+  background: rgba(102, 126, 234, 0.3);
+  opacity: 1;
+}
+
+body.theme-minimal .tab-btn:hover {
+  background: #e0e0e0;
+  opacity: 0.8;
+}
+
+body.theme-minimal .tab-btn.active {
+  background: #d0d0d0;
+  opacity: 1;
+}
+
+body.theme-vibrant .tab-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+}
+
+/* ============ CONTENT ============ */
+.transcript-content,
+.transcript-content-compact {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  min-height: 0;
+}
+
+.transcript-text {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+body.theme-glass .transcript-text {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+body.theme-minimal .transcript-text {
+  color: #333;
+}
+
+body.theme-vibrant .transcript-text {
+  color: #fff;
+}
+
+/* ============ IMPROVING BANNER ============ */
+.improving-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+body.theme-glass .improving-banner {
+  background: rgba(102, 126, 234, 0.15);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  color: #fff;
+}
+
+body.theme-minimal .improving-banner {
+  background: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  color: #2e7d32;
+}
+
+body.theme-vibrant .improving-banner {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.improving-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.expand-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  opacity: 0.7;
+  transition: all 0.3s;
+}
+
+.expand-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* ============ FOOTER ============ */
+.transcript-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-top: 1px solid;
+}
+
+body.theme-glass .transcript-footer {
+  border-top-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.theme-minimal .transcript-footer {
+  border-top-color: #e0e0e0;
+  background: #fafafa;
+}
+
+body.theme-vibrant .transcript-footer {
+  border-top-color: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ============ IMPROVE BUTTON ============ */
+.improve-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.9rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #fff;
+}
+
+body.theme-glass .improve-btn {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.8), rgba(118, 75, 162, 0.8));
+  border: 1px solid rgba(102, 126, 234, 0.4);
+}
+
+body.theme-glass .improve-btn:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 1), rgba(118, 75, 162, 1));
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px);
+}
+
+body.theme-minimal .improve-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+body.theme-minimal .improve-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+body.theme-vibrant .improve-btn {
+  background: rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+body.theme-vibrant .improve-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: #fff;
+  transform: translateY(-2px);
+}
+
+.improve-icon {
+  font-size: 1.2rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ============ ACTIONS ============ */
+.actions-full {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+
+.actions-compact {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.3s;
+  min-height: 60px;
+}
+
+.action-btn span {
+  display: block;
+}
+
+.action-btn span:first-child {
+  font-size: 1.5rem;
+}
+
+.action-btn.json {
+  background: #4CAF50;
+  color: white;
+}
+
+.action-btn.json:hover {
+  background: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.action-btn.srt {
+  background: #2196F3;
+  color: white;
+}
+
+.action-btn.srt:hover {
+  background: #0b7dda;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.action-btn.txt {
+  background: #FF9800;
+  color: white;
+}
+
+.action-btn.txt:hover {
+  background: #e68900;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.action-btn.copy {
+  background: #9C27B0;
+  color: white;
+}
+
+.action-btn.copy:hover {
+  background: #7b1fa2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+}
+
+.action-btn .label {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.actions-compact .action-btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 0.5rem;
+}
+
+.actions-compact .action-btn .label {
+  display: none;
+}
+
+.actions-compact .action-btn span:first-child {
+  font-size: 1.3rem;
+}
+
+/* ============ ERROR ============ */
+.error-inline {
+  padding: 0.7rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  border-left: 3px solid #f44336;
+}
+
+body.theme-glass .error-inline {
+  background: rgba(244, 67, 54, 0.15);
+  color: #ff9999;
+}
+
+body.theme-minimal .error-inline {
+  background: #ffebee;
+  color: #c62828;
+}
+
+body.theme-vibrant .error-inline {
+  background: rgba(0, 0, 0, 0.15);
+  color: #fff;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 768px) {
+  .transcript-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .view-tabs {
+    width: 100%;
+  }
+
+  .tab-btn {
+    flex: 1;
+  }
+
+  .actions-full {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .action-btn {
+    min-height: 50px;
+  }
+}

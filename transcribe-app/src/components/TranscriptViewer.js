@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { improveTranscript } from '../utils/aiApi';
+import './TranscriptViewer.css';
 
 function TranscriptViewer({ transcript }) {
   const [improved, setImproved] = useState(null);
@@ -7,7 +8,6 @@ function TranscriptViewer({ transcript }) {
   const [improveError, setImproveError] = useState(null);
   const [activeView, setActiveView] = useState('original');
   const [showMinimized, setShowMinimized] = useState(false);
-  const improveRef = useRef(null);
 
   const currentText = activeView === 'improved' && improved ? improved.text : transcript.text;
 
@@ -16,12 +16,10 @@ function TranscriptViewer({ transcript }) {
     setImproveError(null);
     setShowMinimized(true);
 
-    // Запуск улучшения в фоне
     improveTranscript(transcript.text).then(
       (result) => {
         setImproved(result);
         setIsImproving(false);
-        // Уведомление когда готово
         if (Notification.permission === 'granted') {
           new Notification('✨ Текст улучшен!', {
             body: `AI улучшил текст через ${result.api}`,
@@ -36,7 +34,6 @@ function TranscriptViewer({ transcript }) {
     );
   };
 
-  // Запросить разрешение на уведомления при монтировании
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -69,7 +66,7 @@ function TranscriptViewer({ transcript }) {
   const downloadTXT = () => downloadFile(currentText, `transcript-${Date.now()}.txt`, 'text/plain');
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(currentText).then(() => alert('✅ Текст скопирован'));
+    navigator.clipboard.writeText(currentText).then(() => alert('✅ Скопирован'));
   };
 
   const formatTime = (seconds) => {
@@ -80,37 +77,25 @@ function TranscriptViewer({ transcript }) {
     return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
   };
 
-  // Если улучшение в процессе и показано в минимизированном виде
   if (isImproving && showMinimized && !improved) {
     return (
       <div className="transcript-viewer">
-        <h3>✅ Транскрипция готова!</h3>
-        <div className="transcript-text">{transcript.text}</div>
-
-        {/* Минимизированное улучшение */}
-        <div ref={improveRef} style={{
-          background: 'linear-gradient(135deg, #11998e, #38ef7d)',
-          color: 'white', padding: '1rem', borderRadius: '8px',
-          marginBottom: '1rem', display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span>⏳ AI улучшает текст в фоне...</span>
-          <button onClick={() => setShowMinimized(false)} style={{
-            background: 'rgba(255,255,255,0.3)', border: 'none', color: 'white',
-            padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer'
-          }}>
-            ↓ Развернуть
-          </button>
+        <div className="transcript-header">
+          <h3>✅ Транскрипция готова</h3>
         </div>
-
-        {/* Кнопки экспорта работают пока AI улучшает */}
-        <div className="transcript-actions">
-          <button className="export-btn export-btn-json" onClick={downloadJSON}>📄 JSON</button>
-          <button className="export-btn export-btn-srt" onClick={downloadSRT}>🎬 SRT</button>
-          <button className="export-btn export-btn-txt" onClick={downloadTXT}>📋 TXT</button>
-          <button className="export-btn" style={{ background: '#9C27B0', color: 'white' }} onClick={copyToClipboard}>
-            📋 Копировать
-          </button>
+        <div className="transcript-content-compact">
+          <div className="transcript-text">{transcript.text}</div>
+          <div className="improving-banner">
+            <div className="improving-spinner"></div>
+            <span>AI улучшает текст в фоне...</span>
+            <button className="expand-btn" onClick={() => setShowMinimized(false)}>↓</button>
+          </div>
+          <div className="actions-compact">
+            <button className="action-btn json" onClick={downloadJSON} title="JSON">📄</button>
+            <button className="action-btn srt" onClick={downloadSRT} title="SRT">🎬</button>
+            <button className="action-btn txt" onClick={downloadTXT} title="TXT">📄</button>
+            <button className="action-btn copy" onClick={copyToClipboard} title="Copy">📋</button>
+          </div>
         </div>
       </div>
     );
@@ -118,69 +103,60 @@ function TranscriptViewer({ transcript }) {
 
   return (
     <div className="transcript-viewer">
-      <h3>✅ Транскрипция готова!</h3>
+      <div className="transcript-header">
+        <h3>✅ Транскрипция готова</h3>
+        {improved && (
+          <div className="view-tabs">
+            <button
+              className={`tab-btn ${activeView === 'original' ? 'active' : ''}`}
+              onClick={() => setActiveView('original')}
+            >
+              📝 Оригинал
+            </button>
+            <button
+              className={`tab-btn ${activeView === 'improved' ? 'active' : ''}`}
+              onClick={() => setActiveView('improved')}
+            >
+              ✨ AI ({improved.api})
+            </button>
+          </div>
+        )}
+      </div>
 
-      {/* Переключатель оригинал/улучшенный */}
-      {improved && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          <button
-            onClick={() => setActiveView('original')}
-            style={{
-              padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', cursor: 'pointer',
-              background: activeView === 'original' ? '#667eea' : '#e0e0e0',
-              color: activeView === 'original' ? 'white' : '#333', fontWeight: '500'
-            }}
-          >
-            📝 Оригинал (Whisper)
+      <div className="transcript-content">
+        <div className="transcript-text">{currentText}</div>
+      </div>
+
+      <div className="transcript-footer">
+        {!isImproving && !improved && (
+          <button className="improve-btn" onClick={handleImprove}>
+            <span className="improve-icon">✨</span>
+            <span>Улучшить через AI</span>
           </button>
-          <button
-            onClick={() => setActiveView('improved')}
-            style={{
-              padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', cursor: 'pointer',
-              background: activeView === 'improved' ? '#4CAF50' : '#e0e0e0',
-              color: activeView === 'improved' ? 'white' : '#333', fontWeight: '500'
-            }}
-          >
-            ✨ Улучшенный ({improved.api})
+        )}
+
+        {improveError && (
+          <div className="error-inline">❌ {improveError}</div>
+        )}
+
+        <div className="actions-full">
+          <button className="action-btn json" onClick={downloadJSON} title="Download JSON">
+            <span>📄</span>
+            <span className="label">JSON</span>
+          </button>
+          <button className="action-btn srt" onClick={downloadSRT} title="Download SRT">
+            <span>🎬</span>
+            <span className="label">SRT</span>
+          </button>
+          <button className="action-btn txt" onClick={downloadTXT} title="Download TXT">
+            <span>📄</span>
+            <span className="label">TXT</span>
+          </button>
+          <button className="action-btn copy" onClick={copyToClipboard} title="Copy to Clipboard">
+            <span>📋</span>
+            <span className="label">Copy</span>
           </button>
         </div>
-      )}
-
-      <div className="transcript-text">{currentText}</div>
-
-      {/* Кнопка улучшения */}
-      {!isImproving && !improved && (
-        <button
-          onClick={handleImprove}
-          style={{
-            width: '100%', padding: '0.9rem', marginBottom: '1rem',
-            background: 'linear-gradient(135deg, #11998e, #38ef7d)',
-            color: 'white', border: 'none', borderRadius: '8px',
-            fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer'
-          }}
-        >
-          ✨ Улучшить текст через AI (фон)
-        </button>
-      )}
-
-      {improveError && (
-        <div className="error-message" style={{ marginBottom: '1rem' }}>❌ {improveError}</div>
-      )}
-
-      {/* Экспорт */}
-      <div className="transcript-actions">
-        <button className="export-btn export-btn-json" onClick={downloadJSON}>
-          📄 JSON
-        </button>
-        <button className="export-btn export-btn-srt" onClick={downloadSRT}>
-          🎬 SRT
-        </button>
-        <button className="export-btn export-btn-txt" onClick={downloadTXT}>
-          📋 TXT
-        </button>
-        <button className="export-btn" style={{ background: '#9C27B0', color: 'white' }} onClick={copyToClipboard}>
-          📋 Копировать
-        </button>
       </div>
     </div>
   );
