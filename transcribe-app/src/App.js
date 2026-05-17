@@ -326,10 +326,7 @@ function App() {
         console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length} (${chunks[i].data.length} сэмплов)`);
 
         try {
-          const result = await transcriber({
-            raw: chunks[i].data,
-            sampling_rate: 16000
-          });
+          const result = await transcriber(chunks[i].data);
 
           console.log(`📥 Полный результат от transcriber:`, result);
 
