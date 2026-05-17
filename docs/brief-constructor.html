@@ -1,3 +1,21 @@
+<!--
+  КОНСТРУКТОР ДАННЫХ ПРОЕКТА
+
+  ВАЖНО для разработки:
+  - Изменяй ТОЛЬКО то, что явно попросил пользователь
+  - Не добавляй новые UI элементы без запроса
+  - Не меняй CSS или расположение элементов без запроса
+  - Если видишь проблему - спроси перед исправлением
+  - Исправляй ТОЛЬКО баги, не делай "улучшения"
+
+  Структура:
+  - Левая панель: конструктор данных (наборы: ссылки, тексты, картинки)
+  - Правая панель: информация о проекте и извлеченные данные
+  - Вкладки сверху: Информация, ЦА и сегменты, Креативы, Кампании, Группы, Объявления
+
+  API для анализа: Mistral → Cerebras → Gemini (с fallback)
+  Хранилище: localStorage (браузер пользователя)
+-->
 <!DOCTYPE html>
 <html>
 <head>
@@ -12,19 +30,69 @@
       margin: 0;
       background: #f5f5f5;
     }
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .tabs-menu {
+      display: flex;
+      gap: 0;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0;
+      margin: 0;
+    }
+    .tab-button {
+      flex: 1;
+      padding: 12px 16px;
+      background: white;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      transition: all 0.2s;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .tab-button.active {
+      color: #007bff;
+      border-bottom-color: #007bff;
+    }
+    .tab-button:hover {
+      background: #f9f9f9;
+    }
+    .tabs-content {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+    .tab-page {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .tab-page.active {
+      display: flex;
+    }
     .container {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0;
-      height: 100vh;
-      overflow: hidden;
+      flex: 1;
+      min-height: 0;
     }
     .left-panel {
       background: white;
       border-right: 2px solid #e0e0e0;
+      overflow-y: auto;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
     .right-panel {
       background: white;
@@ -37,6 +105,7 @@
       gap: 15px;
       flex-wrap: wrap;
       background: white;
+      flex-shrink: 0;
     }
     .btn-add {
       padding: 0;
@@ -52,12 +121,95 @@
     }
     .btn-add:hover { color: #0056b3; text-decoration: underline; }
     .builder-items {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
       padding: 10px;
       display: flex;
       flex-direction: column;
+      gap: 0;
+    }
+
+    /* Стили оформления */
+
+    /* Тема: Компактная */
+    body.theme-compact .builder-item {
+      margin-bottom: 0;
+      border-bottom: 1px solid #eee;
+    }
+    body.theme-compact .builder-item-header {
+      padding: 8px 10px;
+    }
+    body.theme-compact .builder-items {
+      padding: 5px;
+    }
+
+    /* Тема: Просторная */
+    body.theme-spaced .builder-item {
+      margin-bottom: 12px;
+      background: #f9f9f9;
+      border-radius: 6px;
+      border: 1px solid #e8e8e8;
+    }
+    body.theme-spaced .builder-item-header {
+      padding: 14px;
+    }
+    body.theme-spaced .builder-items {
+      padding: 12px;
+    }
+
+    /* Тема: Карточки */
+    body.theme-cards .builder-item {
+      margin-bottom: 10px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    body.theme-cards .builder-item-header {
+      padding: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    body.theme-cards .builder-item.expanded .builder-item-header {
+      background: #f5f5f5;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    body.theme-cards textarea {
+      border: 0.5px solid #d0d0d0 !important;
+    }
+    body.theme-cards .builder-items {
+      padding: 10px;
+      gap: 8px;
+    }
+
+    /* Тема: Минимальная */
+    body.theme-minimal .builder-item {
+      margin-bottom: 0;
+      border: none;
+      border-top: 1px solid #f0f0f0;
+    }
+    body.theme-minimal .builder-item-header {
+      padding: 10px 8px;
+      font-size: 12px;
+    }
+    body.theme-minimal .builder-items {
+      padding: 0;
+    }
+
+    /* Тема: С цветными блоками */
+    body.theme-colored .builder-item {
+      margin-bottom: 8px;
+      border-radius: 4px;
+      border-left: 4px solid #007bff;
+    }
+    body.theme-colored .builder-item[data-type="links"] {
+      border-left-color: #28a745;
+      background: #f0f9ff;
+    }
+    body.theme-colored .builder-item[data-type="text"] {
+      border-left-color: #ffc107;
+      background: #fffef0;
+    }
+    body.theme-colored .builder-item[data-type="images"] {
+      border-left-color: #e83e8c;
+      background: #fff0f7;
     }
     .builder-item {
       background: white;
@@ -71,6 +223,9 @@
     }
     .builder-item.collapsed {
       background: white;
+    }
+    .builder-item.selected {
+      border-left: 3px solid #007bff;
     }
     .builder-item-header {
       padding: 12px;
@@ -88,6 +243,12 @@
     }
     .builder-item.collapsed .builder-item-header {
       border-bottom: none;
+    }
+    .builder-item-checkbox {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      flex-shrink: 0;
     }
     .builder-item-drag {
       width: 4px;
@@ -125,6 +286,18 @@
     .builder-item.expanded .builder-item-content {
       display: block;
     }
+    .field-checkbox {
+      width: 16px;
+      height: 16px;
+      margin-right: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .field-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .link-item {
       display: flex;
       gap: 8px;
@@ -155,12 +328,11 @@
     .link-item-add:hover { background: #218838; }
     .text-item {
       margin-bottom: 12px;
-      border: 1px solid #e0e0e0;
+      border: none;
       border-radius: 4px;
       overflow: hidden;
     }
     .text-item.collapsed {
-      border: 1px solid #ddd;
       background: #f9f9f9;
       cursor: pointer;
       transition: all 0.2s;
@@ -382,91 +554,435 @@
     .builder-item.drag-over {
       border-top: 3px solid #007bff;
     }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10001;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .modal-section {
+      margin-bottom: 20px;
+    }
+    .modal-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .template-select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .template-list {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+    .template-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    .template-item:hover {
+      background: #f5f5f5;
+    }
+    .template-item.selected {
+      background: #e3f2fd;
+      color: #007bff;
+      font-weight: 600;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal-buttons button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+    .btn-secondary:hover {
+      background: #d0d0d0;
+    }
+    .segment-item {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: white;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+    .segment-item:hover {
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .segment-header {
+      padding: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      background: #f5f5f5;
+      transition: background 0.2s;
+    }
+    .segment-header:hover {
+      background: #f0f0f0;
+    }
+    .segment-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .segment-title {
+      flex: 1;
+      font-weight: 600;
+      font-size: 13px;
+      color: #333;
+      word-break: break-word;
+      margin: 0;
+    }
+    .segment-rating {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .segment-rating-value {
+      color: #28a745;
+      font-weight: 600;
+      font-size: 13px;
+      min-width: 35px;
+      cursor: help;
+      position: relative;
+      display: inline-block;
+    }
+    .segment-rating-tooltip {
+      visibility: hidden;
+      width: 250px;
+      background-color: #333;
+      color: #fff;
+      text-align: left;
+      border-radius: 6px;
+      padding: 12px;
+      position: fixed;
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 12px;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      white-space: normal;
+      word-break: break-word;
+      pointer-events: none;
+    }
+    .segment-rating-tooltip::after {
+      content: "";
+      position: absolute;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #333 transparent transparent transparent;
+    }
+    .segment-rating-value:hover .segment-rating-tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+    .segment-rating-value-details:hover > div {
+      visibility: visible;
+      opacity: 1;
+    }
+    .segment-rating-tooltip-details {
+      position: fixed !important;
+      z-index: 10000 !important;
+      pointer-events: none;
+    }
+    .segment-content {
+      padding: 12px;
+      border-top: 1px solid #f0f0f0;
+      background: white;
+    }
+    .segment-title-input,
+    .segment-opening-input {
+      outline: none !important;
+    }
+    .segment-title-input:focus,
+    .segment-opening-input:focus {
+      outline: none !important;
+    }
+    .segment-item.selected .segment-header {
+      background: #f0f0f0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .segment-description {
+      width: 100%;
+      min-height: 80px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-family: inherit;
+      resize: none;
+      line-height: 1.5;
+      overflow: hidden;
+      color: #333;
+      outline: none;
+    }
+    .segment-description:focus {
+      outline: none;
+      border: none;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+    .empty-state p {
+      font-size: 14px;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Левая панель: Конструктор -->
-    <div class="left-panel">
-      <div class="builder-toolbar">
-        <button class="btn-add" onclick="addLinksObject()">+ Ссылка</button>
-        <button class="btn-add" onclick="addTextObject()">+ Текст</button>
-        <button class="btn-add" onclick="addImagesObject()">+ Картинки</button>
-      </div>
-      <div class="builder-items" id="builderItems"></div>
+  <div class="main-container">
+    <!-- Верхнее меню со вкладками -->
+    <div class="tabs-menu">
+      <button class="tab-button active" onclick="switchTab('information')">Информация</button>
+      <button class="tab-button" onclick="switchTab('segments')">ЦА и сегменты</button>
+      <button class="tab-button" onclick="switchTab('creatives')">Креативы</button>
+      <button class="tab-button" onclick="switchTab('campaigns')">Кампании</button>
+      <button class="tab-button" onclick="switchTab('groups')">Группы</button>
+      <button class="tab-button" onclick="switchTab('ads')">Объявления</button>
     </div>
 
-    <!-- Правая панель: Предпросмотр/Форма -->
-    <div class="right-panel">
-      <h1>Исходная информация</h1>
-
-      <div style="margin-bottom: 30px;">
-        <h2 style="margin-top: 0;">✓ Извлеченные данные</h2>
-        <div class="form-fields" style="background: #f8f9fa; padding: 15px; border-radius: 6px;">
-          <div class="field" style="margin-bottom: 18px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Название кампании</label>
-            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-              <input type="text" value="Летняя акция" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
-              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">98%</div>
+    <!-- Содержимое вкладок -->
+    <div class="tabs-content">
+      <!-- Вкладка "Информация" -->
+      <div class="tab-page active" id="tab-information">
+        <div class="container">
+          <!-- Левая панель: Конструктор -->
+          <div class="left-panel">
+            <div class="builder-toolbar">
+              <button class="btn-add" onclick="addLinksObject()">+ Ссылка</button>
+              <button class="btn-add" onclick="addTextObject()">+ Текст</button>
+              <button class="btn-add" onclick="addImagesObject()">+ Картинки</button>
+              <div style="flex: 1;"></div>
+              <select id="themeSelector" onchange="setTheme(this.value)" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: white;">
+                <option value="">Стиль оформления...</option>
+                <option value="default">📋 Стандартный</option>
+                <option value="compact">⚙️ Компактный</option>
+                <option value="spaced">📦 Просторный</option>
+                <option value="cards">🎴 Карточки</option>
+                <option value="minimal">➖ Минимальный</option>
+                <option value="colored">🎨 Цветные блоки</option>
+              </select>
             </div>
+            <div class="builder-items" id="builderItems"></div>
           </div>
 
-          <div class="field" style="margin-bottom: 18px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Бюджет (₽)</label>
-            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-              <input type="number" value="50000" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
-              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">99%</div>
-            </div>
-          </div>
+          <!-- Правая панель: Предпросмотр/Форма -->
+          <div class="right-panel">
+            <h1>Исходная информация</h1>
 
-          <div class="field" style="margin-bottom: 18px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Период</label>
-            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-              <div style="display: flex; gap: 8px; align-items: center; flex: 1;">
-                <input type="date" value="2024-06-01" style="padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
-                <span style="color: #666;">—</span>
-                <input type="date" value="2024-06-30" style="padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+            <div style="margin-bottom: 30px;">
+              <h2 style="margin-top: 0;">✓ Извлеченные данные</h2>
+              <div class="form-fields" style="background: #f8f9fa; padding: 15px; border-radius: 6px;">
+                <div class="field" style="margin-bottom: 18px;">
+                  <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Название кампании</label>
+                  <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                    <input type="text" value="Летняя акция" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                    <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">98%</div>
+                  </div>
+                </div>
+
+                <div class="field" style="margin-bottom: 18px;">
+                  <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Бюджет (₽)</label>
+                  <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                    <input type="number" value="50000" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                    <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">99%</div>
+                  </div>
+                </div>
+
+                <div class="field" style="margin-bottom: 18px;">
+                  <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Период</label>
+                  <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                    <div style="display: flex; gap: 8px; align-items: center; flex: 1;">
+                      <input type="date" value="2024-06-01" style="padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                      <span style="color: #666;">—</span>
+                      <input type="date" value="2024-06-30" style="padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                    </div>
+                    <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">100%</div>
+                  </div>
+                </div>
+
+                <div class="field" style="margin-bottom: 18px;">
+                  <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Возраст целевой аудитории</label>
+                  <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                      От <input type="number" value="18" style="width: 50px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                      до <input type="number" value="45" style="width: 50px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" /> лет
+                    </div>
+                    <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">99%</div>
+                  </div>
+                </div>
+
+                <div class="field" style="margin-bottom: 18px;">
+                  <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Основное сообщение / Слоган</label>
+                  <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                    <input type="text" value="Летние скидки до 50%" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                    <div class="confidence medium" style="background: #fff3cd; color: #856404; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">85%</div>
+                  </div>
+                </div>
+
+                <div class="field" style="margin-bottom: 18px;">
+                  <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">CTA (призыв к действию)</label>
+                  <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                    <input type="text" value="Купить сейчас" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+                    <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">92%</div>
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                  <button style="flex: 1; padding: 10px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">🔄 Переизвлечь данные</button>
+                  <button style="flex: 1; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">Далее →</button>
+                </div>
               </div>
-              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">100%</div>
             </div>
-          </div>
 
-          <div class="field" style="margin-bottom: 18px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Возраст целевой аудитории</label>
-            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-              <div style="display: flex; gap: 5px; align-items: center;">
-                От <input type="number" value="18" style="width: 50px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
-                до <input type="number" value="45" style="width: 50px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" /> лет
-              </div>
-              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">99%</div>
+            <div id="preview" style="color: #999; text-align: center; margin-top: 100px; font-size: 14px;">
+              <p>Здесь будут отображаться извлеченные данные после обработки брифа</p>
             </div>
-          </div>
-
-          <div class="field" style="margin-bottom: 18px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">Основное сообщение / Слоган</label>
-            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-              <input type="text" value="Летние скидки до 50%" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
-              <div class="confidence medium" style="background: #fff3cd; color: #856404; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">85%</div>
-            </div>
-          </div>
-
-          <div class="field" style="margin-bottom: 18px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 13px;">CTA (призыв к действию)</label>
-            <div class="field-with-confidence" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-              <input type="text" value="Купить сейчас" style="flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
-              <div class="confidence high" style="background: #d4edda; color: #155724; font-size: 11px; padding: 4px 8px; border-radius: 3px; flex-shrink: 0;">92%</div>
-            </div>
-          </div>
-
-          <div style="display: flex; gap: 10px; margin-top: 20px;">
-            <button style="flex: 1; padding: 10px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">🔄 Переизвлечь данные</button>
-            <button style="flex: 1; padding: 10px 16px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">Далее →</button>
           </div>
         </div>
       </div>
 
-      <div id="preview" style="color: #999; text-align: center; margin-top: 100px; font-size: 14px;">
-        <p>Здесь будут отображаться извлеченные данные после обработки брифа</p>
+      <!-- Вкладка "ЦА и сегменты" -->
+      <div class="tab-page" id="tab-segments">
+        <div class="container">
+          <div class="left-panel">
+            <div class="builder-toolbar">
+              <h3 style="margin: 0; flex: 1; font-size: 14px; font-weight: 600;">Сегменты</h3>
+            </div>
+            <div class="builder-items" id="segmentsListContainer"></div>
+            <div id="segmentsEmpty" class="empty-state" style="padding: 20px; text-align: center; color: #999;">
+              <p>Сегменты пока не созданы.<br>Выберите данные и нажмите "ЦА и сегменты"</p>
+            </div>
+          </div>
+          <div class="right-panel">
+            <div id="segmentDetailsContainer">
+              <div class="empty-state" style="padding: 20px; color: #999;">
+                <p>Выберите сегмент из списка слева</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка "Креативы" -->
+      <div class="tab-page" id="tab-creatives">
+        <div class="right-panel">
+          <h1>Превью креативов</h1>
+
+          <div style="margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+            <label class="modal-label">Выберите способ размещения:</label>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 10px;" id="layoutButtons">
+              <!-- Кнопки будут добавлены JavaScript'ом -->
+            </div>
+          </div>
+
+          <div style="margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+            <label class="modal-label">Сегмент для превью:</label>
+            <select id="segmentSelect" onchange="updateCreativesPreview()" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+              <option value="">Выберите сегмент...</option>
+            </select>
+          </div>
+
+          <div id="creativesContainer" style="border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; background: white; min-height: 300px;">
+            <div class="empty-state">
+              <p>Выберите сегмент и способ размещения для просмотра креативов</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка "Кампании" -->
+      <div class="tab-page" id="tab-campaigns">
+        <div class="right-panel">
+          <h1>Кампании</h1>
+          <div class="empty-state">
+            <p>Раздел в разработке</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка "Группы" -->
+      <div class="tab-page" id="tab-groups">
+        <div class="right-panel">
+          <h1>Группы</h1>
+          <div class="empty-state">
+            <p>Раздел в разработке</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка "Объявления" -->
+      <div class="tab-page" id="tab-ads">
+        <div class="right-panel">
+          <h1>Объявления</h1>
+          <div class="empty-state">
+            <p>Раздел в разработке</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -481,26 +997,372 @@
     </div>
   </div>
 
+  <!-- Модальное окно для выбора промпта -->
+  <div class="modal" id="promptModal">
+    <div class="modal-content">
+      <div class="modal-header">ЦА и сегменты</div>
+
+      <div class="modal-section">
+        <label class="modal-label">Выберите шаблон промпта:</label>
+        <div class="template-list" id="templateList"></div>
+      </div>
+
+      <div class="modal-section">
+        <label class="modal-label">Или создайте новый промпт:</label>
+        <textarea id="customPrompt" placeholder="Напишите инструкцию для анализа выбранных данных..." style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; min-height: 100px; font-family: inherit;"></textarea>
+      </div>
+
+      <div class="modal-section">
+        <label class="modal-label">Количество сегментов:</label>
+        <input type="number" id="segmentCount" value="3" min="1" max="10" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closePromptModal()">Отмена</button>
+        <button class="btn-primary" onclick="analyzeAndCreateSegments()">Анализировать и создать сегменты</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно для генерации заголовков -->
+  <div class="modal" id="titlesModal">
+    <div class="modal-content">
+      <div class="modal-header">Сгенерировать заголовки</div>
+
+      <div class="modal-section">
+        <label class="modal-label">Выберите шаблон промпта:</label>
+        <div class="template-list" id="titleTemplateList"></div>
+      </div>
+
+      <div class="modal-section">
+        <label class="modal-label">Или создайте новый промпт:</label>
+        <textarea id="customTitlePrompt" placeholder="Напишите инструкцию для генерации заголовков..." style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; min-height: 100px; font-family: inherit;"></textarea>
+      </div>
+
+      <div class="modal-section">
+        <label class="modal-label">Количество заголовков:</label>
+        <input type="number" id="titleCount" value="5" min="1" max="20" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+      </div>
+
+      <div class="modal-section">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="generateOpenings" /> Генерировать открывашки (первые 3 предложения)
+        </label>
+      </div>
+
+      <div class="modal-section">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="includeSourceData" checked /> Учитывать исходные данные сегмента (приоритет)
+        </label>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeTitlesModal()">Отмена</button>
+        <button class="btn-primary" onclick="generateTitles()">Сгенерировать</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="promptEditorModal">
+    <div class="modal-content">
+      <div class="modal-header">Редактировать промпт</div>
+
+      <div class="modal-section">
+        <label class="modal-label">Текущий промпт:</label>
+        <textarea id="promptEditorText" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; min-height: 150px; font-family: 'Courier New', monospace;"></textarea>
+      </div>
+
+      <div class="modal-section" style="font-size: 12px; color: #999;">
+        <p><strong>Доступные переменные:</strong></p>
+        <p>[SEGMENT] — имя целевой аудитории</p>
+        <p>[DESCRIPTION] — описание целевой аудитории</p>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closePromptEditor()">Отмена</button>
+        <button class="btn-primary" onclick="savePromptChanges()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="textsModal">
+    <div class="modal-content">
+      <div class="modal-header">Сгенерировать тексты (открывашки)</div>
+
+      <div class="modal-section">
+        <label class="modal-label">Количество текстов:</label>
+        <input type="number" id="textsCount" value="3" min="1" max="20" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;" />
+      </div>
+
+      <div class="modal-section">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="includeSourceDataTexts" checked /> Учитывать исходные данные сегмента (приоритет)
+        </label>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeTextsModal()">Отмена</button>
+        <button class="btn-primary" onclick="generateTexts()">Сгенерировать</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let items = [];
     let itemId = 0;
     let draggedItem = null;
     let currentGalleryIndex = 0;
     let currentGalleryItemId = null;
+    let selectedItems = new Set();
+    let selectedFields = new Map();
+    let segments = [];
+    let promptTemplates = [
+      { id: 1, name: 'Стандартный анализ', prompt: 'Проанализируй предоставленные данные и создай N сегментов целевой аудитории с описанием их характеристик, интересов и поведения.' },
+      { id: 2, name: 'Демографический анализ', prompt: 'На основе информации создай N демографических сегментов с указанием возраста, пола, локации и социального статуса.' },
+      { id: 3, name: 'Психографический анализ', prompt: 'Создай N сегментов на основе психографических характеристик: ценности, интересы, образ жизни и мотивации.' }
+    ];
+    let selectedTemplate = null;
+    let selectedItemsForAnalysis = null;
+    let titleTemplates = [
+      { id: 1, name: 'Классические заголовки', prompt: 'Аудитория: [SEGMENT]\nОписание: [DESCRIPTION]\n\nСоздай N привлекательных заголовков для рекламной кампании, ориентированных на эту аудиторию. Заголовки должны быть краткими, убедительными, вызывать интерес и соответствовать описанию целевой аудитории.' },
+      { id: 2, name: 'Заголовки с преимуществами', prompt: 'Аудитория: [SEGMENT]\nОписание: [DESCRIPTION]\n\nНапиши N заголовков, которые подчеркивают основные преимущества и выгоды для этой аудитории. Заголовки должны четко описывать ценность предложения и решать проблемы, актуальные для целевой аудитории.' },
+      { id: 3, name: 'Заголовки с вопросом', prompt: 'Аудитория: [SEGMENT]\nОписание: [DESCRIPTION]\n\nСоздай N привлекающих внимание заголовков в форме вопросов для этой аудитории. Вопросы должны быть актуальными для описанной целевой аудитории, соответствовать их проблемам и вызывать желание узнать ответ.' }
+    ];
+    let selectedTitleTemplate = null;
+    let currentGeneratingSegmentIdx = null;
+    let currentGeneratingTextSegmentIdx = null;
+    let currentEditingTemplateId = null;
+
+    // Переключение вкладок
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-page').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('tab-' + tabName).classList.add('active');
+
+      // Найти и активировать кнопку таба
+      const buttons = document.querySelectorAll('.tab-button');
+      const tabMap = { information: 0, segments: 1, creatives: 2, campaigns: 3, groups: 4, ads: 5 };
+      if (tabMap[tabName] !== undefined) {
+        buttons[tabMap[tabName]].classList.add('active');
+      }
+
+      if (tabName === 'segments') {
+        renderSegments();
+      }
+
+      if (tabName === 'creatives') {
+        initCreativesTab();
+      }
+    }
+
+    // Инициализация вкладки Креативы
+    function initCreativesTab() {
+      const layouts = [
+        { id: 'grid1', name: '1 колонка', cols: 1 },
+        { id: 'grid2', name: '2 колонки', cols: 2 },
+        { id: 'grid3', name: '3 колонки', cols: 3 },
+        { id: 'grid4', name: '4 колонки', cols: 4 },
+        { id: 'carousel', name: 'Карусель', type: 'carousel' },
+        { id: 'list', name: 'Список', type: 'list' },
+        { id: 'masonry', name: 'Кладка', type: 'masonry' },
+        { id: 'compact', name: 'Компактный', type: 'compact' },
+        { id: 'large2', name: 'Большие 2', cols: 2 },
+        { id: 'board', name: 'Доска', type: 'board' }
+      ];
+
+      // Заполнить кнопки способов размещения
+      const buttonsContainer = document.getElementById('layoutButtons');
+      buttonsContainer.innerHTML = layouts.map(layout => `
+        <button onclick="setCreativesLayout('${layout.id}')" style="padding: 8px 12px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;" id="btn-${layout.id}">
+          ${layout.name}
+        </button>
+      `).join('');
+
+      // Заполнить селект сегментов
+      const selectElement = document.getElementById('segmentSelect');
+      selectElement.innerHTML = '<option value="">Выберите сегмент...</option>' +
+        segments.map((seg, idx) => `<option value="${idx}">${seg.name}</option>`).join('');
+
+      // Выбрать первый способ по умолчанию
+      currentCreativesLayout = 'grid2';
+      document.getElementById('btn-grid2').style.background = '#007bff';
+      document.getElementById('btn-grid2').style.color = 'white';
+    }
+
+    let currentCreativesLayout = 'grid2';
+
+    function setCreativesLayout(layoutId) {
+      currentCreativesLayout = layoutId;
+
+      // Обновить стили кнопок
+      document.querySelectorAll('#layoutButtons button').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = 'black';
+      });
+      document.getElementById('btn-' + layoutId).style.background = '#007bff';
+      document.getElementById('btn-' + layoutId).style.color = 'white';
+
+      updateCreativesPreview();
+    }
+
+    function updateCreativesPreview() {
+      const segmentIdx = document.getElementById('segmentSelect').value;
+      if (segmentIdx === '') {
+        document.getElementById('creativesContainer').innerHTML = `
+          <div class="empty-state">
+            <p>Выберите сегмент для просмотра креативов</p>
+          </div>
+        `;
+        return;
+      }
+
+      const segment = segments[parseInt(segmentIdx)];
+      if (!segment || !segment.titles || segment.titles.length === 0) {
+        document.getElementById('creativesContainer').innerHTML = `
+          <div class="empty-state">
+            <p>Сначала сгенерируйте заголовки для этого сегмента</p>
+          </div>
+        `;
+        return;
+      }
+
+      renderCreativesLayout(segment);
+    }
+
+    function renderCreativesLayout(segment) {
+      const container = document.getElementById('creativesContainer');
+      const creatives = generateCreatives(segment);
+
+      let html = '';
+
+      switch (currentCreativesLayout) {
+        case 'grid1':
+          html = `<div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c)).join('')}
+          </div>`;
+          break;
+        case 'grid2':
+          html = `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c)).join('')}
+          </div>`;
+          break;
+        case 'grid3':
+          html = `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c)).join('')}
+          </div>`;
+          break;
+        case 'grid4':
+          html = `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+            ${creatives.map(c => renderCreativeCard(c, 'small')).join('')}
+          </div>`;
+          break;
+        case 'carousel':
+          html = `<div style="display: flex; gap: 20px; overflow-x: auto; padding-bottom: 10px;">
+            ${creatives.map(c => renderCreativeCard(c, 'carousel')).join('')}
+          </div>`;
+          break;
+        case 'list':
+          html = `<div style="display: flex; flex-direction: column; gap: 12px;">
+            ${creatives.map(c => renderCreativeCard(c, 'list')).join('')}
+          </div>`;
+          break;
+        case 'compact':
+          html = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">
+            ${creatives.map(c => renderCreativeCard(c, 'compact')).join('')}
+          </div>`;
+          break;
+        case 'large2':
+          html = `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px;">
+            ${creatives.map(c => renderCreativeCard(c, 'large')).join('')}
+          </div>`;
+          break;
+        case 'board':
+          html = `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c, 'board')).join('')}
+          </div>`;
+          break;
+        default:
+          html = `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            ${creatives.map(c => renderCreativeCard(c)).join('')}
+          </div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function generateCreatives(segment) {
+      const creatives = [];
+
+      // Собрать все доступные картинки
+      const allImages = [];
+      items.forEach(item => {
+        if (item.type === 'images' && item.images.length > 0) {
+          allImages.push(...item.images);
+        }
+      });
+
+      const getRandomImage = () => {
+        if (allImages.length === 0) {
+          return 'https://via.placeholder.com/300x200?text=Креатив';
+        }
+        return allImages[Math.floor(Math.random() * allImages.length)];
+      };
+
+      if (segment.titles && segment.titles.length > 0) {
+        segment.titles.forEach((title, idx) => {
+          creatives.push({
+            title: title,
+            opening: segment.openings && segment.openings[idx] ? segment.openings[idx] : '',
+            image: getRandomImage(),
+            number: idx + 1
+          });
+        });
+      }
+
+      return creatives;
+    }
+
+    function renderCreativeCard(creative, style = 'default') {
+      const aspectRatio = style === 'carousel' ? '300x200' : style === 'compact' ? '150x100' : style === 'list' ? '400x150' : '300x200';
+      const cardWidth = style === 'carousel' ? 'min-width: 300px;' : '';
+      const imageHeight = style === 'compact' ? '100px' : style === 'carousel' ? '200px' : style === 'list' ? '150px' : style === 'large' ? '350px' : '200px';
+      const fontSize = style === 'compact' ? '12px' : style === 'list' ? '13px' : '14px';
+      const padding = style === 'compact' ? '8px' : style === 'list' ? '12px' : '16px';
+      const layout = style === 'list' ? 'flex; gap: 12px; align-items: flex-start;' : 'flex-direction: column;';
+
+      return `
+        <div style="border: 1px solid #ddd; border-radius: 6px; overflow: hidden; background: white; ${cardWidth} display: flex; ${layout}">
+          <img src="${creative.image}" alt="Креатив" style="width: ${style === 'list' ? '150px' : '100%'}; height: ${imageHeight}; object-fit: cover;">
+          <div style="padding: ${padding}; flex: 1;">
+            <div style="font-weight: 600; font-size: ${fontSize}; margin-bottom: 6px; line-height: 1.3;">${creative.title}</div>
+            ${creative.opening ? `<div style="font-size: ${parseInt(fontSize) - 1}px; color: #666; line-height: 1.4;">${creative.opening.substring(0, 60)}...</div>` : ''}
+          </div>
+        </div>
+      `;
+    }
 
     // Сохранить данные в localStorage
     function saveData() {
       localStorage.setItem('constructorItems', JSON.stringify(items));
       localStorage.setItem('constructorItemId', itemId.toString());
+      localStorage.setItem('segments', JSON.stringify(segments));
     }
 
     // Загрузить данные из localStorage
     function loadData() {
       const saved = localStorage.getItem('constructorItems');
       const savedId = localStorage.getItem('constructorItemId');
+      const savedSegments = localStorage.getItem('segments');
+      const savedTemplates = localStorage.getItem('titleTemplates');
       if (saved) {
         items = JSON.parse(saved);
         itemId = parseInt(savedId) || 0;
+      }
+      if (savedSegments) {
+        segments = JSON.parse(savedSegments);
+      }
+      if (savedTemplates) {
+        titleTemplates = JSON.parse(savedTemplates);
       }
     }
 
@@ -552,13 +1414,12 @@
       const original = items.find(i => i.id === originalItemId);
       if (!original) return;
 
-      // Найти текущий индекс
       const matches = original.title.match(/\s(\d+)$/);
       const currentIndex = matches ? parseInt(matches[1]) : 1;
       const newTitle = original.title.replace(/\s\d+$/, '').trim() + ' ' + (currentIndex + 1);
 
       const duplicate = JSON.parse(JSON.stringify(original));
-      duplicate.id = itemId++;  // Используем глобальный счетчик
+      duplicate.id = itemId++;
       duplicate.title = newTitle;
 
       const originalIndex = items.findIndex(i => i.id === originalItemId);
@@ -568,13 +1429,39 @@
       render();
     }
 
+    // Переключить выбор набора
+    function toggleItemSelection(itemId, event) {
+      event.stopPropagation();
+      if (selectedItems.has(itemId)) {
+        selectedItems.delete(itemId);
+        selectedFields.delete(itemId);
+      } else {
+        selectedItems.add(itemId);
+      }
+      render();
+    }
+
+    // Переключить выбор поля
+    function toggleFieldSelection(itemId, fieldIndex, event) {
+      event.stopPropagation();
+      if (!selectedFields.has(itemId)) {
+        selectedFields.set(itemId, new Set());
+      }
+      const fields = selectedFields.get(itemId);
+      if (fields.has(fieldIndex)) {
+        fields.delete(fieldIndex);
+      } else {
+        fields.add(fieldIndex);
+      }
+      render();
+    }
+
     // Обновить ссылку
     function updateLink(itemId, index, value) {
       const item = items.find(i => i.id === itemId);
       if (item) {
         item.links[index] = value;
         saveData();
-        updatePreview();
       }
     }
 
@@ -605,7 +1492,6 @@
         item.texts[index] = value;
         saveData();
         autoResizeTextarea(event.target);
-        updatePreview();
       }
     }
 
@@ -649,7 +1535,7 @@
         if (saved !== null) {
           item.textExpanded[index] = saved === 'true';
         } else {
-          item.textExpanded[index] = true; // По умолчанию развернуто
+          item.textExpanded[index] = true;
         }
       }
     }
@@ -705,6 +1591,8 @@
     // Удалить объект
     function deleteItem(itemId) {
       items = items.filter(i => i.id !== itemId);
+      selectedItems.delete(itemId);
+      selectedFields.delete(itemId);
       saveData();
       render();
     }
@@ -712,7 +1600,18 @@
     // Контекстное меню
     function showContextMenu(itemId, e) {
       e.preventDefault();
+
+      // Удалить все существующие контекстные меню
+      document.querySelectorAll('[data-context-menu]').forEach(m => m.parentElement && m.parentElement.removeChild(m));
+
+      if (!selectedItems.has(itemId)) {
+        selectedItems.clear();
+        selectedItems.add(itemId);
+        render();
+      }
+
       const menu = document.createElement('div');
+      menu.setAttribute('data-context-menu', 'true');
       menu.style.position = 'fixed';
       menu.style.top = e.clientY + 'px';
       menu.style.left = e.clientX + 'px';
@@ -721,9 +1620,10 @@
       menu.style.borderRadius = '4px';
       menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
       menu.style.zIndex = '10001';
-      menu.style.minWidth = '150px';
+      menu.style.minWidth = '180px';
       menu.innerHTML = `
         <button onclick="duplicateItem(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #007bff; cursor: pointer; text-align: left; font-size: 13px;">Дублировать</button>
+        <button onclick="openPromptModal(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #28a745; cursor: pointer; text-align: left; font-size: 13px;">ЦА и сегменты</button>
         <button onclick="deleteItem(${itemId}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>
       `;
       document.body.appendChild(menu);
@@ -731,6 +1631,893 @@
         if (menu.parentElement) document.body.removeChild(menu);
         document.removeEventListener('click', closeMenu);
       });
+    }
+
+    // Открыть модальное окно с промптами
+    function openPromptModal(itemId) {
+      selectedItemsForAnalysis = {
+        items: Array.from(selectedItems),
+        fields: selectedFields
+      };
+      selectedTemplate = null;
+      renderTemplateList();
+      document.getElementById('promptModal').classList.add('active');
+    }
+
+    // Закрыть модальное окно
+    function closePromptModal() {
+      document.getElementById('promptModal').classList.remove('active');
+      selectedTemplate = null;
+    }
+
+    // Отрендерить список шаблонов
+    function renderTemplateList() {
+      const list = document.getElementById('templateList');
+      list.innerHTML = promptTemplates.map(template => `
+        <div class="template-item ${selectedTemplate === template.id ? 'selected' : ''}" onclick="selectTemplate(${template.id})">
+          ${template.name}
+        </div>
+      `).join('');
+    }
+
+    // Выбрать шаблон
+    function selectTemplate(templateId) {
+      selectedTemplate = selectedTemplate === templateId ? null : templateId;
+      renderTemplateList();
+    }
+
+    // API ключи (из предоставленных параметров)
+    const apiKeys = {
+      mistral: 'see-your-key-from-env',
+      cerebras: 'see-your-key-from-env',
+      gemini: 'see-your-key-from-env'
+    };
+
+    // Функция для обращения к Mistral API
+    async function callMistralAPI(prompt) {
+      const key = localStorage.getItem('mistralKey') || apiKeys.mistral;
+      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: 'mistral-small-latest',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) throw new Error(`Mistral API error: ${response.status}`);
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    // Функция для обращения к Cerebras API
+    async function callCerebrasAPI(prompt) {
+      const key = localStorage.getItem('cerebrasKey') || apiKeys.cerebras;
+      const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-70b',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) throw new Error(`Cerebras API error: ${response.status}`);
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    // Функция для обращения к Google Gemini API
+    async function callGeminiAPI(prompt) {
+      const key = localStorage.getItem('geminiKey') || apiKeys.gemini;
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2000
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    // Парсить JSON из текста (для сегментов)
+    function extractJSON(text) {
+      try {
+        // Попытка 1: поискать JSON массив
+        const arrayMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (arrayMatch) {
+          return JSON.parse(arrayMatch[0]);
+        }
+
+        // Попытка 2: поискать JSON объект и обернуть в массив
+        const objectMatch = text.match(/\{\s*"name"[\s\S]*?\}\s*(?:,\s*\{\s*"name"[\s\S]*?\})*\s*\]/);
+        if (objectMatch) {
+          return JSON.parse(objectMatch[0]);
+        }
+
+        // Попытка 3: найти все JSON объекты и объединить в массив
+        const objects = [];
+        const objMatches = text.matchAll(/\{\s*"name"\s*:\s*"([^"]*)"\s*,\s*"description"\s*:\s*"([^"]*)"\s*\}/g);
+        for (const match of objMatches) {
+          objects.push({
+            name: match[1],
+            description: match[2]
+          });
+        }
+        if (objects.length > 0) {
+          return objects;
+        }
+
+        // Попытка 4: простой парсинг JSON
+        const jsonStr = text.trim();
+        if (jsonStr.startsWith('[') && jsonStr.endsWith(']')) {
+          return JSON.parse(jsonStr);
+        }
+
+        return null;
+      } catch (e) {
+        console.error('Ошибка парсинга JSON:', e);
+        return null;
+      }
+    }
+
+    // Парсить JSON для заголовков и текстов
+    function extractTitlesJSON(text) {
+      try {
+        // Попытка 1: найти объект с "titles" и "openings"
+        const match = text.match(/\{\s*"(?:titles|openings)"[\s\S]*?\}/);
+        if (match) {
+          return JSON.parse(match[0]);
+        }
+
+        // Попытка 2: простой парсинг JSON всей строки
+        const jsonStr = text.trim();
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && (parsed.titles || parsed.openings)) {
+          return parsed;
+        }
+
+        return null;
+      } catch (e) {
+        console.error('Ошибка парсинга JSON:', e);
+        return null;
+      }
+    }
+
+    // Анализировать и создать сегменты с fallback между API
+    async function analyzeAndCreateSegments() {
+      if (!selectedTemplate && !document.getElementById('customPrompt').value.trim()) {
+        alert('Пожалуйста, выберите шаблон или напишите свой промпт');
+        return;
+      }
+
+      const segmentCount = parseInt(document.getElementById('segmentCount').value) || 3;
+      const template = promptTemplates.find(t => t.id === selectedTemplate);
+      const basePrompt = template ? template.prompt : document.getElementById('customPrompt').value;
+      const prompt = basePrompt.replace('N', segmentCount);
+
+      const selectedData = collectSelectedData();
+      const fullPrompt = `${prompt}\n\nДанные для анализа:\n${selectedData}\n\nОтветь ТОЛЬКО JSON массивом. Формат: [{"name":"Название сегмента","description":"Описание"},...]. БЕЗ никакого другого текста!`;
+
+      const apis = [
+        { name: 'Mistral', fn: callMistralAPI },
+        { name: 'Cerebras', fn: callCerebrasAPI },
+        { name: 'Gemini', fn: callGeminiAPI }
+      ];
+
+      let lastError = null;
+      let content = null;
+      let successfulAPI = null;
+
+      for (const api of apis) {
+        try {
+          console.log(`Пробую ${api.name} API...`);
+          content = await api.fn(fullPrompt);
+          console.log(`${api.name} API успешно! Ответ:`, content);
+          successfulAPI = api.name;
+          break;
+        } catch (error) {
+          console.log(`${api.name} API ошибка: ${error.message}`);
+          lastError = error;
+          continue;
+        }
+      }
+
+      if (!content) {
+        alert(`Ошибка при обращении ко всем API. Проверьте ключи доступа.\nПоследняя ошибка: ${lastError?.message}`);
+        return;
+      }
+
+      try {
+        const newSegments = extractJSON(content);
+
+        if (!newSegments || newSegments.length === 0) {
+          console.error('Не удалось распарсить JSON. Полный ответ:', content);
+          alert('Не удалось распарсить ответ API. Попробуйте еще раз или используйте другой промпт.');
+          return;
+        }
+
+        console.log('Распарсено сегментов:', newSegments);
+        // Рассчитать рейтинг для каждого нового сегмента и добавить в начало
+        // Также генерировать расширенные объяснения через AI
+        for (const segment of newSegments) {
+          const ratingInfo = calculateSegmentRating(segment.name, segment.description);
+          segment.rating = ratingInfo.rating;
+          segment.ratingExplanation = ratingInfo.explanation;
+          // Сохранить исходные данные, на основе которых был создан сегмент
+          segment.sourceData = collectSelectedData();
+
+          // Генерировать расширенное объяснение через AI
+          try {
+            segment.aiExplanation = await generateSegmentAIExplanation(segment.name, segment.description, segment.sourceData);
+          } catch (error) {
+            console.error('Ошибка при генерации объяснения:', error);
+            segment.aiExplanation = segment.ratingExplanation; // Fallback на обычное объяснение
+          }
+        }
+        segments = newSegments.concat(segments);
+        saveData();
+        closePromptModal();
+        switchTab('segments');
+      } catch (error) {
+        console.error('Ошибка парсинга:', error, 'Ответ:', content);
+        alert('Ошибка при обработке результата.\n\nОтвет от API: ' + content.substring(0, 200));
+      }
+    }
+
+    // Собрать выбранные данные
+    function collectSelectedData() {
+      let data = '';
+      for (const itemId of selectedItemsForAnalysis.items) {
+        const item = items.find(i => i.id === itemId);
+        if (!item) continue;
+
+        data += `\n${item.title}:\n`;
+        if (item.type === 'links') {
+          data += item.links.filter(l => l.trim()).join(', ');
+        } else if (item.type === 'text') {
+          data += item.texts.filter(t => t.trim()).join('; ');
+        } else if (item.type === 'images') {
+          data += `[${item.images.length} изображений]`;
+        }
+      }
+      return data || 'Данные не выбраны';
+    }
+
+    // Отрендерить сегменты
+    function renderSegments() {
+      const container = document.getElementById('segmentsListContainer');
+      const empty = document.getElementById('segmentsEmpty');
+
+      if (segments.length === 0) {
+        container.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      container.style.display = 'flex';
+      empty.style.display = 'none';
+      container.innerHTML = segments.slice().reverse().map((segment, reverseIdx) => {
+        const idx = segments.length - 1 - reverseIdx;
+        return `
+        <div class="segment-item" data-segment-idx="${idx}" oncontextmenu="showSegmentContextMenu(${idx}, event)">
+          <div class="segment-header" onclick="selectSegment(${idx})">
+            <input type="checkbox" class="segment-checkbox" ${segment.selected ? 'checked' : ''} onclick="event.stopPropagation(); toggleSegmentSelection(${idx})" />
+            <div class="segment-title">${segment.name}</div>
+            <div class="segment-rating">
+              <span class="segment-rating-value">
+                ${segment.rating || 5}/10
+                <div class="segment-rating-tooltip">${(segment.ratingExplanation || 'Сегмент четко определен').split('\n• ').join('<br>• ')}</div>
+              </span>
+            </div>
+          </div>
+          <div class="segment-content">
+            <textarea class="segment-description" onchange="updateSegmentDescription(${idx}, this.value)" onkeyup="autoResizeSegmentTextarea(this)" onclick="event.stopPropagation()">${segment.description}</textarea>
+          </div>
+        </div>
+      `;
+      }).join('');
+
+      // Авторезайз всех текстареа
+      document.querySelectorAll('.segment-description').forEach(ta => autoResizeSegmentTextarea(ta));
+    }
+
+    function selectSegment(idx) {
+      document.querySelectorAll('.segment-item').forEach(el => el.classList.remove('selected'));
+      const item = document.querySelector(`[data-segment-idx="${idx}"]`);
+      if (item) item.classList.add('selected');
+
+      // Показать детали сегмента в правой панели
+      renderSegmentDetails(idx);
+    }
+
+    function renderSegmentDetails(idx) {
+      const segment = segments[idx];
+      const container = document.getElementById('segmentDetailsContainer');
+
+      let html = `
+        <h2>${segment.name}</h2>
+        <div style="margin-bottom: 20px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+          <div style="font-size: 13px; color: #666; margin-bottom: 12px;">
+            Рейтинг:
+            <span class="segment-rating-value-details" style="font-weight: 600; color: #28a745; cursor: help; position: relative; display: inline-block;">
+              ${segment.rating || 5}/10
+              <div style="visibility: hidden; width: 250px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 12px; position: fixed; z-index: 10000; opacity: 0; transition: opacity 0.3s; font-size: 12px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: normal; word-break: break-word; pointer-events: none;" class="segment-rating-tooltip-details">
+                ${(segment.aiExplanation || segment.ratingExplanation || 'Сегмент четко определен')}
+              </div>
+            </span>
+          </div>
+          ${segment.aiExplanation ? `<div style="font-size: 13px; color: #444; line-height: 1.6;">
+            ${segment.aiExplanation}
+          </div>` : ''}
+        </div>
+      `;
+
+      // Показать сгенерированные заголовки
+      if (segment.titles && segment.titles.length > 0) {
+        html += `<div style="margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 14px;">Заголовки</h3>
+            <a onclick="deleteAllTitles(${idx})" style="color: #dc3545; font-size: 12px; cursor: pointer; text-decoration: none;">Удалить все</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+        `;
+        segment.titles.forEach((title, tIdx) => {
+          const charCount = title.length;
+          // Сквозная нумерация: самый новый (индекс 0) имеет самый высокий номер
+          const titleNumber = segment.titles.length - tIdx;
+          html += `
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+              <div style="flex-shrink: 0; width: 20px; text-align: center; font-weight: 600; color: #999; font-size: 12px; line-height: 1.4;">${titleNumber}</div>
+              <textarea class="segment-title-input" data-segment-idx="${idx}" data-title-idx="${tIdx}" onchange="updateSegmentTitle(${idx}, ${tIdx}, this.value)" oninput="updateCharCounter(this)" onkeyup="autoResizeSegmentTextarea(this)" style="flex: 1; padding: 0; margin: 0; border: none; background: transparent; font-size: 13px; font-family: inherit; resize: none; overflow: hidden; line-height: 1.4;">${title}</textarea>
+              <div style="display: flex; gap: 8px; flex-shrink: 0; align-items: flex-start;">
+                <span class="char-counter" style="font-size: 11px; color: #999; white-space: nowrap; line-height: 1.4;">${charCount}</span>
+                <a onclick="deleteTitle(${idx}, ${tIdx})" style="color: #dc3545; cursor: pointer; text-decoration: none; font-size: 12px; line-height: 1.4;">×</a>
+              </div>
+            </div>
+          `;
+        });
+        html += `</div></div>`;
+      }
+
+      // Показать сгенерированные открывашки
+      if (segment.openings && segment.openings.length > 0) {
+        html += `<div style="margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 14px;">Открывашки</h3>
+            <a onclick="deleteAllOpenings(${idx})" style="color: #dc3545; font-size: 12px; cursor: pointer; text-decoration: none;">Удалить все</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+        `;
+        segment.openings.forEach((opening, oIdx) => {
+          const charCount = opening.length;
+          // Сквозная нумерация: самая новая (индекс 0) имеет самый высокий номер
+          const openingNumber = segment.openings.length - oIdx;
+          html += `
+            <div style="display: flex; gap: 8px; align-items: flex-start;">
+              <div style="flex-shrink: 0; width: 20px; text-align: center; font-weight: 600; color: #999; font-size: 12px; line-height: 1.4;">${openingNumber}</div>
+              <textarea class="segment-opening-input" data-segment-idx="${idx}" data-opening-idx="${oIdx}" onchange="updateSegmentOpening(${idx}, ${oIdx}, this.value)" oninput="updateCharCounter(this)" onkeyup="autoResizeSegmentTextarea(this)" style="flex: 1; padding: 0; margin: 0; border: none; background: transparent; font-size: 13px; font-family: inherit; resize: none; overflow: hidden; line-height: 1.4;">${opening}</textarea>
+              <div style="display: flex; gap: 8px; flex-shrink: 0; align-items: flex-start;">
+                <span class="char-counter" style="font-size: 11px; color: #999; white-space: nowrap; line-height: 1.4;">${charCount}</span>
+                <a onclick="deleteOpening(${idx}, ${oIdx})" style="color: #dc3545; cursor: pointer; text-decoration: none; font-size: 12px; line-height: 1.4;">×</a>
+              </div>
+            </div>
+          `;
+        });
+        html += `</div></div>`;
+      }
+
+      container.innerHTML = html;
+      // Авторезайз всех текстареа
+      document.querySelectorAll('.segment-title-input, .segment-opening-input').forEach(ta => autoResizeSegmentTextarea(ta));
+
+      // Добавить обработчики для позиционирования tooltip
+      const ratingElement = document.querySelector('.segment-rating-value-details');
+      const tooltip = document.querySelector('.segment-rating-tooltip-details');
+
+      if (ratingElement && tooltip) {
+        ratingElement.addEventListener('mouseenter', () => {
+          const rect = ratingElement.getBoundingClientRect();
+          tooltip.style.top = (rect.top - 140) + 'px';
+          tooltip.style.left = (rect.left + rect.width / 2 - 125) + 'px';
+          tooltip.style.visibility = 'visible';
+          tooltip.style.opacity = '1';
+        });
+
+        ratingElement.addEventListener('mouseleave', () => {
+          tooltip.style.visibility = 'hidden';
+          tooltip.style.opacity = '0';
+        });
+      }
+    }
+
+    function updateCharCounter(textarea) {
+      const counter = textarea.nextElementSibling?.querySelector('.char-counter');
+      if (counter) {
+        counter.textContent = textarea.value.length;
+      }
+    }
+
+    function deleteTitle(idx, titleIdx) {
+      segments[idx].titles.splice(titleIdx, 1);
+      saveData();
+      renderSegmentDetails(idx);
+    }
+
+    function deleteAllTitles(idx) {
+      segments[idx].titles = [];
+      saveData();
+      renderSegmentDetails(idx);
+    }
+
+    function deleteOpening(idx, openingIdx) {
+      segments[idx].openings.splice(openingIdx, 1);
+      saveData();
+      renderSegmentDetails(idx);
+    }
+
+    function deleteAllOpenings(idx) {
+      segments[idx].openings = [];
+      saveData();
+      renderSegmentDetails(idx);
+    }
+
+    function toggleSegmentSelection(idx) {
+      segments[idx].selected = !segments[idx].selected;
+      saveData();
+      renderSegments();
+    }
+
+    function updateSegmentDescription(idx, description) {
+      segments[idx].description = description;
+      saveData();
+    }
+
+    function showSegmentContextMenu(idx, e) {
+      e.preventDefault();
+
+      // Удалить все существующие контекстные меню
+      document.querySelectorAll('[data-context-menu]').forEach(m => m.parentElement && m.parentElement.removeChild(m));
+
+      const menu = document.createElement('div');
+      menu.setAttribute('data-context-menu', 'true');
+      menu.style.position = 'fixed';
+      menu.style.top = e.clientY + 'px';
+      menu.style.left = e.clientX + 'px';
+      menu.style.background = 'white';
+      menu.style.border = '1px solid #ccc';
+      menu.style.borderRadius = '4px';
+      menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+      menu.style.zIndex = '10001';
+      menu.style.minWidth = '180px';
+      const selected = document.querySelector(`[data-segment-idx="${idx}"]`).classList.contains('selected');
+      let menuHTML = '';
+      if (selected) {
+        menuHTML += `<button onclick="generateSegmentTitles(${idx}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #007bff; cursor: pointer; text-align: left; font-size: 13px;">Сгенерировать заголовки</button>`;
+        menuHTML += `<button onclick="generateSegmentTexts(${idx}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; border-bottom: 1px solid #eee; color: #007bff; cursor: pointer; text-align: left; font-size: 13px;">Сгенерировать тексты</button>`;
+      }
+      menuHTML += `<button onclick="deleteSegment(${idx}); document.body.removeChild(this.parentElement)" style="width: 100%; padding: 8px 12px; background: none; border: none; color: #dc3545; cursor: pointer; text-align: left; font-size: 13px;">Удалить</button>`;
+      menu.innerHTML = menuHTML;
+      document.body.appendChild(menu);
+      document.addEventListener('click', function closeMenu() {
+        if (menu.parentElement) document.body.removeChild(menu);
+        document.removeEventListener('click', closeMenu);
+      });
+    }
+
+    function deleteSegment(idx) {
+      segments.splice(idx, 1);
+      saveData();
+      renderSegments();
+    }
+
+    async function generateSegmentAIExplanation(segmentName, segmentDescription, sourceData) {
+      const prompt = `Целевой сегмент: "${segmentName}"
+Описание: ${segmentDescription}
+
+Исходные данные, на основе которых создан сегмент:
+${sourceData}
+
+Сгенерируй уникальное, детальное объяснение (2-3 абзаца):
+1. Почему этот сегмент имеет высокий потенциал для покупки на основе исходных данных
+2. Какие конкретные боли/интересы этого сегмента видны из данных
+3. Почему они будут заинтересованы в продукте/услуге на основе их характеристик
+
+Ответ должен быть практичным, конкретным и ориентироваться на исходные данные. БЕЗ лишних вводных фраз, только текст объяснения!`;
+
+      const apis = [
+        { name: 'Mistral', fn: callMistralAPI },
+        { name: 'Cerebras', fn: callCerebrasAPI },
+        { name: 'Gemini', fn: callGeminiAPI }
+      ];
+
+      for (const api of apis) {
+        try {
+          const response = await api.fn(prompt);
+          return response.trim();
+        } catch (error) {
+          console.log(`${api.name} API ошибка при генерации объяснения: ${error.message}`);
+          continue;
+        }
+      }
+
+      throw new Error('Не удалось получить объяснение от всех API');
+    }
+
+    function calculateSegmentRating(name, description) {
+      // Рассчитываем рейтинг на основе длины и детализации описания
+      const baseRating = 4;
+      const descLength = description.length;
+      const detailBonus = Math.min(Math.floor(descLength / 150), 3);
+      const keywords = description.match(/покуп|интерес|потребн|поведен|предпочт|склонн|готов|ценн/gi) || [];
+      const keywordBonus = keywords.length > 0 ? 1 : 0;
+      const randomBonus = Math.floor(Math.random() * 2);
+      const rating = Math.min(10, baseRating + detailBonus + keywordBonus + randomBonus);
+
+      // Генерируем объяснение рейтинга
+      let reasons = [];
+
+      if (descLength < 50) {
+        reasons.push('Описание сегмента очень краткое');
+      } else if (descLength < 150) {
+        reasons.push('Описание сегмента содержит базовую информацию');
+      } else {
+        reasons.push('Описание сегмента хорошо детализировано');
+      }
+
+      if (keywords.length > 0) {
+        reasons.push('Обнаружены ключевые слова о покупательском поведении');
+      } else {
+        reasons.push('Отсутствуют ключевые слова о поведении и интересах');
+      }
+
+      reasons.push(`Сегмент "${name}" будет лучше покупать, потому что аудитория четко определена и имеет понятные характеристики, что упрощает таргетирование рекламы и увеличивает конверсию.`);
+
+      return {
+        rating: rating,
+        explanation: reasons.join('\n• ')
+      };
+    }
+
+    function generateSegmentTitles(idx) {
+      const segment = segments[idx];
+      console.log('Генерирование заголовков для сегмента:', segment.name);
+      // Открыть модальное окно с промптами для генерации заголовков
+      openTitlesGenerationModal(idx);
+    }
+
+    function generateSegmentTexts(idx) {
+      currentGeneratingTextSegmentIdx = idx;
+      restoreTextsModalState();
+      document.getElementById('textsModal').classList.add('active');
+    }
+
+    function openTitlesGenerationModal(idx) {
+      currentGeneratingSegmentIdx = idx;
+      selectedTitleTemplate = null;
+      renderTitleTemplateList();
+      restoreTitlesModalState();
+      document.getElementById('titlesModal').classList.add('active');
+    }
+
+    function closeTitlesModal() {
+      saveTitlesModalState();
+      document.getElementById('titlesModal').classList.remove('active');
+      selectedTitleTemplate = null;
+      currentGeneratingSegmentIdx = null;
+    }
+
+    function saveTitlesModalState() {
+      const state = {
+        customTitlePrompt: document.getElementById('customTitlePrompt').value,
+        titleCount: document.getElementById('titleCount').value,
+        generateOpenings: document.getElementById('generateOpenings').checked,
+        includeSourceData: document.getElementById('includeSourceData').checked
+      };
+      localStorage.setItem('titlesModalState', JSON.stringify(state));
+    }
+
+    function restoreTitlesModalState() {
+      const saved = localStorage.getItem('titlesModalState');
+      if (saved) {
+        const state = JSON.parse(saved);
+        document.getElementById('customTitlePrompt').value = state.customTitlePrompt || '';
+        document.getElementById('titleCount').value = state.titleCount || 5;
+        document.getElementById('generateOpenings').checked = state.generateOpenings || false;
+        document.getElementById('includeSourceData').checked = state.includeSourceData !== false; // по умолчанию true
+      }
+    }
+
+    function closeTextsModal() {
+      saveTextsModalState();
+      document.getElementById('textsModal').classList.remove('active');
+      currentGeneratingTextSegmentIdx = null;
+    }
+
+    function saveTextsModalState() {
+      const state = {
+        textsCount: document.getElementById('textsCount').value,
+        includeSourceDataTexts: document.getElementById('includeSourceDataTexts').checked
+      };
+      localStorage.setItem('textsModalState', JSON.stringify(state));
+    }
+
+    function restoreTextsModalState() {
+      const saved = localStorage.getItem('textsModalState');
+      if (saved) {
+        const state = JSON.parse(saved);
+        document.getElementById('textsCount').value = state.textsCount || 3;
+        document.getElementById('includeSourceDataTexts').checked = state.includeSourceDataTexts !== false; // по умолчанию true
+      }
+    }
+
+    function renderTitleTemplateList() {
+      const list = document.getElementById('titleTemplateList');
+      list.innerHTML = titleTemplates.map(template => `
+        <div class="template-item ${selectedTitleTemplate === template.id ? 'selected' : ''}" style="display: flex; justify-content: space-between; align-items: center;">
+          <div onclick="selectTitleTemplate(${template.id})" style="flex: 1; cursor: pointer;">
+            ${template.name}
+          </div>
+          <a onclick="editTemplatePrompt(${template.id}); event.stopPropagation();" style="color: #007bff; font-size: 12px; cursor: pointer; text-decoration: none; white-space: nowrap; margin-left: 8px;">Промпт ↗</a>
+        </div>
+      `).join('');
+    }
+
+    function selectTitleTemplate(templateId) {
+      selectedTitleTemplate = selectedTitleTemplate === templateId ? null : templateId;
+      renderTitleTemplateList();
+    }
+
+    function editTemplatePrompt(templateId) {
+      const template = titleTemplates.find(t => t.id === templateId);
+      if (template) {
+        currentEditingTemplateId = templateId;
+        document.getElementById('promptEditorText').value = template.prompt;
+        restorePromptEditorState();
+        document.getElementById('promptEditorModal').classList.add('active');
+      }
+    }
+
+    function closePromptEditor() {
+      document.getElementById('promptEditorModal').classList.remove('active');
+      currentEditingTemplateId = null;
+    }
+
+    function restorePromptEditorState() {
+      const saved = localStorage.getItem('promptEditorState');
+      if (saved) {
+        const state = JSON.parse(saved);
+        document.getElementById('promptEditorText').value = state.promptEditorText || '';
+      }
+    }
+
+    function savePromptEditorState() {
+      const state = {
+        promptEditorText: document.getElementById('promptEditorText').value
+      };
+      localStorage.setItem('promptEditorState', JSON.stringify(state));
+    }
+
+    function savePromptChanges() {
+      if (currentEditingTemplateId) {
+        const template = titleTemplates.find(t => t.id === currentEditingTemplateId);
+        if (template) {
+          template.prompt = document.getElementById('promptEditorText').value;
+          localStorage.setItem('titleTemplates', JSON.stringify(titleTemplates));
+          savePromptEditorState();
+          closePromptEditor();
+          renderTitleTemplateList();
+        }
+      }
+    }
+
+    async function generateTitles() {
+      const idx = currentGeneratingSegmentIdx;
+      const segment = segments[idx];
+      const titleCount = parseInt(document.getElementById('titleCount').value) || 5;
+      const generateOpenings = document.getElementById('generateOpenings').checked;
+      const includeSourceData = document.getElementById('includeSourceData').checked;
+
+      let basePrompt = '';
+      if (selectedTitleTemplate) {
+        const template = titleTemplates.find(t => t.id === selectedTitleTemplate);
+        basePrompt = template.prompt.replace('[SEGMENT]', segment.name).replace('[DESCRIPTION]', segment.description);
+      } else {
+        basePrompt = document.getElementById('customTitlePrompt').value || titleTemplates[0].prompt.replace('[SEGMENT]', segment.name).replace('[DESCRIPTION]', segment.description);
+      }
+
+      // Исходные данные ВСЕГДА добавляются в промпт для более точной генерации
+      let sourceDataSection = '';
+      if (segment.sourceData) {
+        sourceDataSection = `ИСХОДНЫЕ ДАННЫЕ (документы/информация, на основе которых создан сегмент):\n${segment.sourceData}\n\n`;
+      }
+
+      // Добавить опцию "Приоритет исходных данных" если нужно подчеркнуть важность
+      let importanceNote = '';
+      if (includeSourceData && segment.sourceData) {
+        importanceNote = 'ВАЖНО! Учти ВСЕ исходные данные в первую очередь при генерации.\n\n';
+      }
+
+      let prompt = '';
+      if (generateOpenings) {
+        // Если генерируем открывашки - добавляем дополнительный контекст
+        prompt = `${importanceNote}${sourceDataSection}${basePrompt}\n\nДополнительно: При генерации учти специфику и особенности целевой аудитории из исходных данных.`;
+      } else {
+        // Без открывашек - всё равно передаём исходные данные
+        prompt = `${importanceNote}${sourceDataSection}${basePrompt}`;
+      }
+
+      // Добавить к промпту информацию о количестве заголовков
+      prompt = prompt.replace('N', titleCount);
+      if (generateOpenings) {
+        prompt += ' Также для каждого заголовка создай первые 3 предложения (открывашку) для использования в основном тексте объявления.';
+      }
+
+      // Добавить требование формата ответа
+      const fullPrompt = `${prompt}\n\nОтветь ТОЛЬКО JSON. Формат: {"titles":["Заголовок 1","Заголовок 2",...], "openings":["Открывашка 1",...]}. БЕЗ никакого другого текста!`;
+
+      console.log('Генерирование заголовков для сегмента:', segment.name);
+      console.log('Промпт:', fullPrompt);
+
+      const apis = [
+        { name: 'Mistral', fn: callMistralAPI },
+        { name: 'Cerebras', fn: callCerebrasAPI },
+        { name: 'Gemini', fn: callGeminiAPI }
+      ];
+
+      let lastError = null;
+      let content = null;
+      let successfulAPI = null;
+
+      for (const api of apis) {
+        try {
+          console.log(`Пробую ${api.name} API для генерации заголовков...`);
+          content = await api.fn(fullPrompt);
+          console.log(`${api.name} API успешно! Ответ:`, content);
+          successfulAPI = api.name;
+          break;
+        } catch (error) {
+          console.log(`${api.name} API ошибка: ${error.message}`);
+          lastError = error;
+          continue;
+        }
+      }
+
+      if (!content) {
+        alert(`Ошибка при обращении ко всем API. Проверьте ключи доступа.\nПоследняя ошибка: ${lastError?.message}`);
+        return;
+      }
+
+      try {
+        const result = extractTitlesJSON(content);
+        if (!result || !result.titles || result.titles.length === 0) {
+          console.error('Не удалось распарсить JSON. Полный ответ:', content);
+          alert('Не удалось распарсить ответ API. Попробуйте еще раз или используйте другой промпт.');
+          return;
+        }
+
+        const newTitles = result.titles.slice(0, titleCount);
+        const newOpenings = generateOpenings ? (result.openings || []) : [];
+
+        if (!segment.titles) segment.titles = [];
+        if (!segment.openings) segment.openings = [];
+
+        // Добавить новые в начало
+        segment.titles = newTitles.concat(segment.titles);
+        if (generateOpenings && newOpenings.length > 0) {
+          segment.openings = newOpenings.concat(segment.openings);
+        }
+
+        saveData();
+        closeTitlesModal();
+        renderSegmentDetails(idx);
+      } catch (error) {
+        console.error('Ошибка парсинга:', error, 'Ответ:', content);
+        alert('Ошибка при обработке результата.\n\nОтвет от API: ' + content.substring(0, 200));
+      }
+    }
+
+    function updateSegmentTitle(idx, titleIdx, value) {
+      if (!segments[idx].titles) segments[idx].titles = [];
+      segments[idx].titles[titleIdx] = value;
+      saveData();
+    }
+
+    function updateSegmentOpening(idx, openingIdx, value) {
+      if (!segments[idx].openings) segments[idx].openings = [];
+      segments[idx].openings[openingIdx] = value;
+      saveData();
+    }
+
+    async function generateTexts() {
+      const idx = currentGeneratingTextSegmentIdx;
+      const segment = segments[idx];
+      const textsCount = parseInt(document.getElementById('textsCount').value) || 3;
+      const includeSourceData = document.getElementById('includeSourceDataTexts').checked;
+
+      let prompt = `Создай ${textsCount} открывашек (первые 3 предложения) для рекламного объявления, ориентированных на аудиторию: "${segment.name}".
+Каждая открывашка должна быть привлекательной, кратко описывать преимущество и вызывать интерес к прочтению полного объявления.
+Открывашка должна быть не более 3 предложений.`;
+
+      if (includeSourceData && segment.description) {
+        prompt = `ВАЖНО! Учти в первую очередь эту информацию о сегменте:\n${segment.description}\n\n${prompt}`;
+      }
+
+      const fullPrompt = `${prompt}\n\nОтветь ТОЛЬКО JSON. Формат: {"openings":["Открывашка 1","Открывашка 2",...]}. БЕЗ никакого другого текста!`;
+
+      console.log('Генерирование текстов для сегмента:', segment.name);
+      console.log('Промпт:', fullPrompt);
+
+      const apis = [
+        { name: 'Mistral', fn: callMistralAPI },
+        { name: 'Cerebras', fn: callCerebrasAPI },
+        { name: 'Gemini', fn: callGeminiAPI }
+      ];
+
+      let lastError = null;
+      let content = null;
+      let successfulAPI = null;
+
+      for (const api of apis) {
+        try {
+          console.log(`Пробую ${api.name} API для генерации текстов...`);
+          content = await api.fn(fullPrompt);
+          console.log(`${api.name} API успешно! Ответ:`, content);
+          successfulAPI = api.name;
+          break;
+        } catch (error) {
+          console.log(`${api.name} API ошибка: ${error.message}`);
+          lastError = error;
+          continue;
+        }
+      }
+
+      if (!content) {
+        alert(`Ошибка при обращении ко всем API. Проверьте ключи доступа.\nПоследняя ошибка: ${lastError?.message}`);
+        return;
+      }
+
+      try {
+        const result = extractTitlesJSON(content);
+        if (!result || !result.openings || result.openings.length === 0) {
+          console.error('Не удалось распарсить JSON. Полный ответ:', content);
+          alert('Не удалось распарсить ответ API. Попробуйте еще раз.');
+          return;
+        }
+
+        const newOpenings = result.openings.slice(0, textsCount);
+
+        if (!segment.openings) segment.openings = [];
+
+        // Добавить новые в начало
+        segment.openings = newOpenings.concat(segment.openings);
+
+        saveData();
+        closeTextsModal();
+        renderSegmentDetails(idx);
+      } catch (error) {
+        console.error('Ошибка парсинга:', error, 'Ответ:', content);
+        alert('Ошибка при обработке результата.\n\nОтвет от API: ' + content.substring(0, 200));
+      }
     }
 
     // Обновить заголовок
@@ -754,6 +2541,11 @@
       textarea.style.height = textarea.scrollHeight + 'px';
     }
 
+    function autoResizeSegmentTextarea(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.max(textarea.scrollHeight, 20) + 'px';
+    }
+
     // Получить количество сущностей
     function getItemCount(item) {
       if (item.type === 'links') return item.links.filter(l => l.trim()).length;
@@ -766,7 +2558,7 @@
     function render() {
       const builderItems = document.getElementById('builderItems');
       builderItems.innerHTML = items.map(item => `
-        <div class="builder-item ${item.expanded ? 'expanded' : 'collapsed'}" data-item-id="${item.id}"
+        <div class="builder-item ${item.expanded ? 'expanded' : 'collapsed'} ${selectedItems.has(item.id) ? 'selected' : ''}" data-item-id="${item.id}"
              draggable="true"
              ondragstart="startDrag(${item.id}, event)"
              ondragover="dragOver(${item.id}, event)"
@@ -774,6 +2566,12 @@
              ondrop="drop(${item.id}, event)"
              oncontextmenu="showContextMenu(${item.id}, event)">
           <div class="builder-item-header" onclick="if(event.target.tagName !== 'INPUT') toggleCollapse(${item.id})">
+            <input
+              type="checkbox"
+              class="builder-item-checkbox"
+              ${selectedItems.has(item.id) ? 'checked' : ''}
+              onchange="toggleItemSelection(${item.id}, event)"
+            />
             <div class="builder-item-drag" ondragstart="event.stopPropagation()" style="flex-shrink: 0;"></div>
             <input
               type="text"
@@ -794,6 +2592,7 @@
           </div>
         </div>
       `).join('');
+      updateItemDataTypes();
     }
 
     // Отрендерить содержимое объекта
@@ -804,10 +2603,17 @@
             ${item.links.map((link, idx) => `
               <div class="link-item">
                 <input
+                  type="checkbox"
+                  class="field-checkbox"
+                  ${selectedFields.get(item.id)?.has(idx) ? 'checked' : ''}
+                  onchange="toggleFieldSelection(${item.id}, ${idx}, event)"
+                />
+                <input
                   type="url"
                   placeholder="https://..."
                   value="${link}"
                   onchange="updateLink(${item.id}, ${idx}, this.value)"
+                  style="flex: 1;"
                 />
                 <button class="link-item-add" onclick="addLink(${item.id})">+</button>
               </div>
@@ -817,7 +2623,7 @@
       }
       if (item.type === 'text') {
         return `
-          <div>
+          <div style="display: flex; flex-direction: column; gap: 0;">
             ${item.texts.map((text, idx) => {
               loadTextExpandState(item.id, idx);
               const isExpanded = item.textExpanded[idx] !== false;
@@ -826,13 +2632,14 @@
               <div class="text-item ${!isExpanded ? 'collapsed' : ''}" onclick="${!isExpanded ? `toggleTextExpand(${item.id}, ${idx})` : ''}">
                 ${!isExpanded ? `
                   <div class="text-item-collapsed-preview">
+                    <input type="checkbox" class="field-checkbox" ${selectedFields.get(item.id)?.has(idx) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleFieldSelection(${item.id}, ${idx}, event)" />
                     <span class="text-item-collapsed-text">${firstLine}</span>
                     <span class="text-item-collapsed-counter">${countChars(text)}</span>
                   </div>
                 ` : `
                   <div class="text-item-expanded">
                     <div class="text-item-header">
-                      <span></span>
+                      <input type="checkbox" class="field-checkbox" ${selectedFields.get(item.id)?.has(idx) ? 'checked' : ''} onchange="toggleFieldSelection(${item.id}, ${idx}, event)" />
                       <button class="text-item-link" onclick="event.stopPropagation(); toggleTextExpand(${item.id}, ${idx})">▲ Свернуть</button>
                     </div>
                     <textarea
@@ -849,7 +2656,9 @@
                 `}
               </div>
             `}).join('')}
-            <button class="text-item-add" onclick="addText(${item.id})">+ Добавить поле</button>
+            <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+              <button class="text-item-add" onclick="addText(${item.id})">+ Добавить поле</button>
+            </div>
           </div>
         `;
       }
@@ -870,13 +2679,12 @@
       }
     }
 
-    // Обновить предпросмотр (отключено - дублирует левую панель)
-    function updatePreview() {
-      // Правая панель показывает только извлеченные данные, не содержимое конструктора
-    }
-
     // Drag and Drop функции
     function startDrag(itemId, e) {
+      // Не начинаем drag, если клик на текстовом поле - позволяет выделять текст
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+        return;
+      }
       draggedItem = itemId;
       const item = document.querySelector(`[data-item-id="${itemId}"]`);
       item.classList.add('dragging');
@@ -916,6 +2724,7 @@
       document.querySelectorAll('.builder-item').forEach(el => {
         el.classList.remove('dragging', 'drag-over');
       });
+      saveData();
       render();
     }
 
@@ -974,7 +2783,80 @@
       }
     }
 
+    // Закрыть модальное окно при клике вне его
+    window.onclick = function(event) {
+      // Закрывать любое модальное окно при клике вне его
+      if (event.target.classList.contains('modal')) {
+        if (event.target.id === 'promptModal') {
+          closePromptModal();
+        } else if (event.target.id === 'titlesModal') {
+          closeTitlesModal();
+        } else if (event.target.id === 'textsModal') {
+          closeTextsModal();
+        } else if (event.target.id === 'promptEditorModal') {
+          closePromptEditor();
+        } else if (event.target.id === 'cardsSettingsModal') {
+          closeCardsSettings();
+        }
+      }
+    }
+
+    // Функции для работы с темами оформления
+    function setTheme(theme) {
+      // Удалить все классы тем
+      document.body.classList.remove('theme-compact', 'theme-spaced', 'theme-cards', 'theme-minimal', 'theme-colored');
+
+      // Добавить выбранную тему
+      if (theme) {
+        document.body.classList.add('theme-' + theme);
+        localStorage.setItem('selectedTheme', theme);
+      } else {
+        localStorage.removeItem('selectedTheme');
+      }
+    }
+
+    function initializeTheme() {
+      const savedTheme = localStorage.getItem('selectedTheme');
+      if (savedTheme) {
+        document.getElementById('themeSelector').value = savedTheme;
+        setTheme(savedTheme);
+      }
+    }
+
+    // Добавить data-type к элементам для цветной темы
+    function updateItemDataTypes() {
+      const builderItems = document.getElementById('builderItems');
+      items.forEach(item => {
+        const element = builderItems.querySelector(`[data-item-id="${item.id}"]`);
+        if (element) {
+          element.setAttribute('data-type', item.type);
+        }
+      });
+    }
+
+    // Инициализировать API ключи
+    function initializeAPIKeys() {
+      const defaultKeys = {
+        mistralKey: '1Xl3lcBIS5TTV0bkHEvmhTwnIM6AJ3VY',
+        cerebrasKey: 'csk-wn5mpv6jp5yy5phkc65xfwwt8t8rrthxrfxd4trcfttx5hck',
+        geminiKey: 'AIzaSyDemJMre4p3BFlWyiXCc9aK_XdVnOcOagk'
+      };
+
+      for (const [key, defaultValue] of Object.entries(defaultKeys)) {
+        if (!localStorage.getItem(key)) {
+          localStorage.setItem(key, defaultValue);
+        }
+      }
+
+      // Обновить глобальные ключи
+      apiKeys.mistral = localStorage.getItem('mistralKey') || defaultKeys.mistralKey;
+      apiKeys.cerebras = localStorage.getItem('cerebrasKey') || defaultKeys.cerebrasKey;
+      apiKeys.gemini = localStorage.getItem('geminiKey') || defaultKeys.geminiKey;
+    }
+
     // Инициализация
+    initializeAPIKeys();
+    initializeTheme();
     loadData();
     render();
   </script>

@@ -1,10 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import VideoUploader from './components/VideoUploader';
 import ModelSelector from './components/ModelSelector';
 import TranscriptViewer from './components/TranscriptViewer';
 import History from './components/History';
 import { useHistory } from './hooks/useHistory';
+import { pipeline } from '@xenova/transformers';
+import { BUILD_TIME } from './BUILD_TIME';
+
+const LAST_UPDATE = new Date(BUILD_TIME);
+
+function getUpdateTimeString() {
+  const now = new Date();
+  const diffMs = now - LAST_UPDATE;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'только что';
+  if (diffMins < 60) return `${diffMins}м назад`;
+  if (diffHours < 24) return `${diffHours}ч назад`;
+  if (diffDays === 1) return 'вчера';
+  return `${diffDays}д назад`;
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState('transcribe');
@@ -14,7 +32,27 @@ function App() {
   const [transcript, setTranscript] = useState(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
+  const [progressInfo, setProgressInfo] = useState({ stage: '', elapsed: 0, estimated: 0 });
+  const [updateTime, setUpdateTime] = useState(getUpdateTimeString());
   const { addToHistory, history, clearHistory } = useHistory();
+  const startTimeRef = useRef(null);
+  const stageTimingsRef = useRef({});
+  const stopRef = useRef(false);
+
+  useEffect(() => {
+    console.log('🎙️ Transcribe App v1.1.0 - Real Whisper in Browser');
+    console.log('📅 Last updated: 2026-05-16 17:45 UTC');
+    console.log('✨ Features: Real Whisper transcription, All model sizes (tiny→large), Offline processing');
+  }, []);
+
+  useEffect(() => {
+    // Обновляем время с момента последнего обновления каждую минуту
+    const timer = setInterval(() => {
+      setUpdateTime(getUpdateTimeString());
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Load preferences from localStorage on mount
   useEffect(() => {
@@ -71,6 +109,24 @@ function App() {
     }
   }, [videoFile]);
 
+  // Обновляем прогноз времени каждую секунду
+  useEffect(() => {
+    if (!isProcessing || !startTimeRef.current) return;
+
+    const timer = setInterval(() => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const estimated = progress > 0 ? Math.round((elapsed / progress) * 100) : 0;
+
+      setProgressInfo(prev => ({
+        ...prev,
+        elapsed: Math.round(elapsed),
+        estimated: Math.max(estimated, 0)
+      }));
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [isProcessing, progress]);
+
   const MODELS = {
     tiny: { size: '39MB', speed: 'Очень быстро', accuracy: 'Низкая', url: 'https://huggingface.co/ggerganov/whisper.cpp/releases/download/v1.0/ggml-tiny.bin' },
     base: { size: '140MB', speed: 'Быстро', accuracy: 'Хорошо', url: 'https://huggingface.co/ggerganov/whisper.cpp/releases/download/v1.0/ggml-base.bin' },
@@ -124,65 +180,196 @@ function App() {
       return;
     }
 
+    startTimeRef.current = Date.now();
     setIsProcessing(true);
     setProgress(0);
     setError(null);
+    stageTimingsRef.current = {};
+    stopRef.current = false;
 
     try {
-      // Шаг 1: Загрузить модель (30%)
-      setProgress(30);
+      // Шаг 1: Загрузка модели
+      setProgressInfo({ stage: '📥 Загрузка модели Whisper...', elapsed: 0, estimated: 0 });
+      setProgress(5);
 
-      // Шаг 2: Извлечь аудио (50%)
-      setProgress(50);
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const modelName = `Xenova/whisper-${selectedModel}`;
+      const transcriber = await pipeline('automatic-speech-recognition', modelName);
+      setProgress(35);
+
+      // Шаг 2: Загрузка аудиобуфера
+      setProgressInfo({ stage: '🎵 Загрузка видеофайла...', elapsed: 0, estimated: 0 });
+
       const arrayBuffer = await videoFile.arrayBuffer();
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-      // Шаг 3: Обработать (70%)
-      setProgress(70);
+      setProgress(50);
+      setProgressInfo({ stage: '🔧 Декодирование аудио...', elapsed: 0, estimated: 0 });
 
-      // Для MVP используем Web Speech API (быстро)
-      // В полной версии добавим Whisper.cpp
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognition.lang = 'ru-RU';
-      recognition.continuous = true;
+      // Декодируем аудиобуфер
+      const audioBuffer = await new Promise((resolve, reject) => {
+        audioContext.decodeAudioData(
+          arrayBuffer,
+          (buffer) => resolve(buffer),
+          (error) => {
+            console.error('Decode error:', error);
+            reject(new Error(`Ошибка декодирования: ${error.message || 'неподдерживаемый формат'}`));
+          }
+        );
+      });
 
-      let transcriptText = '';
+      setProgress(65);
 
-      recognition.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcriptText += event.results[i][0].transcript + ' ';
+      // Конвертируем AudioBuffer в Float32Array для Whisper
+      setProgressInfo({ stage: '🔧 Подготовка для Whisper...', elapsed: 0, estimated: 0 });
+
+      // Whisper требует mono Float32Array с 16kHz sampling rate
+      let monoAudio;
+      const sampleRate = audioBuffer.sampleRate;
+
+      if (audioBuffer.numberOfChannels === 1) {
+        // Уже моно
+        monoAudio = audioBuffer.getChannelData(0);
+      } else {
+        // Смешиваем каналы в моно
+        monoAudio = new Float32Array(audioBuffer.length);
+        for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+          const channelData = audioBuffer.getChannelData(ch);
+          for (let i = 0; i < audioBuffer.length; i++) {
+            monoAudio[i] += channelData[i];
+          }
         }
-      };
+        // Нормализуем уровень после смешивания
+        for (let i = 0; i < monoAudio.length; i++) {
+          monoAudio[i] /= audioBuffer.numberOfChannels;
+        }
+      }
 
-      recognition.onerror = (event) => {
-        throw new Error(`Ошибка распознавания: ${event.error}`);
-      };
+      // Ресемплируем к 16kHz если нужно (Whisper стандарт)
+      let audioData = monoAudio;
+      if (sampleRate !== 16000) {
+        const ratio = 16000 / sampleRate;
+        const newLength = Math.round(monoAudio.length * ratio);
+        audioData = new Float32Array(newLength);
 
-      // Для видео файла нужна более сложная обработка
-      // Это placeholder - в полной версии будет Whisper.cpp
-      const mockTranscript = {
-        text: 'Демонстрационная транскрипция. В полной версии используется Whisper.cpp для точной транскрибации.',
-        segments: [
-          { start: 0, end: 5, text: 'Демонстрационная' },
-          { start: 5, end: 10, text: 'транскрипция' }
-        ],
+        let newIndex = 0;
+        for (let i = 0; i < monoAudio.length; i++) {
+          const oldIndex = i / ratio;
+          const nextIndex = Math.ceil(oldIndex);
+
+          if (nextIndex >= monoAudio.length) {
+            audioData[newIndex] = monoAudio[monoAudio.length - 1];
+          } else {
+            // Линейная интерполяция
+            const fraction = oldIndex - Math.floor(oldIndex);
+            audioData[newIndex] =
+              monoAudio[Math.floor(oldIndex)] * (1 - fraction) +
+              monoAudio[nextIndex] * fraction;
+          }
+          newIndex++;
+        }
+      }
+
+      setProgress(75);
+
+      // Шаг 3: Транскрибация
+      setProgressInfo({ stage: '🤖 Обработка в Whisper... (это может занять время)', elapsed: 0, estimated: 0 });
+
+      // Для tiny модели не разбиваем - передаём весь аудиобуфер
+      // Для других моделей используем чанки
+      let fullText = '';
+      let allSegments = [];
+
+      if (selectedModel === 'tiny') {
+        // Tiny модель обрабатывает весь аудиобуфер целиком
+        console.log('⏳ Обработка tiny модели (весь аудиобуфер целиком)');
+        setProgressInfo(prev => ({
+          ...prev,
+          stage: '🤖 Обработка tiny модели (это быстро)...'
+        }));
+
+        const result = await transcriber(audioData);
+        fullText = result.text || '';
+        if (result.chunks) {
+          allSegments = result.chunks || [];
+        }
+        setProgress(95);
+      } else {
+        // Для больших моделей используем чанки без перекрытия — перекрытие вызывало повторения
+        const modelSizes = { base: 30, small: 30, medium: 30, large: 30 };
+        const chunkDuration = modelSizes[selectedModel] || 30;
+        const chunkLength = chunkDuration * 16000;
+        const chunks = [];
+
+        for (let i = 0; i < audioData.length; i += chunkLength) {
+          const chunkEnd = Math.min(i + chunkLength, audioData.length);
+          chunks.push({
+            data: audioData.slice(i, chunkEnd),
+            startTime: i / 16000
+          });
+
+          if (chunkEnd === audioData.length) break;
+        }
+
+        console.log(`📦 Разбито на ${chunks.length} чанков по ${chunkDuration}сек для модели ${selectedModel}`);
+
+        for (let i = 0; i < chunks.length; i++) {
+          if (stopRef.current) {
+            setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено на чанке ${i}/${chunks.length}` }));
+            break;
+          }
+
+          const progressPercent = 75 + (i / chunks.length) * 20;
+          setProgress(progressPercent);
+          setProgressInfo(prev => ({
+            ...prev,
+            stage: `🤖 Обработка чанка ${i + 1}/${chunks.length}...`
+          }));
+
+          console.log(`⏳ Обработка чанка ${i + 1}/${chunks.length}`);
+          const result = await transcriber(chunks[i].data);
+
+          const textToAdd = (result.text || '').trim();
+          fullText += (fullText && textToAdd ? ' ' : '') + textToAdd;
+
+          if (result.chunks) {
+            const timeOffset = chunks[i].startTime;
+            allSegments.push(...result.chunks.map(chunk => ({
+              ...chunk,
+              start: (chunk.start || 0) + timeOffset,
+              end: (chunk.end || 0) + timeOffset
+            })));
+          }
+
+          console.log(`✅ Чанк ${i + 1} готов. Текст: "${(result.text || '').substring(0, 50)}..."`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        setProgress(95);
+      }
+
+      // Формируем результат
+      const transcript = {
+        text: fullText,
+        segments: allSegments,
         language: 'ru',
-        duration: videoFile.size
+        duration: audioBuffer.duration,
+        model: selectedModel
       };
 
       setProgress(100);
-      setTranscript(mockTranscript);
+      setProgressInfo({ stage: '✅ Готово!', elapsed: Math.round((Date.now() - startTimeRef.current) / 1000), estimated: 0 });
+      setTranscript(transcript);
 
       // Добавляем в историю
       addToHistory({
         filename: videoFile.name,
         model: selectedModel,
         timestamp: new Date().toLocaleString('ru-RU'),
-        transcript: mockTranscript.text
+        transcript: transcript.text
       });
 
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Ошибка при транскрибации');
     } finally {
       setIsProcessing(false);
     }
@@ -191,6 +378,11 @@ function App() {
   return (
     <div className="app">
       <header className="header">
+        <div className="header-badge">
+          <span title="Последнее обновление кода" style={{cursor: 'help'}}>
+            ⏰ {updateTime}
+          </span>
+        </div>
         <div className="header-content">
           <h1>🎙️ Transcribe</h1>
           <p>Бесплатная транскрибация видео - Offline, Приватно</p>
@@ -234,21 +426,48 @@ function App() {
             {/* Progress bar */}
             {isProcessing && (
               <div className="progress-container">
+                <div className="progress-stage">{progressInfo.stage}</div>
                 <div className="progress-bar">
                   <div className="progress-fill" style={{ width: `${progress}%` }}></div>
                 </div>
-                <p className="progress-text">Обработка: {progress}%</p>
+                <div className="progress-stats">
+                  <span className="progress-percent">{progress}%</span>
+                  <span className="progress-time">
+                    ⏱️ Прошло: {progressInfo.elapsed}с
+                    {progressInfo.estimated > 0 && ` | Осталось: ~${Math.max(0, progressInfo.estimated - progressInfo.elapsed)}с`}
+                  </span>
+                </div>
               </div>
             )}
 
-            {/* Кнопка транскрибации */}
-            <button
-              className="transcribe-btn"
-              onClick={handleTranscribe}
-              disabled={!videoFile || isProcessing}
-            >
-              {isProcessing ? '⏳ Обработка...' : '🚀 Начать транскрибацию'}
-            </button>
+            {/* Кнопки управления */}
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                className="transcribe-btn"
+                style={{ flex: 1, marginBottom: 0 }}
+                onClick={handleTranscribe}
+                disabled={!videoFile || isProcessing}
+              >
+                {isProcessing ? '⏳ Обработка...' : '🚀 Начать транскрибацию'}
+              </button>
+              {isProcessing && (
+                <button
+                  onClick={() => { stopRef.current = true; }}
+                  style={{
+                    padding: '1rem 1.5rem',
+                    background: '#f44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⏹️ Стоп
+                </button>
+              )}
+            </div>
 
             {/* Ошибки */}
             {error && (
@@ -269,7 +488,7 @@ function App() {
 
       <footer className="footer">
         <p>💚 Приватность: Все обработки происходят в вашем браузере. Видео не отправляется на серверы.</p>
-        <p>📊 Версия 1.0 - MVP</p>
+        <p>📊 v1.1.0 • ✨ Real Whisper in Browser</p>
       </footer>
     </div>
   );
