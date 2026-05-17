@@ -5,6 +5,7 @@ import ModelSelector from './components/ModelSelector';
 import History from './components/History';
 import { useHistory } from './hooks/useHistory';
 import { pipeline } from '@xenova/transformers';
+import { improveTranscript } from './utils/aiApi';
 import { BUILD_TIME } from './BUILD_TIME';
 
 const LAST_UPDATE = new Date(BUILD_TIME);
@@ -34,6 +35,9 @@ function App() {
   const [progressInfo, setProgressInfo] = useState({ stage: '', elapsed: 0, estimated: 0 });
   const [updateTime, setUpdateTime] = useState(getUpdateTimeString());
   const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'glass');
+  const [improved, setImproved] = useState(null);
+  const [isImproving, setIsImproving] = useState(false);
+  const [improveError, setImproveError] = useState(null);
   const { addToHistory, history, clearHistory } = useHistory();
   const startTimeRef = useRef(null);
   const stageTimingsRef = useRef({});
@@ -292,10 +296,19 @@ function App() {
           stage: '🤖 Обработка tiny модели (это быстро)...'
         }));
 
-        const result = await transcriber(audioData);
-        fullText = result.text || '';
-        if (result.chunks) {
-          allSegments = result.chunks || [];
+        if (!stopRef.current) {
+          const result = await transcriber(audioData);
+
+          if (!stopRef.current) {
+            fullText = result.text || '';
+            if (result.chunks) {
+              allSegments = result.chunks || [];
+            }
+          } else {
+            setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено пользователем` }));
+          }
+        } else {
+          setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено пользователем` }));
         }
         setProgress(95);
       } else {
@@ -319,7 +332,7 @@ function App() {
 
         for (let i = 0; i < chunks.length; i++) {
           if (stopRef.current) {
-            setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено на чанке ${i}/${chunks.length}` }));
+            setProgressInfo(prev => ({ ...prev, stage: `⏹️ Остановлено пользователем` }));
             break;
           }
 
@@ -365,20 +378,52 @@ function App() {
       setProgressInfo({ stage: '✅ Готово!', elapsed: Math.round((Date.now() - startTimeRef.current) / 1000), estimated: 0 });
       setTranscript(transcript);
 
-      // Добавляем в историю
-      addToHistory({
-        filename: videoFile.name,
-        model: selectedModel,
-        timestamp: new Date().toLocaleString('ru-RU'),
-        transcript: transcript.text
-      });
+      // Добавляем в историю (только если не остановлено)
+      if (!stopRef.current && fullText) {
+        addToHistory({
+          filename: videoFile.name,
+          model: selectedModel,
+          timestamp: new Date().toLocaleString('ru-RU'),
+          transcript: transcript.text
+        });
+      }
 
     } catch (err) {
       setError(err.message || 'Ошибка при транскрибации');
     } finally {
       setIsProcessing(false);
+      stopRef.current = false;
     }
   };
+
+  const handleImprove = () => {
+    if (!transcript?.text) return;
+    setIsImproving(true);
+    setImproveError(null);
+
+    improveTranscript(transcript.text).then(
+      (result) => {
+        setImproved(result);
+        setIsImproving(false);
+        if (Notification.permission === 'granted') {
+          new Notification('✨ Текст улучшен!', {
+            body: `AI улучшил текст через ${result.api}`,
+            icon: '✨'
+          });
+        }
+      },
+      (err) => {
+        setImproveError(err.message);
+        setIsImproving(false);
+      }
+    );
+  };
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   return (
     <div className="app">
@@ -486,14 +531,19 @@ function App() {
               {transcript && (
                 <div className="editor-section">
                   <div className="editor-header">
-                    <h3>✨ Транскрипция готова</h3>
+                    <h3>✨ Транскрипция {improved ? '→ Улучшено' : 'готова'}</h3>
                     <div className="editor-actions">
-                      <button className="editor-btn" onClick={() => navigator.clipboard.writeText(transcript.text)}>
+                      {!isImproving && !improved && (
+                        <button className="editor-btn improve" onClick={handleImprove} title="Улучшить текст через AI">
+                          🚀 Улучшить
+                        </button>
+                      )}
+                      <button className="editor-btn" onClick={() => navigator.clipboard.writeText(improved?.text || transcript.text)}>
                         📋 Копировать
                       </button>
                       <button className="editor-btn" onClick={() => {
                         const element = document.createElement('a');
-                        const file = new Blob([transcript.text], { type: 'text/plain' });
+                        const file = new Blob([improved?.text || transcript.text], { type: 'text/plain' });
                         element.href = URL.createObjectURL(file);
                         element.download = `transcript-${Date.now()}.txt`;
                         document.body.appendChild(element);
@@ -504,9 +554,29 @@ function App() {
                       </button>
                     </div>
                   </div>
+
+                  {isImproving && (
+                    <div className="improving-banner">
+                      <div className="improving-spinner"></div>
+                      <span>AI улучшает текст в фоне...</span>
+                    </div>
+                  )}
+
+                  {improveError && (
+                    <div className="error-message">
+                      ❌ {improveError}
+                    </div>
+                  )}
+
                   <div className="editor-content">
-                    {transcript.text}
+                    {improved?.text || transcript.text}
                   </div>
+
+                  {improved && (
+                    <div className="improve-info">
+                      ✅ Текст улучшен через {improved.api}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
