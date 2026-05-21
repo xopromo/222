@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ТЗ: Портфолио-сайт (аналог egorappolonov.ru)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #050505;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #D4AF37;
+            padding-bottom: 15px;
+            font-size: 2.5em;
+        }
+
+        h2 {
+            color: #D4AF37;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-left: 5px solid #050505;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #050505;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        h4 {
+            color: #666;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        pre {
+            background: #050505;
+            color: #D4AF37;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.5;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .color-box {
+            display: flex;
+            flex-direction: column;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .color-sample {
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .color-info {
+            padding: 10px;
+            background: #f9f9f9;
+            font-size: 0.85em;
+        }
+
+        .checklist {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            border-left: 4px solid #D4AF37;
+            margin: 20px 0;
+        }
+
+        .checklist label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+            color: #555;
+        }
+
+        .checklist input[type="checkbox"] {
+            margin-right: 10px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th {
+            background: #050505;
+            color: #D4AF37;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            color: #555;
+        }
+
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        .file-tree {
+            background: #050505;
+            color: #D4AF37;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            overflow-x: auto;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            background: #fffacd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #D4AF37;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .print-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: #D4AF37;
+            color: #050505;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+        }
+
+        .print-button:hover {
+            background: #c49b2e;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .print-button {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            h2 {
+                font-size: 1.4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 ТЕХНИЧЕСКОЕ ЗАДАНИЕ</h1>
+        <h2 style="border: none; padding: 0; margin-top: 0; color: #666; font-size: 1.2em;">Создание портфолио-сайта по аналогии с egorappolonov.ru</h2>
+
+        <div class="info">
+            ✅ Документ готов к передаче в другой чат или репозиторий<br>
+            📄 Формат: HTML (самодостаточный)<br>
+            📅 Дата: 21.05.2026 | Версия: 1.0
+        </div>
+
+        <!-- РАЗДЕЛ 1 -->
+        <div class="section">
+            <h2>1. ОПИСАНИЕ ПРОЕКТА</h2>
+            <p>Создать минималистичный портфолио-сайт для демонстрации видеопроектов (портфолио, галерея, шоурил и т.д.). Сайт должен полностью повторять <strong>стиль, дизайн и архитектуру</strong> <code>https://egorappolonov.ru</code></p>
+            <p><strong>Основная функция:</strong> Демонстрация видеопроектов в современном, минималистичном интерфейсе с тёмной темой.</p>
+        </div>
+
+        <!-- РАЗДЕЛ 2 -->
+        <div class="section">
+            <h2>2. ДИЗАЙН-СИСТЕМА</h2>
+
+            <h3>2.1 Цветовая палитра</h3>
+            <div class="color-palette">
+                <div class="color-box">
+                    <div class="color-sample" style="background: #050505; color: white;">#050505</div>
+                    <div class="color-info">Основной фон (Чёрный)</div>
+                </div>
+                <div class="color-box">
+                    <div class="color-sample" style="background: rgba(20,20,20,0.6);">rgba(20,20,20,0.6)</div>
+                    <div class="color-info">Панели (прозрачность)</div>
+                </div>
+                <div class="color-box">
+                    <div class="color-sample" style="background: #ffffff; color: #050505;">#ffffff</div>
+                    <div class="color-info">Основной акцент (Белый)</div>
+                </div>
+                <div class="color-box">
+                    <div class="color-sample" style="background: #D4AF37;">#D4AF37</div>
+                    <div class="color-info">Hollywood Gold</div>
+                </div>
+                <div class="color-box">
+                    <div class="color-sample" style="background: #e0e0e0; color: #050505;">#e0e0e0</div>
+                    <div class="color-info">Основной текст</div>
+                </div>
+                <div class="color-box">
+                    <div class="color-sample" style="background: #888888;">#888888</div>
+                    <div class="color-info">Приглушённый текст</div>
+                </div>
+            </div>
+
+            <h3>2.2 Типография</h3>
+            <ul>
+                <li><strong>Заголовки:</strong> <code>Unbounded</code> (Google Fonts) — современный, геометричный</li>
+                <li><strong>Основной текст:</strong> <code>Manrope</code> (Google Fonts) — чистый, читаемый</li>
+                <li><strong>Код/терминал:</strong> <code>JetBrains Mono</code> (monospace)</li>
+                <li><strong>Font-weight:</strong> 400 (normal), 600 (bold), 700 (heavy)</li>
+            </ul>
+
+            <h3>2.3 Эффекты и анимации</h3>
+            <ul>
+                <li><strong>Glitch-эффект:</strong> На заголовках при загрузке/hover</li>
+                <li><strong>Плавные переходы:</strong> <code>cubic-bezier(0.16, 1, 0.3, 1)</code> (200-300ms)</li>
+                <li><strong>Opacity переходы:</strong> Для появления элементов</li>
+            </ul>
+        </div>
+
+        <!-- РАЗДЕЛ 3 -->
+        <div class="section">
+            <h2>3. СТРУКТУРА И ФУНКЦИОНАЛЬНОСТЬ</h2>
+
+            <h3>3.1 Разделы сайта</h3>
+
+            <h4>A. HERO SECTION (Главный экран)</h4>
+            <ul>
+                <li>Большой видеоплеер (720p или Full HD)</li>
+                <li>Заголовок: "SHOWREEL 2025" или название основного видео</li>
+                <li>Описание проекта</li>
+                <li>Длительность видео (0:00 / 1:06)</li>
+                <li>Плакат (preview image) для видео</li>
+            </ul>
+
+            <h4>B. PORTFOLIO GRID (Галерея проектов)</h4>
+            <ul>
+                <li>Сетка проектов 3-4 колонки (адаптивная)</li>
+                <li>Каждая карточка содержит:
+                    <ul>
+                        <li>Превью видео (обложка)</li>
+                        <li>Название проекта</li>
+                        <li>Краткое описание (1-2 строки)</li>
+                        <li>Длительность видео</li>
+                        <li>Клиент / бренд (опционально)</li>
+                    </ul>
+                </li>
+                <li>При клике на проект:
+                    <ul>
+                        <li>Открывается модальное окно / переход на страницу проекта</li>
+                        <li>Воспроизводится видео</li>
+                        <li>Показывается полное описание</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h4>C. ИНФОРМАЦИОННЫЕ СЕКЦИИ</h4>
+            <ul>
+                <li><strong>О себе / Студии</strong> — текст + фото/видео</li>
+                <li><strong>Услуги / Что мы делаем</strong> — список с описанием</li>
+                <li><strong>Контакты</strong> — email, Telegram, телефон, форма обратной связи</li>
+            </ul>
+
+            <h4>D. ФУТЕР</h4>
+            <ul>
+                <li>Copyright</li>
+                <li>Ссылки на социальные сети</li>
+                <li>Контактная информация</li>
+            </ul>
+
+            <h3>3.2 Функциональность</h3>
+            <div class="checklist">
+                <label><input type="checkbox"> Видеоплеер HTML5 (встроенный)</label>
+                <label><input type="checkbox"> Адаптивный дизайн (мобильные + десктоп)</label>
+                <label><input type="checkbox"> Lazy loading для видео и изображений</label>
+                <label><input type="checkbox"> Плавные переходы между проектами</label>
+                <label><input type="checkbox"> Информация о каждом проекте (название, описание)</label>
+                <label><input type="checkbox"> Ссылки на социальные сети (Telegram, Email)</label>
+            </div>
+        </div>
+
+        <!-- РАЗДЕЛ 4 -->
+        <div class="section">
+            <h2>4. ТЕХНИЧЕСКАЯ АРХИТЕКТУРА</h2>
+
+            <h3>4.1 Стек технологий</h3>
+            <ul>
+                <li><strong>Фронтенд:</strong> React или Next.js (опционально — может быть static HTML/CSS/JS)</li>
+                <li><strong>Хостинг:</strong> GitHub Pages / Vercel / собственный сервер</li>
+                <li><strong>Видео:</strong> Хранятся в папке <code>/public/videos/</code> на сервере</li>
+            </ul>
+
+            <h3>4.2 Структура файлов</h3>
+            <div class="file-tree">
+project/<br>
+├── public/<br>
+│   ├── videos/<br>
+│   │   ├── showreel.mp4<br>
+│   │   ├── cube_conv.mp4<br>
+│   │   ├── project1.mp4<br>
+│   │   └── ... (остальные видео)<br>
+│   ├── images/<br>
+│   │   ├── covers/<br>
+│   │   │   ├── showreel_cover.jpg<br>
+│   │   │   ├── cube_cover.jpg<br>
+│   │   │   └── ... (обложки для видео)<br>
+│   │   └── ... (остальные изображения)<br>
+│   └── favicon.ico<br>
+├── src/ (если React)<br>
+│   ├── components/<br>
+│   │   ├── Hero.jsx<br>
+│   │   ├── Portfolio.jsx<br>
+│   │   ├── ProjectCard.jsx<br>
+│   │   ├── VideoPlayer.jsx<br>
+│   │   └── ...<br>
+│   ├── pages/<br>
+│   │   ├── index.jsx<br>
+│   │   ├── project/[id].jsx<br>
+│   │   └── ...<br>
+│   ├── styles/<br>
+│   │   ├── globals.css<br>
+│   │   ├── hero.css<br>
+│   │   ├── portfolio.css<br>
+│   │   └── ...<br>
+│   └── data/<br>
+│       └── projects.js<br>
+├── index.html (если static HTML)<br>
+├── styles.css<br>
+├── script.js<br>
+├── package.json<br>
+└── README.md
+            </div>
+
+            <h3>4.3 Данные проектов (структура JSON)</h3>
+            <pre>const projects = [
+  {
+    id: 1,
+    title: "Велосипеды Cube",
+    description: "Коммерческое видео для бренда велосипедов Cube",
+    category: "commercial",
+    client: "Cube Bikes",
+    duration: "1:06",
+    videoUrl: "/videos/cube_conv.mp4",
+    coverUrl: "/images/covers/cube_cover.jpg",
+    content: "Полное описание проекта...",
+    awards: ["Gold Neuro Masters 2025"],
+    year: 2025
+  },
+  // ... остальные проекты
+];</pre>
+        </div>
+
+        <!-- РАЗДЕЛ 5 -->
+        <div class="section">
+            <h2>5. ТРЕБОВАНИЯ К ВИДЕО И ИЗОБРАЖЕНИЯМ</h2>
+
+            <h3>5.1 Видеофайлы</h3>
+            <table>
+                <tr>
+                    <th>Параметр</th>
+                    <th>Значение</th>
+                </tr>
+                <tr>
+                    <td>Формат</td>
+                    <td>MP4 (H.264 codec)</td>
+                </tr>
+                <tr>
+                    <td>Разрешение</td>
+                    <td>1280x720 (720p) или 1920x1080 (Full HD)</td>
+                </tr>
+                <tr>
+                    <td>Битрейт</td>
+                    <td>5-8 Mbps (оптимизировано для web)</td>
+                </tr>
+                <tr>
+                    <td>Звук</td>
+                    <td>AAC, 128 kbps</td>
+                </tr>
+                <tr>
+                    <td>Максимум размер</td>
+                    <td>50-100 MB (для быстрой загрузки)</td>
+                </tr>
+                <tr>
+                    <td>Минимум длительность</td>
+                    <td>30 сек</td>
+                </tr>
+            </table>
+
+            <h3>5.2 Изображения для обложек (covers)</h3>
+            <table>
+                <tr>
+                    <th>Параметр</th>
+                    <th>Значение</th>
+                </tr>
+                <tr>
+                    <td>Формат</td>
+                    <td>JPEG или WebP</td>
+                </tr>
+                <tr>
+                    <td>Размер</td>
+                    <td>1280x720 px (16:9 ratio)</td>
+                </tr>
+                <tr>
+                    <td>Оптимизация</td>
+                    <td>Сжато (80-150 KB)</td>
+                </tr>
+                <tr>
+                    <td>Содержание</td>
+                    <td>Ключевой кадр из видео</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- РАЗДЕЛ 6 -->
+        <div class="section">
+            <h2>6. ФУНКЦИОНАЛЬНЫЕ ТРЕБОВАНИЯ</h2>
+
+            <h3>6.1 Обязательные (MVP)</h3>
+            <div class="checklist">
+                <label><input type="checkbox"> Главная страница с Hero видеоплеером</label>
+                <label><input type="checkbox"> Галерея проектов в виде сетки</label>
+                <label><input type="checkbox"> Страница/модальное окно отдельного проекта с видео</label>
+                <label><input type="checkbox"> Адаптивный дизайн для мобильных и десктопов</label>
+                <label><input type="checkbox"> Навигационное меню</label>
+                <label><input type="checkbox"> Контактная информация / форма обратной связи</label>
+            </div>
+
+            <h3>6.2 Желаемые (nice-to-have)</h3>
+            <div class="checklist">
+                <label><input type="checkbox"> Поиск/фильтрация по категориям</label>
+                <label><input type="checkbox"> Светлая и тёмная темы (переключатель)</label>
+                <label><input type="checkbox"> Страница с описанием услуг</label>
+                <label><input type="checkbox"> Блог / статьи (опционально)</label>
+                <label><input type="checkbox"> Интеграция с аналитикой (Google Analytics, Yandex Metrica)</label>
+            </div>
+        </div>
+
+        <!-- РАЗДЕЛ 7 -->
+        <div class="section">
+            <h2>7. ТРЕБОВАНИЯ К КОНТЕНТУ</h2>
+
+            <h3>7.1 Текстовый контент (на русском языке)</h3>
+
+            <h4>Главная страница:</h4>
+            <ul>
+                <li>Заголовок сайта: [Имя / Студия]</li>
+                <li>Слоган: [Одно предложение о специализации]</li>
+                <li>Краткое описание: [2-3 предложения]</li>
+            </ul>
+
+            <h4>О себе/студии:</h4>
+            <ul>
+                <li>История: [3-5 предложений]</li>
+                <li>Специализация: [Список из 4-5 пунктов]</li>
+                <li>Опыт: [Годы работы, кол-во проектов, награды]</li>
+            </ul>
+
+            <h4>Контакты:</h4>
+            <ul>
+                <li>Email: [email@example.com]</li>
+                <li>Telegram: [@username]</li>
+                <li>Телефон: [+7 (XXX) XXX-XX-XX] (опционально)</li>
+            </ul>
+
+            <h3>7.2 Видео и изображения</h3>
+            <p><strong>Минимум:</strong> 12-15 видеопроектов для стартового контента</p>
+            <p><strong>Каждый проект должен содержать:</strong></p>
+            <ul>
+                <li>Название</li>
+                <li>Клиент / бренд</li>
+                <li>Тип работы (коммерческая, документальная, музыкальный клип и т.д.)</li>
+                <li>Краткое описание (2-3 строки)</li>
+                <li>Год создания</li>
+                <li>Видеофайл (MP4)</li>
+                <li>Обложка (JPEG/WebP)</li>
+            </ul>
+        </div>
+
+        <!-- РАЗДЕЛ 8 -->
+        <div class="section">
+            <h2>8. ТРЕБОВАНИЯ К ВИДЕОПЛЕРУ</h2>
+            <div class="checklist">
+                <label><input type="checkbox"> Play/Pause</label>
+                <label><input type="checkbox"> Регулятор громкости</label>
+                <label><input type="checkbox"> Полноэкранный режим</label>
+                <label><input type="checkbox"> Таймер прогресса (0:00 / 1:06)</label>
+                <label><input type="checkbox"> Скорость воспроизведения (опционально)</label>
+                <label><input type="checkbox"> Субтитры (опционально)</label>
+                <label><input type="checkbox"> Автозагрузка плаката</label>
+            </div>
+        </div>
+
+        <!-- РАЗДЕЛ 9 -->
+        <div class="section">
+            <h2>9. ТРЕБОВАНИЯ К SEO И ПРОИЗВОДИТЕЛЬНОСТИ</h2>
+
+            <h3>9.1 SEO</h3>
+            <div class="checklist">
+                <label><input type="checkbox"> Meta tags (description, keywords)</label>
+                <label><input type="checkbox"> Open Graph tags для социальных сетей</label>
+                <label><input type="checkbox"> Schema.org разметка (VideoObject)</label>
+                <label><input type="checkbox"> Sitemap.xml</label>
+                <label><input type="checkbox"> robots.txt</label>
+            </div>
+
+            <h3>9.2 Производительность</h3>
+            <div class="checklist">
+                <label><input type="checkbox"> Lazy loading для видео и изображений</label>
+                <label><input type="checkbox"> WebP формат для изображений (с fallback на JPEG)</label>
+                <label><input type="checkbox"> Минификация CSS/JS</label>
+                <label><input type="checkbox"> Кэширование браузера</label>
+                <label><input type="checkbox"> Целевое время загрузки: &lt; 3 сек (на 4G)</label>
+            </div>
+        </div>
+
+        <!-- РАЗДЕЛ 10 -->
+        <div class="section">
+            <h2>10. ИНСТРУКЦИИ ПО РАЗВЕРТЫВАНИЮ</h2>
+
+            <h3>10.1 Локальная разработка</h3>
+            <pre>git clone &lt;repository&gt;
+cd project
+npm install
+npm run dev
+# или для static: открыть index.html в браузер</pre>
+
+            <h3>10.2 Deployment (GitHub Pages)</h3>
+            <pre>npm run build
+# или для static: push в папку /docs
+git add .
+git commit -m "Deploy"
+git push origin main</pre>
+
+            <h3>10.3 Домен</h3>
+            <p>Настроить CNAME файл или DNS A record на GitHub Pages</p>
+        </div>
+
+        <!-- РАЗДЕЛ 11 -->
+        <div class="section">
+            <h2>11. ПРИМЕРЫ ДАННЫХ (MOCK DATA)</h2>
+            <pre>const projectsMock = [
+  {
+    id: 1,
+    title: "Велосипеды Cube",
+    description: "Коммерческое видео для бренда велосипедов. Съёмка в городе с современной эстетикой.",
+    category: "commercial",
+    client: "Cube Bikes",
+    duration: "1:06",
+    videoUrl: "/videos/cube_conv.mp4",
+    coverUrl: "/images/covers/cube_cover.jpg",
+    content: "Когда даже босс, у которого есть всё, устраивает погоню за одним великим.",
+    year: 2025
+  },
+  {
+    id: 2,
+    title: "Добрый Cola",
+    description: "Реклама напитка с юмором и ностальгией.",
+    category: "commercial",
+    client: "Добрый",
+    duration: "0:30",
+    videoUrl: "/videos/dobry_tech.mp4",
+    coverUrl: "/images/covers/dobry_cover.jpg",
+    year: 2025
+  },
+  // ... ещё 13-14 проектов в этом формате
+];</pre>
+        </div>
+
+        <!-- РАЗДЕЛ 12 -->
+        <div class="section">
+            <h2>12. КРИТЕРИИ ПРИЁМКИ</h2>
+            <div class="checklist">
+                <label><input type="checkbox"> Сайт выглядит идентично egorappolonov.ru (стиль, цвета, макет)</label>
+                <label><input type="checkbox"> Все видео воспроизводятся корректно</label>
+                <label><input type="checkbox"> Сайт полностью адаптивен (мобильные, планшеты, десктопы)</label>
+                <label><input type="checkbox"> Loading time &lt; 3 сек на 4G сети</label>
+                <label><input type="checkbox"> Нет console errors / warnings</label>
+                <label><input type="checkbox"> Работает на последних версиях браузеров (Chrome, Firefox, Safari, Edge)</label>
+                <label><input type="checkbox"> SEO оптимизирован</label>
+                <label><input type="checkbox"> Контентом можно управлять без редактирования кода (JSON / админ-панель)</label>
+            </div>
+        </div>
+
+        <!-- РАЗДЕЛ 13 -->
+        <div class="section">
+            <h2>13. ОПЦИОНАЛЬНЫЕ ВОЗМОЖНОСТИ (PHASE 2)</h2>
+            <ul>
+                <li>Админ-панель для добавления новых проектов</li>
+                <li>Интеграция с YouTube API для вставки видео с YouTube</li>
+                <li>Комментарии и рейтинги проектов</li>
+                <li>Подписка на новости (email newsletter)</li>
+                <li>Многоязычность (EN/RU)</li>
+            </ul>
+        </div>
+
+        <!-- ФУТЕР -->
+        <div class="footer">
+            <p><strong>Техническое задание</strong> | Версия 1.0 | 21.05.2026</p>
+            <p>Автор: Claude (AI Assistant)</p>
+            <p>📧 Для уточнений создавайте issues в репозитории</p>
+        </div>
+
+        <div class="success" style="margin-top: 40px;">
+            ✅ <strong>ГОТОВО К ИСПОЛЬЗОВАНИЮ!</strong><br>
+            Скопируйте этот файл (Ctrl+A → Ctrl+C) и передайте в другой чат, или сохраните как файл и загрузите в репозиторий.
+        </div>
+    </div>
+
+    <button class="print-button" onclick="window.print()">🖨️ Печать / PDF</button>
+</body>
+</html>
