@@ -56,6 +56,9 @@ function runMarketingAnalysis() {
     writeAnalysisSheet_(analysisJson);
 
     // Шаг 3 — второй запрос: генерация креативов
+    // Пауза 20 сек, чтобы не превысить лимит 12 000 токенов/мин (бесплатный тариф Groq)
+    Logger.log('Пауза 20 сек перед вторым запросом (лимит TPM Groq)...');
+    Utilities.sleep(20000);
     Logger.log('=== [4/5] Запрос 2 — Генерация рекламных гипотез ===');
     var hypothesesJson = callGroqApi_(settings.apiKey, buildPrompt2_(analysisJson));
     Logger.log('Ответ Запроса 2 получен, записываем в лист «Подготовка к запуску»');
