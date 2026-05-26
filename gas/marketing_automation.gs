@@ -64,8 +64,11 @@ function runMarketingAnalysis() {
     if (!context || !context.trim()) {
       ui.alert('Ошибка', 'Нет читаемых файлов в папке.', ui.ButtonSet.OK); return;
     }
-    var statusMsg = '✅ Файлов прочитано: ' + result.filesRead + ' | символов: ' + context.length;
-    if (skipped.length)  statusMsg += '\n⚠️ Пропущено (Gemini недоступен): ' + skipped.join(', ');
+    var statusMsg = '✅ Обнаружено файлов: ' + result.filesFound + ' | обработано: ' + result.filesRead + ' | символов контекста: ' + context.length;
+    if (result.mediaLogs && result.mediaLogs.length) {
+      statusMsg += '\n\n🤖 Gemini расшифровал (' + result.mediaLogs.length + '):\n' + result.mediaLogs.join('\n');
+    }
+    if (skipped.length)  statusMsg += '\n\n⚠️ Пропущено (Gemini недоступен): ' + skipped.join(', ');
     if (!geminiOk && settings.geminiKey) statusMsg += '\n⚠️ Gemini лимит исчерпан — медиафайлы пропущены';
     updateChecklist_(2, statusMsg);
 
@@ -186,6 +189,7 @@ function processSource_(source, settings, state) {
         return processFolder_(DriveApp.getFolderById(classified.id), settings, state, 0);
 
       case 'gdoc': {
+        state.filesFound++;
         var text = DocumentApp.openById(classified.id).getBody().getText();
         if (!text.trim()) return [];
         state.filesRead++;
@@ -193,6 +197,7 @@ function processSource_(source, settings, state) {
       }
 
       case 'gsheet': {
+        state.filesFound++;
         var parts = [];
         var sheetText = extractSheetText_(classified.id);
         if (sheetText.trim()) {
@@ -206,6 +211,7 @@ function processSource_(source, settings, state) {
       }
 
       case 'gslides': {
+        state.filesFound++;
         var slideText = extractSlidesText_(classified.id);
         if (!slideText.trim()) return [];
         state.filesRead++;
@@ -213,6 +219,7 @@ function processSource_(source, settings, state) {
       }
 
       case 'gdrive_file': {
+        state.filesFound++;
         var file = DriveApp.getFileById(classified.id);
         var mime = file.getMimeType();
         var fname = file.getName();
@@ -233,6 +240,10 @@ function processSource_(source, settings, state) {
           var gt = transcribeWithGemini_(settings.geminiKey, file, mime, fname, state);
           if (!gt) return [];
           state.filesRead++;
+          var gType = GEMINI_MIMES[mime];
+          var gIcon = gType === 'video' ? '🎬' : gType === 'audio' ? '🎙️' : gType === 'document' ? '📑' : '🖼️';
+          var gPreview = gt.replace(/\s+/g, ' ').trim().substring(0, 120);
+          state.mediaLogs.push(gIcon + ' ' + fname + '\n    «' + gPreview + (gt.length > 120 ? '...»' : '»'));
           return ['--- ' + fname + ' (Drive-файл) ---\n' + gt];
         }
         Logger.log('  ⏭️ Неподдерживаемый формат Drive-файла: ' + mime);
@@ -263,19 +274,25 @@ function collectDriveContext_(settings) {
     geminiAvailable: !!settings.geminiKey,
     skipped:         [],
     filesRead:       0,
+    filesFound:      0,
+    mediaLogs:       [],
     followedUrls:    {}
   };
 
   var allParts = [];
-  settings.sources.forEach(function(src) {
+  settings.sources.forEach(function(src, idx) {
+    updateChecklist_(2, '⏳ Источник ' + (idx + 1) + '/' + settings.sources.length + ': сканируем...');
     var parts = processSource_(src, settings, state);
     allParts   = allParts.concat(parts);
+    updateChecklist_(2, '⏳ Обнаружено: ' + state.filesFound + ' | обработано: ' + state.filesRead);
   });
 
   return {
     context:    allParts.join('\n\n'),
     skipped:    state.skipped,
     filesRead:  state.filesRead,
+    filesFound: state.filesFound,
+    mediaLogs:  state.mediaLogs,
     geminiUsed: state.geminiAvailable || !settings.geminiKey
   };
 }
@@ -295,6 +312,8 @@ function processFolder_(folder, settings, state, depth) {
     var mime     = file.getMimeType();
     var fname    = file.getName();
     var indent   = '  '.repeat(depth + 1);
+
+    state.filesFound++;
 
     // Google Документ
     if (mime === MimeType.GOOGLE_DOCS) {
@@ -361,7 +380,13 @@ function processFolder_(folder, settings, state, depth) {
 
       Logger.log(indent + '🤖 Gemini (' + geminiType + '): ' + fname);
       var extracted = transcribeWithGemini_(settings.geminiKey, file, mime, fname, state);
-      if (extracted) { parts.push('--- ' + fname + ' (' + geminiType + ') ---\n' + extracted); state.filesRead++; }
+      if (extracted) {
+        parts.push('--- ' + fname + ' (' + geminiType + ') ---\n' + extracted);
+        state.filesRead++;
+        var icon = geminiType === 'video' ? '🎬' : geminiType === 'audio' ? '🎙️' : geminiType === 'document' ? '📑' : '🖼️';
+        var preview = extracted.replace(/\s+/g, ' ').trim().substring(0, 120);
+        state.mediaLogs.push(icon + ' ' + fname + '\n    «' + preview + (extracted.length > 120 ? '...»' : '»'));
+      }
       continue;
     }
 
@@ -935,7 +960,11 @@ function updateChecklist_(stepNum, status) {
     sheet.getRange(row, 3).setValue(status);
     var bg = status.indexOf('✅') === 0 ? '#C8E6C9' : status.indexOf('❌') === 0 ? '#FFCDD2' : '#FFF9C4';
     var fc = status.indexOf('✅') === 0 ? '#1B5E20' : status.indexOf('❌') === 0 ? '#C62828' : '#F57F17';
-    sheet.getRange(row, 3).setBackground(bg).setFontColor(fc);
+    sheet.getRange(row, 3).setBackground(bg).setFontColor(fc).setWrap(true).setVerticalAlignment('top');
+    // Авторесайз строки по количеству строк текста
+    var lines = status.split('\n').length;
+    var minH = Math.max(40, lines * 18 + 10);
+    sheet.setRowHeight(row, Math.min(minH, 400));
   }
   SpreadsheetApp.flush();
 }
@@ -1014,8 +1043,10 @@ function createChecklistSheet_(ss) {
     [6, 'Финал',                                           '⬜ Ожидание']
   ]);
   sheet.getRange(2, 3, 6, 1).setBackground('#F5F5F5').setFontColor('#888888');
-  sheet.setColumnWidth(1, 70); sheet.setColumnWidth(2, 340); sheet.setColumnWidth(3, 420);
+  sheet.getRange(2, 1, 6, 3).setWrap(true).setVerticalAlignment('top');
+  sheet.setColumnWidth(1, 70); sheet.setColumnWidth(2, 340); sheet.setColumnWidth(3, 500);
   for (var r = 2; r <= 7; r++) sheet.setRowHeight(r, 40);
+  sheet.setRowHeight(3, 80); // строка шага 2 — для логов файлов
 }
 
 function createAnalysisSheet_(ss) {
