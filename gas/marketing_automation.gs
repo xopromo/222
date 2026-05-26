@@ -56,17 +56,18 @@ function runMarketingAnalysis() {
     writeAnalysisSheet_(analysisJson);
 
     // Шаг 4 — запрос 2: генерация 15 заходов (по 5 на каждый сегмент)
-    Logger.log('Пауза 20 сек перед запросом 2 (лимит TPM Groq)...');
-    Utilities.sleep(20000);
+    Logger.log('Пауза 35 сек перед запросом 2 (лимит TPM Groq)...');
+    Utilities.sleep(35000);
     Logger.log('=== [4/6] Запрос 2 — Генерация 15 рекламных заходов ===');
     var allHypothesesJson = callGroqApi_(settings.apiKey, buildPrompt2a_(analysisJson));
     Logger.log('Ответ Запроса 2 получен: ' + (allHypothesesJson.hypotheses || []).length + ' заходов');
 
     // Шаг 5 — запрос 3: отбор 10 лучших заходов из 15
-    Logger.log('Пауза 20 сек перед запросом 3 (лимит TPM Groq)...');
-    Utilities.sleep(20000);
+    // max_tokens снижен до 3500 — запрос только выбирает готовый контент, не генерирует новый
+    Logger.log('Пауза 35 сек перед запросом 3 (лимит TPM Groq)...');
+    Utilities.sleep(35000);
     Logger.log('=== [5/6] Запрос 3 — Отбор 10 лучших заходов ===');
-    var top10Json = callGroqApi_(settings.apiKey, buildPrompt2b_(allHypothesesJson));
+    var top10Json = callGroqApi_(settings.apiKey, buildPrompt2b_(allHypothesesJson), 3500);
     Logger.log('Ответ Запроса 3 получен, записываем в лист «Подготовка к запуску»');
     writeLaunchSheet_(top10Json);
 
@@ -124,13 +125,13 @@ function collectDriveContext_(folderId) {
 }
 
 // ─── Запрос к Groq API ────────────────────────────────────────
-function callGroqApi_(apiKey, messages) {
+function callGroqApi_(apiKey, messages, maxTokens) {
   var payload = JSON.stringify({
     model: GROQ_MODEL,
     messages: messages,
     response_format: { type: 'json_object' },
     temperature: 0.7,
-    max_tokens: 4096
+    max_tokens: maxTokens || 4096
   });
 
   var options = {
