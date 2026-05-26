@@ -115,11 +115,16 @@ function readSettings_() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS_SHEET);
   if (!sheet) throw new Error('Лист «Настройки» не найден. Запустите «Создать шаблон листов».');
 
-  var maxImg = parseInt(sheet.getRange('B7').getValue());
+  var maxImg      = parseInt(sheet.getRange('B7').getValue());
   var followLinks = (sheet.getRange('B8').getValue() + '').trim().toLowerCase();
+
+  // B3 — источники: несколько строк (Alt+Enter) или через запятую
+  var rawSources = sheet.getRange('B3').getValue() + '';
+  var sources    = rawSources.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+
   return {
     groqKey:            (sheet.getRange('B2').getValue() + '').trim(),
-    folderId:           (sheet.getRange('B3').getValue() + '').trim(),
+    sources:            sources,
     geminiKey:          (sheet.getRange('B4').getValue() + '').trim(),
     blacklist:          parseNameList_(sheet.getRange('B5').getValue()),
     whitelist:          parseNameList_(sheet.getRange('B6').getValue()),
@@ -133,24 +138,142 @@ function parseNameList_(raw) {
   return (raw + '').split(',').map(function(s) { return s.trim().toLowerCase(); }).filter(Boolean);
 }
 
-// ─── Сбор файлов из Google Drive ─────────────────────────────
-function collectDriveContext_(settings) {
-  var folder;
+// ─── Определение типа источника по URL или ID ─────────────────
+function classifySource_(source) {
+  // Google Drive папка (URL)
+  var folderUrl = source.match(/drive\.google\.com\/(?:drive\/)?(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/);
+  if (folderUrl) return { type: 'folder', id: folderUrl[1], label: 'папка Drive' };
+
+  // Google Doc
+  var docUrl = source.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (docUrl) return { type: 'gdoc', id: docUrl[1], label: 'Google Doc' };
+
+  // Google Sheet
+  var sheetUrl = source.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (sheetUrl) return { type: 'gsheet', id: sheetUrl[1], label: 'Google Sheet' };
+
+  // Google Slides
+  var slidesUrl = source.match(/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+  if (slidesUrl) return { type: 'gslides', id: slidesUrl[1], label: 'Google Slides' };
+
+  // Google Drive файл (прямая ссылка)
+  var driveFile = source.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
+  if (driveFile) return { type: 'gdrive_file', id: driveFile[1], label: 'файл Drive' };
+
+  // Внешний URL
+  if (/^https?:\/\//i.test(source)) return { type: 'url', url: source, label: 'внешний URL' };
+
+  // Иначе — считаем ID папки (обратная совместимость)
+  if (/^[a-zA-Z0-9_-]{15,}$/.test(source)) return { type: 'folder', id: source, label: 'папка Drive (ID)' };
+
+  return null;
+}
+
+// ─── Обработка одного источника ──────────────────────────────
+function processSource_(source, settings, state) {
+  var classified = classifySource_(source);
+  if (!classified) {
+    Logger.log('⚠️ Не удалось определить тип источника: ' + source);
+    return [];
+  }
+
+  Logger.log('📌 Источник [' + classified.label + ']: ' + source);
+
   try {
-    folder = DriveApp.getFolderById(settings.folderId);
+    switch (classified.type) {
+
+      case 'folder':
+        return processFolder_(DriveApp.getFolderById(classified.id), settings, state, 0);
+
+      case 'gdoc': {
+        var text = DocumentApp.openById(classified.id).getBody().getText();
+        if (!text.trim()) return [];
+        state.filesRead++;
+        return ['--- Google Doc: ' + source + ' ---\n' + text];
+      }
+
+      case 'gsheet': {
+        var parts = [];
+        var sheetText = extractSheetText_(classified.id);
+        if (sheetText.trim()) {
+          parts.push('--- Google Sheet: ' + source + ' ---\n' + sheetText);
+          state.filesRead++;
+        }
+        if (settings.followLinks) {
+          parts = parts.concat(followLinksInSheet_(classified.id, settings, state));
+        }
+        return parts;
+      }
+
+      case 'gslides': {
+        var slideText = extractSlidesText_(classified.id);
+        if (!slideText.trim()) return [];
+        state.filesRead++;
+        return ['--- Google Slides: ' + source + ' ---\n' + slideText];
+      }
+
+      case 'gdrive_file': {
+        var file = DriveApp.getFileById(classified.id);
+        var mime = file.getMimeType();
+        var fname = file.getName();
+
+        if (mime === MimeType.GOOGLE_DOCS)
+          return processSource_('https://docs.google.com/document/d/' + classified.id, settings, state);
+        if (mime === MimeType.GOOGLE_SHEETS)
+          return processSource_('https://docs.google.com/spreadsheets/d/' + classified.id, settings, state);
+        if (mime === MimeType.GOOGLE_SLIDES)
+          return processSource_('https://docs.google.com/presentation/d/' + classified.id, settings, state);
+        if (mime === MimeType.PLAIN_TEXT || mime === 'text/csv') {
+          var t = file.getBlob().getDataAsString('UTF-8');
+          if (!t.trim()) return [];
+          state.filesRead++;
+          return ['--- ' + fname + ' ---\n' + t];
+        }
+        if (GEMINI_MIMES[mime] && state.geminiAvailable && settings.geminiKey) {
+          var gt = transcribeWithGemini_(settings.geminiKey, file, mime, fname, state);
+          if (!gt) return [];
+          state.filesRead++;
+          return ['--- ' + fname + ' (Drive-файл) ---\n' + gt];
+        }
+        Logger.log('  ⏭️ Неподдерживаемый формат Drive-файла: ' + mime);
+        return [];
+      }
+
+      case 'url': {
+        var result = fetchUrlContent_(classified.url, settings, state);
+        if (!result) return [];
+        state.filesRead++;
+        return [result];
+      }
+    }
   } catch (e) {
-    throw new Error('Не удалось открыть папку Drive (ID: ' + settings.folderId + '). Проверьте ID и доступ.');
+    Logger.log('  ❌ Ошибка источника [' + classified.label + ']: ' + e.message);
+    return [];
+  }
+  return [];
+}
+
+// ─── Сбор файлов из всех источников ──────────────────────────
+function collectDriveContext_(settings) {
+  if (!settings.sources || settings.sources.length === 0) {
+    throw new Error('Не указан ни один источник в ячейке B3 листа «Настройки».');
   }
 
   var state = {
     geminiAvailable: !!settings.geminiKey,
-    skipped: [],
-    filesRead: 0
+    skipped:         [],
+    filesRead:       0,
+    followedUrls:    {}
   };
 
-  var parts = processFolder_(folder, settings, state, 0);
+  var allParts = [];
+  settings.sources.forEach(function(src) {
+    var parts = processSource_(src, settings, state);
+    allParts   = allParts.concat(parts);
+  });
+
   return {
-    context:    parts.join('\n\n'),
+    context:    allParts.join('\n\n'),
     skipped:    state.skipped,
     filesRead:  state.filesRead,
     geminiUsed: state.geminiAvailable || !settings.geminiKey
@@ -826,7 +949,7 @@ function createSettingsSheet_(ss) {
   sheet.getRange(1, 1, 9, 2).setValues([
     ['Параметр',                                    'Значение'],
     ['API-ключ Groq',                                ''],
-    ['ID папки Google Drive',                        ''],
+    ['Источники (по одному в строке Alt+Enter)',     ''],
     ['API-ключ Gemini (для PDF/фото/видео)',         ''],
     ['Чёрный список папок (через запятую)',          ''],
     ['Белый список папок (через запятую)',           ''],
@@ -837,8 +960,11 @@ function createSettingsSheet_(ss) {
 
   sheet.getRange(1, 1, 1, 2).setBackground('#4A90D9').setFontColor('#FFFFFF').setFontWeight('bold');
   sheet.getRange(2, 1, 7, 1).setFontWeight('bold');
+  // B3 — многострочная ячейка для источников
+  sheet.getRange(3, 2).setWrap(true);
+  sheet.setRowHeight(3, 100);
   sheet.setColumnWidth(1, 290);
-  sheet.setColumnWidth(2, 420);
+  sheet.setColumnWidth(2, 460);
 
   sheet.getRange(10, 1).setValue('Подсказки:').setFontWeight('bold');
   [
