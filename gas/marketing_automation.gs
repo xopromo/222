@@ -109,6 +109,10 @@ function resetChecklist_() {
   var sheet = ss.getSheetByName(CHECKLIST_SHEET);
   if (!sheet) return;
 
+  // Удаляем лишние строки (ошибки от предыдущих запусков)
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 7) sheet.deleteRows(8, lastRow - 7);
+
   var steps = [
     [1, 'Читаем настройки (API-ключ, ID папки)', '⬜ Ожидание'],
     [2, 'Читаем файлы из Google Drive',           '⬜ Ожидание'],
