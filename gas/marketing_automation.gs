@@ -237,6 +237,8 @@ function processSource_(source, settings, state) {
           return ['--- ' + fname + ' ---\n' + t];
         }
         if (GEMINI_MIMES[mime] && state.geminiAvailable && settings.geminiKey) {
+          if (state.geminiCallCount > 0) Utilities.sleep(5000);
+          state.geminiCallCount = (state.geminiCallCount || 0) + 1;
           var gt = transcribeWithGemini_(settings.geminiKey, file, mime, fname, state);
           if (!gt) return [];
           state.filesRead++;
@@ -276,6 +278,7 @@ function collectDriveContext_(settings) {
     filesRead:       0,
     filesFound:      0,
     mediaLogs:       [],
+    geminiCallCount: 0,
     followedUrls:    {}
   };
 
@@ -379,6 +382,8 @@ function processFolder_(folder, settings, state, depth) {
       }
 
       Logger.log(indent + '🤖 Gemini (' + geminiType + '): ' + fname);
+      if (state.geminiCallCount > 0) Utilities.sleep(5000); // пауза между вызовами Gemini
+      state.geminiCallCount = (state.geminiCallCount || 0) + 1;
       var extracted = transcribeWithGemini_(settings.geminiKey, file, mime, fname, state);
       if (extracted) {
         parts.push('--- ' + fname + ' (' + geminiType + ') ---\n' + extracted);
@@ -482,18 +487,26 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
       }
     }
 
-    var response = UrlFetchApp.fetch(GEMINI_API_URL + '?key=' + geminiKey, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(requestBody),
-      muteHttpExceptions: true
-    });
-
-    var code = response.getResponseCode();
-    var body = response.getContentText();
+    var response, code, body;
+    // До 3 попыток при 429 — ждём столько, сколько скажет Gemini
+    for (var attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        Logger.log('    Gemini 429 — ждём 65 сек, повтор ' + attempt + '/2...');
+        Utilities.sleep(65000);
+      }
+      response = UrlFetchApp.fetch(GEMINI_API_URL + '?key=' + geminiKey, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify(requestBody),
+        muteHttpExceptions: true
+      });
+      code = response.getResponseCode();
+      body = response.getContentText();
+      if (code !== 429 && code !== 503) break;
+    }
 
     if (code === 429 || code === 503) {
-      Logger.log('    Gemini лимит исчерпан (HTTP ' + code + '): ' + fileName);
+      Logger.log('    Gemini лимит исчерпан после 3 попыток: ' + fileName);
       state.geminiAvailable = false;
       state.skipped.push(fileName + ' (лимит Gemini ' + code + ')');
       return null;
