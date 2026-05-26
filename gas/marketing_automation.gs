@@ -77,8 +77,8 @@ function runMarketingAnalysis() {
     updateChecklist_(3, '✅ Анализ записан в лист «Анализ»');
 
     // Шаг 4 — 15 заходов
-    Logger.log('Пауза 35 сек...'); updateChecklist_(4, '⏳ Пауза 35 сек (лимит Groq)...');
-    Utilities.sleep(35000);
+    Logger.log('Пауза 62 сек...'); updateChecklist_(4, '⏳ Пауза 62 сек (лимит Groq)...');
+    Utilities.sleep(62000);
     Logger.log('=== [4/6] Запрос 2 — 15 заходов ===');
     updateChecklist_(4, '⏳ Groq: генерация 15 заходов...');
     var allHypo = callGroqApi_(settings.groqKey, buildPrompt2a_(analysisJson));
@@ -86,8 +86,8 @@ function runMarketingAnalysis() {
     updateChecklist_(4, '✅ ' + (allHypo.hypotheses||[]).length + ' заходов → лист «Все гипотезы (15)»');
 
     // Шаг 5 — отбор 10 лучших
-    Logger.log('Пауза 35 сек...'); updateChecklist_(5, '⏳ Пауза 35 сек (лимит Groq)...');
-    Utilities.sleep(35000);
+    Logger.log('Пауза 62 сек...'); updateChecklist_(5, '⏳ Пауза 62 сек (лимит Groq)...');
+    Utilities.sleep(62000);
     Logger.log('=== [5/6] Запрос 3 — Топ 10 ===');
     updateChecklist_(5, '⏳ Groq: отбор 10 лучших заходов...');
     var top10 = callGroqApi_(settings.groqKey, buildPrompt2b_(allHypo), 3500);
@@ -673,18 +673,38 @@ function callGroqApi_(apiKey, messages, maxTokens) {
     max_tokens: maxTokens || 4096
   });
 
-  var response = UrlFetchApp.fetch(GROQ_API_URL, {
+  var opts = {
     method: 'post',
     contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + apiKey },
     payload: payload,
     muteHttpExceptions: true
-  });
+  };
 
-  var code = response.getResponseCode();
-  var body = response.getContentText();
+  // До 3 попыток при 429 — ждём столько, сколько говорит Groq + 5 сек запаса
+  for (var attempt = 0; attempt < 3; attempt++) {
+    var response = UrlFetchApp.fetch(GROQ_API_URL, opts);
+    var code = response.getResponseCode();
+    var body = response.getContentText();
 
-  if (code !== 200) {
+    if (code === 200) {
+      return JSON.parse(JSON.parse(body).choices[0].message.content);
+    }
+
+    if (code === 429) {
+      var waitSec = 62; // дефолт — полная минута
+      try {
+        var msg = JSON.parse(body).error.message || '';
+        var m = msg.match(/try again in\s+([\d.]+)s/i);
+        if (m) waitSec = Math.ceil(parseFloat(m[1])) + 5;
+      } catch (_) {}
+      if (attempt < 2) {
+        Logger.log('Groq 429 — ждём ' + waitSec + ' сек (попытка ' + (attempt + 1) + ')');
+        Utilities.sleep(waitSec * 1000);
+        continue;
+      }
+    }
+
     var errMsg = 'Groq API вернул ошибку ' + code;
     try {
       var e = JSON.parse(body);
@@ -692,8 +712,6 @@ function callGroqApi_(apiKey, messages, maxTokens) {
     } catch (_) {}
     throw new Error(errMsg);
   }
-
-  return JSON.parse(JSON.parse(body).choices[0].message.content);
 }
 
 // ─── Промпт 1: анализ продукта и ЦА ─────────────────────────
