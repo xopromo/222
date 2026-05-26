@@ -507,8 +507,10 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
 
     if (code === 429 || code === 503) {
       // Квотная ошибка — этот файл не обработан, но следующие всё равно попробуем
-      Logger.log('    Gemini 429 исчерпан после всех попыток: ' + fileName);
-      state.skipped.push(fileName + ' (лимит Gemini 429)');
+      var quotaMsg = '';
+      try { quotaMsg = JSON.parse(body).error.message || ''; } catch (_) {}
+      Logger.log('    Gemini 429 исчерпан после всех попыток: ' + fileName + ' | ' + quotaMsg);
+      state.skipped.push(fileName + ' (429: ' + (quotaMsg || 'rate limit') + ')');
       return null;
     }
     if (code !== 200) {
