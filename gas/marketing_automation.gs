@@ -12,7 +12,7 @@ var CHECKLIST_SHEET = 'Чеклист';
 var GROQ_API_URL    = 'https://api.groq.com/openai/v1/chat/completions';
 var GROQ_MODEL      = 'llama-3.3-70b-versatile';
 
-var GEMINI_API_URL    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+var GEMINI_API_URL    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 var GEMINI_UPLOAD_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
 
 // Файлы ≤ 15 МБ отправляем inline, больше — через File API
