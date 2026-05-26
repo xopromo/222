@@ -51,7 +51,7 @@ function runMarketingAnalysis() {
     Logger.log('=== [1/6] Настройки ===');
     var settings = readSettings_();
     if (!settings.groqKey)  { ui.alert('Ошибка', 'Нет API-ключа Groq (ячейка B2)',  ui.ButtonSet.OK); return; }
-    if (!settings.folderId) { ui.alert('Ошибка', 'Нет ID папки Drive (ячейка B3)',   ui.ButtonSet.OK); return; }
+    if (!settings.sources || settings.sources.length === 0) { ui.alert('Ошибка', 'Не указан ни один источник (ячейка B3)', ui.ButtonSet.OK); return; }
     updateChecklist_(1, '✅ Настройки прочитаны' + (settings.geminiKey ? ' (Gemini ✓)' : ' (Gemini — нет ключа)'));
 
     // Шаг 2 — сбор файлов
