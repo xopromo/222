@@ -424,9 +424,8 @@ function processFolder_(folder, settings, state, depth) {
 // ─── Gemini: расшифровка медиафайла ──────────────────────────
 function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
   try {
-    var blob      = file.getBlob();
-    var fileBytes = blob.getBytes();
-    var fileSize  = fileBytes.length;
+    var geminiType = GEMINI_MIMES[mimeType] || 'unknown';
+    var blob       = file.getBlob();
 
     var prompt = [
       'Это маркетинговый материал проекта. Выполни:',
@@ -439,20 +438,14 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
 
     var requestBody;
 
-    if (fileSize <= MAX_INLINE_BYTES) {
-      // Inline — для файлов ≤ 15 МБ
-      requestBody = {
-        contents: [{ parts: [
-          { inline_data: { mime_type: mimeType, data: Utilities.base64Encode(fileBytes) } },
-          { text: prompt }
-        ]}],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
-      };
-    } else {
-      // File API — для больших файлов (видео и т.д.)
-      Logger.log('    Файл > 15 МБ, загружаем через Gemini File API...');
+    // Видео и аудио — всегда через File API (могут быть большими)
+    if (geminiType === 'video' || geminiType === 'audio') {
+      Logger.log('    Загружаем ' + geminiType + ' через Gemini File API: ' + fileName);
       var fileUri = uploadFileToGemini_(geminiKey, blob, mimeType, fileName);
-      if (!fileUri) return null;
+      if (!fileUri) {
+        state.skipped.push(fileName + ' (ошибка загрузки File API)');
+        return null;
+      }
       requestBody = {
         contents: [{ parts: [
           { file_data: { mime_type: mimeType, file_uri: fileUri } },
@@ -460,6 +453,33 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
         ]}],
         generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
       };
+    } else {
+      // Изображения и PDF — inline если ≤15 МБ, иначе File API
+      var fileBytes = blob.getBytes();
+      var fileSize  = fileBytes.length;
+      if (fileSize <= MAX_INLINE_BYTES) {
+        requestBody = {
+          contents: [{ parts: [
+            { inline_data: { mime_type: mimeType, data: Utilities.base64Encode(fileBytes) } },
+            { text: prompt }
+          ]}],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+        };
+      } else {
+        Logger.log('    Файл > 15 МБ, загружаем через Gemini File API...');
+        var fileUri2 = uploadFileToGemini_(geminiKey, blob, mimeType, fileName);
+        if (!fileUri2) {
+          state.skipped.push(fileName + ' (ошибка загрузки File API)');
+          return null;
+        }
+        requestBody = {
+          contents: [{ parts: [
+            { file_data: { mime_type: mimeType, file_uri: fileUri2 } },
+            { text: prompt }
+          ]}],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+        };
+      }
     }
 
     var response = UrlFetchApp.fetch(GEMINI_API_URL + '?key=' + geminiKey, {
@@ -475,11 +495,14 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
     if (code === 429 || code === 503) {
       Logger.log('    Gemini лимит исчерпан (HTTP ' + code + '): ' + fileName);
       state.geminiAvailable = false;
-      state.skipped.push(fileName);
+      state.skipped.push(fileName + ' (лимит Gemini ' + code + ')');
       return null;
     }
     if (code !== 200) {
-      Logger.log('    Gemini ошибка ' + code + ' (' + fileName + '): ' + body.substring(0, 200));
+      var errDetail = '';
+      try { errDetail = JSON.parse(body).error.message || ''; } catch (_) {}
+      Logger.log('    Gemini ошибка ' + code + ' (' + fileName + '): ' + errDetail);
+      state.skipped.push(fileName + ' (Gemini ' + code + (errDetail ? ': ' + errDetail.substring(0, 60) : '') + ')');
       return null;
     }
 
@@ -488,6 +511,7 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
 
   } catch (e) {
     Logger.log('    Ошибка Gemini (' + fileName + '): ' + e.message);
+    state.skipped.push(fileName + ' (исключение: ' + e.message.substring(0, 80) + ')');
     return null;
   }
 }
