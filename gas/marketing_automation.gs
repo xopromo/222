@@ -116,13 +116,15 @@ function readSettings_() {
   if (!sheet) throw new Error('Лист «Настройки» не найден. Запустите «Создать шаблон листов».');
 
   var maxImg = parseInt(sheet.getRange('B7').getValue());
+  var followLinks = (sheet.getRange('B8').getValue() + '').trim().toLowerCase();
   return {
-    groqKey:           (sheet.getRange('B2').getValue() + '').trim(),
-    folderId:          (sheet.getRange('B3').getValue() + '').trim(),
-    geminiKey:         (sheet.getRange('B4').getValue() + '').trim(),
-    blacklist:         parseNameList_(sheet.getRange('B5').getValue()),
-    whitelist:         parseNameList_(sheet.getRange('B6').getValue()),
-    maxImagesPerFolder: isNaN(maxImg) || maxImg <= 0 ? 10 : maxImg
+    groqKey:            (sheet.getRange('B2').getValue() + '').trim(),
+    folderId:           (sheet.getRange('B3').getValue() + '').trim(),
+    geminiKey:          (sheet.getRange('B4').getValue() + '').trim(),
+    blacklist:          parseNameList_(sheet.getRange('B5').getValue()),
+    whitelist:          parseNameList_(sheet.getRange('B6').getValue()),
+    maxImagesPerFolder: isNaN(maxImg) || maxImg <= 0 ? 10 : maxImg,
+    followLinks:        followLinks !== 'нет' && followLinks !== 'no' && followLinks !== 'false'
   };
 }
 
@@ -187,6 +189,11 @@ function processFolder_(folder, settings, state, depth) {
       try {
         var sheetText = extractSheetText_(file.getId());
         if (sheetText.trim()) { parts.push('--- ' + fname + ' ---\n' + sheetText); state.filesRead++; }
+        // Переходим по ссылкам из таблицы
+        if (settings.followLinks) {
+          var linkedParts = followLinksInSheet_(file.getId(), settings, state);
+          parts = parts.concat(linkedParts);
+        }
       } catch (e) { Logger.log(indent + 'Ошибка: ' + e.message); }
       continue;
     }
@@ -402,6 +409,135 @@ function extractSlidesText_(fileId) {
     if (slideTexts.length) texts.push('[Слайд ' + (i + 1) + ']\n' + slideTexts.join('\n'));
   });
   return texts.join('\n\n');
+}
+
+// ─── Переход по ссылкам из Google Таблицы ────────────────────
+function followLinksInSheet_(fileId, settings, state) {
+  var parts = [];
+  var seen  = state.followedUrls || (state.followedUrls = {});
+
+  try {
+    var ss = SpreadsheetApp.openById(fileId);
+    var urls = [];
+
+    ss.getSheets().forEach(function(sheet) {
+      sheet.getDataRange().getValues().forEach(function(row) {
+        row.forEach(function(cell) {
+          var matches = (cell + '').match(/https?:\/\/[^\s"'<>\)\]]+/g);
+          if (matches) urls = urls.concat(matches);
+        });
+      });
+    });
+
+    // Дедупликация
+    var unique = [];
+    urls.forEach(function(url) {
+      // Очищаем мусорные символы в конце URL
+      url = url.replace(/[.,;:!?]+$/, '');
+      if (!seen[url]) { seen[url] = true; unique.push(url); }
+    });
+
+    Logger.log('    Найдено ссылок в таблице: ' + unique.length);
+
+    unique.forEach(function(url) {
+      var result = fetchUrlContent_(url, settings, state);
+      if (result) { parts.push(result); state.filesRead++; }
+    });
+
+  } catch (e) {
+    Logger.log('    Ошибка при обходе ссылок: ' + e.message);
+  }
+
+  return parts;
+}
+
+// ─── Получение содержимого по URL ────────────────────────────
+function fetchUrlContent_(url, settings, state) {
+  Logger.log('    🔗 ' + url);
+
+  try {
+    // Google Документ
+    var docMatch = url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+    if (docMatch) {
+      var text = DocumentApp.openById(docMatch[1]).getBody().getText();
+      if (text.trim()) return '--- Документ по ссылке: ' + url + ' ---\n' + text;
+      return null;
+    }
+
+    // Google Таблица (не рекурсируем — только читаем текст)
+    var sheetMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (sheetMatch) {
+      var t = extractSheetText_(sheetMatch[1]);
+      if (t.trim()) return '--- Таблица по ссылке: ' + url + ' ---\n' + t;
+      return null;
+    }
+
+    // Google Презентация
+    var slidesMatch = url.match(/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+    if (slidesMatch) {
+      var st = extractSlidesText_(slidesMatch[1]);
+      if (st.trim()) return '--- Презентация по ссылке: ' + url + ' ---\n' + st;
+      return null;
+    }
+
+    // Google Drive файл
+    var driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/);
+    if (driveMatch) {
+      var driveFile = DriveApp.getFileById(driveMatch[1]);
+      var dMime = driveFile.getMimeType();
+      if (GEMINI_MIMES[dMime] && state.geminiAvailable && settings.geminiKey) {
+        var gt = transcribeWithGemini_(settings.geminiKey, driveFile, dMime, driveFile.getName(), state);
+        if (gt) return '--- Drive-файл по ссылке: ' + url + ' ---\n' + gt;
+      }
+      return null;
+    }
+
+    // Внешний сайт
+    var response = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GoogleBot/2.1; +http://www.google.com/bot.html)' }
+    });
+
+    if (response.getResponseCode() !== 200) {
+      Logger.log('      HTTP ' + response.getResponseCode() + ' — пропуск');
+      return null;
+    }
+
+    var html    = response.getContentText();
+    var cleaned = stripHtml_(html);
+
+    if (cleaned.length < 150) {
+      Logger.log('      Слишком мало текста (JS-рендеринг?) — пропуск');
+      return null;
+    }
+
+    // Обрезаем до разумного размера
+    if (cleaned.length > 8000) cleaned = cleaned.substring(0, 8000) + '...[обрезано]';
+    return '--- Страница по ссылке: ' + url + ' ---\n' + cleaned;
+
+  } catch (e) {
+    Logger.log('      Ошибка: ' + e.message);
+    return null;
+  }
+}
+
+// ─── Очистка HTML от тегов ────────────────────────────────────
+function stripHtml_(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+    .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#\d+;/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 // ─── Запрос к Groq API ────────────────────────────────────────
@@ -687,33 +823,35 @@ function createSettingsSheet_(ss) {
   if (!sheet) sheet = ss.insertSheet(SETTINGS_SHEET);
   sheet.clearContents();
 
-  sheet.getRange(1, 1, 8, 2).setValues([
-    ['Параметр',                            'Значение'],
-    ['API-ключ Groq',                        ''],
-    ['ID папки Google Drive',                ''],
-    ['API-ключ Gemini (для PDF/фото/видео)', ''],
-    ['Чёрный список папок (через запятую)',  ''],
-    ['Белый список папок (через запятую)',   ''],
-    ['Макс. фото из одной папки',            10],
-    ['',                                     '']
+  sheet.getRange(1, 1, 9, 2).setValues([
+    ['Параметр',                                    'Значение'],
+    ['API-ключ Groq',                                ''],
+    ['ID папки Google Drive',                        ''],
+    ['API-ключ Gemini (для PDF/фото/видео)',         ''],
+    ['Чёрный список папок (через запятую)',          ''],
+    ['Белый список папок (через запятую)',           ''],
+    ['Макс. фото из одной папки',                    10],
+    ['Переходить по ссылкам из таблиц (да / нет)',  'да'],
+    ['',                                             '']
   ]);
 
   sheet.getRange(1, 1, 1, 2).setBackground('#4A90D9').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.getRange(2, 1, 6, 1).setFontWeight('bold');
-  sheet.setColumnWidth(1, 270);
+  sheet.getRange(2, 1, 7, 1).setFontWeight('bold');
+  sheet.setColumnWidth(1, 290);
   sheet.setColumnWidth(2, 420);
 
-  sheet.getRange(9, 1).setValue('Подсказки:').setFontWeight('bold');
+  sheet.getRange(10, 1).setValue('Подсказки:').setFontWeight('bold');
   [
     ['Groq API-ключ:', 'console.groq.com → API Keys → Create API Key'],
     ['Gemini API-ключ:', 'aistudio.google.com → Get API Key (бесплатно)'],
     ['ID папки Drive:', 'URL папки: .../folders/ВОТ_ЭТО_ID'],
     ['Чёрный список:', 'Фото спикера, Архив, Личное  (папки, которые НЕ читать)'],
     ['Белый список:', 'Кастдевы, Посадочные  (если пусто — читать все папки)'],
-    ['Макс. фото:', 'По умолчанию 10. Защита от папок с фотосессиями спикера.']
+    ['Макс. фото:', 'По умолчанию 10. Защита от папок с фотосессиями спикера.'],
+    ['Ссылки:', 'да — скрипт читает Google Docs/Sheets/сайты из ячеек таблиц']
   ].forEach(function(row, i) {
-    sheet.getRange(10 + i, 1).setValue(row[0]).setFontColor('#888888').setFontStyle('italic');
-    sheet.getRange(10 + i, 2).setValue(row[1]).setFontColor('#888888').setFontStyle('italic');
+    sheet.getRange(11 + i, 1).setValue(row[0]).setFontColor('#888888').setFontStyle('italic');
+    sheet.getRange(11 + i, 2).setValue(row[1]).setFontColor('#888888').setFontStyle('italic');
   });
 }
 
