@@ -382,7 +382,7 @@ function processFolder_(folder, settings, state, depth) {
       }
 
       Logger.log(indent + '🤖 Gemini (' + geminiType + '): ' + fname);
-      if (state.geminiCallCount > 0) Utilities.sleep(5000); // пауза между вызовами Gemini
+      if (state.geminiCallCount > 0) Utilities.sleep(15000); // пауза между вызовами Gemini (15 сек)
       state.geminiCallCount = (state.geminiCallCount || 0) + 1;
       var extracted = transcribeWithGemini_(settings.geminiKey, file, mime, fname, state);
       if (extracted) {
@@ -506,9 +506,9 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
     }
 
     if (code === 429 || code === 503) {
-      Logger.log('    Gemini лимит исчерпан после 3 попыток: ' + fileName);
-      state.geminiAvailable = false;
-      state.skipped.push(fileName + ' (лимит Gemini ' + code + ')');
+      // Квотная ошибка — этот файл не обработан, но следующие всё равно попробуем
+      Logger.log('    Gemini 429 исчерпан после всех попыток: ' + fileName);
+      state.skipped.push(fileName + ' (лимит Gemini 429)');
       return null;
     }
     if (code !== 200) {
@@ -516,6 +516,8 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
       try { errDetail = JSON.parse(body).error.message || ''; } catch (_) {}
       Logger.log('    Gemini ошибка ' + code + ' (' + fileName + '): ' + errDetail);
       state.skipped.push(fileName + ' (Gemini ' + code + (errDetail ? ': ' + errDetail.substring(0, 60) : '') + ')');
+      // Только при критических ошибках (невалидный ключ) отключаем Gemini совсем
+      if (code === 400 || code === 401 || code === 403) state.geminiAvailable = false;
       return null;
     }
 
