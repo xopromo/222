@@ -255,7 +255,7 @@ function runMarketingAnalysis() {
         if (mi > 0) Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
 
         updateChecklist_(4, '⏳ [' + (mi+1) + '/' + models.length + '] ' + mLabel + ': генерация 15 заходов...');
-        var r2 = callModelApi_(settings, model, buildPrompt2a_(r1.result), 4096);
+        var r2 = callModelApi_(settings, model, buildPrompt2a_(r1.result), 8192);
         writeHypothesesSheet_(hypoSheet, r2, ss);
 
         var pause45 = model.provider === 'groq' ? 62000 : 3000;
@@ -1103,15 +1103,12 @@ function callModelApi_(settings, model, messages, maxTokens) {
   throw new Error(err2);
 }
 
-// Извлекает JSON из ответа модели: убирает ```json...``` и любой текст до/после
+// Извлекает JSON из ответа модели: ищет первую { и последнюю }, отбрасывая всё вокруг
 function stripJsonMarkdown_(text) {
   var t = text.trim();
-  // Есть открывающий и закрывающий блок ```
-  var match = t.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (match) return match[1].trim();
-  // Есть только открывающий ``` (ответ обрезан или без закрывающего)
-  var match2 = t.match(/```(?:json)?\s*([\s\S]+)/i);
-  if (match2) return match2[1].trim();
+  var start = t.indexOf('{');
+  var end   = t.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) return t.substring(start, end + 1);
   return t;
 }
 
