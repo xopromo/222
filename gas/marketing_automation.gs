@@ -39,12 +39,100 @@ var GEMINI_MIMES = {
 function onOpen() {
   SpreadsheetApp.getActiveSpreadsheet()
     .addMenu('Автоматизация маркетинга', [
-      { name: 'Запустить анализ проекта',  functionName: 'runMarketingAnalysis' },
-      { name: '─────────────────',         functionName: 'noop' },
-      { name: 'Создать шаблон листов',     functionName: 'initSheets' }
+      { name: 'Запустить анализ проекта',        functionName: 'runMarketingAnalysis' },
+      { name: '─────────────────',               functionName: 'noop' },
+      { name: 'Тест: распознать одно видео',     functionName: 'testKieAiVideo' },
+      { name: '─────────────────',               functionName: 'noop' },
+      { name: 'Создать шаблон листов',           functionName: 'initSheets' }
     ]);
 }
 function noop() {}
+
+// ─── Тест: одно видео через kie.ai ───────────────────────────
+function testKieAiVideo() {
+  var ui = SpreadsheetApp.getUi();
+
+  // Запрашиваем ключ и ID файла
+  var keyResp = ui.prompt('Тест kie.ai', 'Вставь API-ключ kie.ai:', ui.ButtonSet.OK_CANCEL);
+  if (keyResp.getSelectedButton() !== ui.Button.OK) return;
+  var kieKey = keyResp.getResponseText().trim();
+  if (!kieKey) { ui.alert('Ключ не введён'); return; }
+
+  var idResp = ui.prompt('Тест kie.ai', 'Вставь ID файла видео из Google Drive\n(часть URL после /d/ ):', ui.ButtonSet.OK_CANCEL);
+  if (idResp.getSelectedButton() !== ui.Button.OK) return;
+  var fileId = idResp.getResponseText().trim();
+  if (!fileId) { ui.alert('ID не введён'); return; }
+
+  try {
+    ui.alert('Начинаем...', 'Загружаем файл из Drive и отправляем в kie.ai.\nЭто займёт 10–60 сек.', ui.ButtonSet.OK);
+
+    var file     = DriveApp.getFileById(fileId);
+    var fileName = file.getName();
+    var mimeType = file.getMimeType();
+    var blob     = file.getBlob();
+    var bytes    = blob.getBytes();
+    var sizeMb   = (bytes.length / 1024 / 1024).toFixed(1);
+
+    Logger.log('Файл: ' + fileName + ' | ' + mimeType + ' | ' + sizeMb + ' МБ');
+
+    var base64 = Utilities.base64Encode(bytes);
+    var dataUrl = 'data:' + mimeType + ';base64,' + base64;
+
+    var payload = JSON.stringify({
+      model: 'gemini-2.5-flash',
+      stream: false,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: dataUrl } },
+          { type: 'text',      text: 'Транскрибируй это видео полностью. Если есть речь — запиши дословно. Имя файла: ' + fileName }
+        ]
+      }]
+    });
+
+    var response = UrlFetchApp.fetch('https://api.kie.ai/gemini-2.5-flash/v1/chat/completions', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + kieKey },
+      payload: payload,
+      muteHttpExceptions: true
+    });
+
+    var code = response.getResponseCode();
+    var body = response.getContentText();
+    Logger.log('HTTP ' + code + ': ' + body.substring(0, 500));
+
+    if (code !== 200) {
+      ui.alert('Ошибка HTTP ' + code, body.substring(0, 600), ui.ButtonSet.OK);
+      return;
+    }
+
+    var parsed       = JSON.parse(body);
+    var text         = parsed.choices[0].message.content || '(пусто)';
+    var usage        = parsed.usage || {};
+    var tokensIn     = usage.prompt_tokens     || 0;
+    var tokensOut    = usage.completion_tokens  || 0;
+    var tokensTotal  = usage.total_tokens       || (tokensIn + tokensOut);
+
+    var preview = text.substring(0, 400) + (text.length > 400 ? '...' : '');
+
+    ui.alert(
+      '✅ Результат теста',
+      'Файл: ' + fileName + ' (' + sizeMb + ' МБ)\n\n' +
+      '📊 Токены:\n' +
+      '  • Входные (видео+промпт): ' + tokensIn + '\n' +
+      '  • Выходные (транскрипция): ' + tokensOut + '\n' +
+      '  • Итого: ' + tokensTotal + '\n\n' +
+      '📝 Первые 400 символов транскрипции:\n' + preview + '\n\n' +
+      '💡 Стоимость: смотри в личном кабинете kie.ai → Usage',
+      ui.ButtonSet.OK
+    );
+
+  } catch (e) {
+    ui.alert('Ошибка', e.message, ui.ButtonSet.OK);
+    Logger.log('Ошибка теста: ' + e.message);
+  }
+}
 
 // ─── Точка входа ─────────────────────────────────────────────
 function runMarketingAnalysis() {
