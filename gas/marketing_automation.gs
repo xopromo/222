@@ -991,8 +991,17 @@ function callModelApi_(settings, model, messages, maxTokens) {
     var code = response.getResponseCode();
     var body = response.getContentText();
     if (code === 200) {
-      var content = JSON.parse(body).choices[0].message.content;
-      return JSON.parse(stripJsonMarkdown_(content));
+      var parsed;
+      try { parsed = JSON.parse(body); } catch (_) { throw new Error('kie.ai [' + model.label + ']: невалидный ответ: ' + body.substring(0, 200)); }
+      if (!parsed.choices || !parsed.choices[0]) {
+        var hint = parsed.error ? parsed.error.message || JSON.stringify(parsed.error) : body.substring(0, 200);
+        throw new Error('kie.ai [' + model.label + ']: нет choices в ответе: ' + hint);
+      }
+      var content = parsed.choices[0].message.content;
+      var clean = stripJsonMarkdown_(content);
+      try { return JSON.parse(clean); } catch (_) {
+        throw new Error('kie.ai [' + model.label + ']: модель вернула не JSON: «' + content.substring(0, 150) + '»');
+      }
     }
     var errMsg = 'kie.ai [' + model.label + '] HTTP ' + code;
     try { var ep = JSON.parse(body); if (ep.error && ep.error.message) errMsg += ': ' + ep.error.message; } catch (_) {}
@@ -1019,7 +1028,18 @@ function callModelApi_(settings, model, messages, maxTokens) {
   });
   var code2 = resp2.getResponseCode();
   var body2 = resp2.getContentText();
-  if (code2 === 200) return JSON.parse(stripJsonMarkdown_(JSON.parse(body2).choices[0].message.content));
+  if (code2 === 200) {
+    var parsed2;
+    try { parsed2 = JSON.parse(body2); } catch (_) { throw new Error(model.label + ': невалидный ответ: ' + body2.substring(0, 200)); }
+    if (!parsed2.choices || !parsed2.choices[0]) {
+      var hint2 = parsed2.error ? parsed2.error.message || JSON.stringify(parsed2.error) : body2.substring(0, 200);
+      throw new Error(model.label + ': нет choices в ответе: ' + hint2);
+    }
+    var content2 = parsed2.choices[0].message.content;
+    try { return JSON.parse(stripJsonMarkdown_(content2)); } catch (_) {
+      throw new Error(model.label + ': модель вернула не JSON: «' + content2.substring(0, 150) + '»');
+    }
+  }
   var err2 = model.label + ' HTTP ' + code2;
   try { var ep2 = JSON.parse(body2); if (ep2.error && ep2.error.message) err2 += ': ' + ep2.error.message; } catch (_) {}
   throw new Error(err2);
