@@ -18,16 +18,17 @@ var LLM_PROVIDERS = [
 ];
 
 // Каталог моделей для генерации гипотез — порядок = порядок строк в листе Настройки
+// apiFormat: 'openai' | 'anthropic' | 'responses'
 var MODEL_CATALOG = [
-  { id: 'gemini-2.5-flash',  label: 'Gemini 2.5 Flash',     provider: 'kieai',    hint: '~$0.001 / запуск' },
-  { id: 'gemini-3.1-pro',    label: 'Gemini 3.1 Pro',       provider: 'kieai',    hint: '~$0.024 / запуск' },
-  { id: 'claude-haiku-4-5',  label: 'Claude Haiku 4.5',     provider: 'kieai',    hint: '~$0.011 / запуск' },
-  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6',    provider: 'kieai',    hint: '~$0.039 / запуск' },
-  { id: 'claude-opus-4-5',   label: 'Claude Opus 4.5',      provider: 'kieai',    hint: '~$0.195 / запуск' },
-  { id: 'gpt-5',             label: 'GPT-5',                provider: 'kieai',    hint: '~$0.025 / запуск' },
-  { id: 'groq',              label: 'Groq / Llama 3.3',     provider: 'groq',     hint: 'бесплатно'         },
-  { id: 'cerebras',          label: 'Cerebras / Llama 3.3', provider: 'cerebras', hint: 'бесплатно'         },
-  { id: 'mistral',           label: 'Mistral Small',        provider: 'mistral',  hint: 'бесплатно'         }
+  { id: 'gemini-2.5-flash',  label: 'Gemini 2.5 Flash',     provider: 'kieai',    apiFormat: 'openai',    url: 'https://api.kie.ai/gemini-2.5-flash/v1/chat/completions', hint: '~$0.001 / запуск' },
+  { id: 'gemini-3.1-pro',    label: 'Gemini 3.1 Pro',       provider: 'kieai',    apiFormat: 'openai',    url: 'https://api.kie.ai/gemini-3.1-pro/v1/chat/completions',   hint: '~$0.024 / запуск' },
+  { id: 'claude-haiku-4-5',  label: 'Claude Haiku 4.5',     provider: 'kieai',    apiFormat: 'anthropic', url: 'https://api.kie.ai/claude/v1/messages',                   hint: '~$0.011 / запуск' },
+  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6',    provider: 'kieai',    apiFormat: 'anthropic', url: 'https://api.kie.ai/claude/v1/messages',                   hint: '~$0.039 / запуск' },
+  { id: 'claude-opus-4-5',   label: 'Claude Opus 4.5',      provider: 'kieai',    apiFormat: 'anthropic', url: 'https://api.kie.ai/claude/v1/messages',                   hint: '~$0.195 / запуск' },
+  { id: 'gpt-5-5',           label: 'GPT-5.5',              provider: 'kieai',    apiFormat: 'responses', url: 'https://api.kie.ai/codex/v1/responses',                   hint: '~$0.025 / запуск' },
+  { id: 'groq',              label: 'Groq / Llama 3.3',     provider: 'groq',     apiFormat: 'openai',    url: null,                                                      hint: 'бесплатно'         },
+  { id: 'cerebras',          label: 'Cerebras / Llama 3.3', provider: 'cerebras', apiFormat: 'openai',    url: null,                                                      hint: 'бесплатно'         },
+  { id: 'mistral',           label: 'Mistral Small',        provider: 'mistral',  apiFormat: 'openai',    url: null,                                                      hint: 'бесплатно'         }
 ];
 // Строка первого чекбокса в листе Настройки
 var MODEL_ROW_START = 15;
@@ -983,35 +984,81 @@ function callModelApi_(settings, model, messages, maxTokens) {
   if (model.provider === 'kieai') {
     var key = settings.kieaiKey;
     if (!key) throw new Error('Не указан API-ключ kie.ai (B11) для модели ' + model.label);
-    var payload = JSON.stringify({
-      model: model.id,
-      messages: messages,
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-      max_tokens: maxTokens || 4096
-    });
-    var response = UrlFetchApp.fetch('https://api.kie.ai/' + model.id + '/v1/chat/completions', {
+
+    var payload, rawText;
+
+    if (model.apiFormat === 'anthropic') {
+      // Формат Anthropic: system отдельно, messages без system
+      var systemText = '';
+      var userMsgs = messages.filter(function(m) {
+        if (m.role === 'system') { systemText = m.content; return false; }
+        return true;
+      });
+      payload = JSON.stringify({ model: model.id, system: systemText, messages: userMsgs, max_tokens: maxTokens || 4096, stream: false });
+
+    } else if (model.apiFormat === 'responses') {
+      // Формат OpenAI Responses API: input вместо messages
+      var inputMsgs = messages.map(function(m) {
+        return { role: m.role, content: [{ type: 'input_text', text: m.content }] };
+      });
+      payload = JSON.stringify({ model: model.id, stream: false, input: inputMsgs });
+
+    } else {
+      // OpenAI-совместимый формат (Gemini)
+      payload = JSON.stringify({ model: model.id, messages: messages, response_format: { type: 'json_object' }, temperature: 0.7, max_tokens: maxTokens || 4096 });
+    }
+
+    var response = UrlFetchApp.fetch(model.url, {
       method: 'post', contentType: 'application/json',
       headers: { Authorization: 'Bearer ' + key },
       payload: payload, muteHttpExceptions: true
     });
     var code = response.getResponseCode();
     var body = response.getContentText();
+
     if (code === 200) {
       var parsed;
-      try { parsed = JSON.parse(body); } catch (_) { throw new Error('kie.ai [' + model.label + ']: невалидный ответ: ' + body.substring(0, 200)); }
-      if (!parsed.choices || !parsed.choices[0]) {
-        var hint = parsed.msg || (parsed.error && (parsed.error.message || JSON.stringify(parsed.error))) || body.substring(0, 200);
-        throw new Error('kie.ai [' + model.label + ']: ' + hint);
+      try { parsed = JSON.parse(body); } catch (_) { throw new Error('[' + model.label + '] невалидный ответ: ' + body.substring(0, 200)); }
+
+      // Извлекаем текст в зависимости от формата ответа
+      if (model.apiFormat === 'anthropic') {
+        // Anthropic: {content: [{type:'text', text:'...'}]}
+        if (!parsed.content || !parsed.content[0]) {
+          var h = parsed.error ? (parsed.error.message || JSON.stringify(parsed.error)) : (parsed.msg || body.substring(0, 200));
+          throw new Error('[' + model.label + '] ' + h);
+        }
+        rawText = parsed.content[0].text;
+
+      } else if (model.apiFormat === 'responses') {
+        // OpenAI Responses API: {output: [{type:'message', content:[{type:'output_text', text:'...'}]}]}
+        var msgItem = null;
+        if (parsed.output) {
+          for (var oi = 0; oi < parsed.output.length; oi++) {
+            if (parsed.output[oi].type === 'message') { msgItem = parsed.output[oi]; break; }
+          }
+        }
+        if (!msgItem || !msgItem.content || !msgItem.content[0]) {
+          var h2 = parsed.msg || (parsed.error && parsed.error.message) || body.substring(0, 200);
+          throw new Error('[' + model.label + '] ' + h2);
+        }
+        rawText = msgItem.content[0].text;
+
+      } else {
+        // OpenAI choices формат
+        if (!parsed.choices || !parsed.choices[0]) {
+          var h3 = parsed.msg || (parsed.error && (parsed.error.message || JSON.stringify(parsed.error))) || body.substring(0, 200);
+          throw new Error('[' + model.label + '] ' + h3);
+        }
+        rawText = parsed.choices[0].message.content;
       }
-      var content = parsed.choices[0].message.content;
-      var clean = stripJsonMarkdown_(content);
-      try { return JSON.parse(clean); } catch (_) {
-        throw new Error('kie.ai [' + model.label + ']: модель вернула не JSON: «' + content.substring(0, 150) + '»');
+
+      try { return JSON.parse(stripJsonMarkdown_(rawText)); } catch (_) {
+        throw new Error('[' + model.label + '] не JSON: «' + rawText.substring(0, 150) + '»');
       }
     }
-    var errMsg = 'kie.ai [' + model.label + '] HTTP ' + code;
-    try { var ep = JSON.parse(body); if (ep.error && ep.error.message) errMsg += ': ' + ep.error.message; } catch (_) {}
+
+    var errMsg = '[' + model.label + '] HTTP ' + code;
+    try { var ep = JSON.parse(body); errMsg += ': ' + (ep.msg || (ep.error && ep.error.message) || body.substring(0, 150)); } catch (_) {}
     throw new Error(errMsg);
   }
 
@@ -1023,11 +1070,7 @@ function callModelApi_(settings, model, messages, maxTokens) {
   if (!prov) throw new Error('Провайдер не найден: ' + model.provider);
   var key2 = settings[prov.keyProp];
   if (!key2) throw new Error('Не указан ключ для ' + model.label + ' (провайдер ' + prov.name + ')');
-  var payload2 = JSON.stringify({
-    model: prov.model, messages: messages,
-    response_format: { type: 'json_object' },
-    temperature: 0.7, max_tokens: maxTokens || 4096
-  });
+  var payload2 = JSON.stringify({ model: prov.model, messages: messages, response_format: { type: 'json_object' }, temperature: 0.7, max_tokens: maxTokens || 4096 });
   var resp2 = UrlFetchApp.fetch(prov.url, {
     method: 'post', contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + key2 },
@@ -1039,12 +1082,10 @@ function callModelApi_(settings, model, messages, maxTokens) {
     var parsed2;
     try { parsed2 = JSON.parse(body2); } catch (_) { throw new Error(model.label + ': невалидный ответ: ' + body2.substring(0, 200)); }
     if (!parsed2.choices || !parsed2.choices[0]) {
-      var hint2 = parsed2.error ? parsed2.error.message || JSON.stringify(parsed2.error) : body2.substring(0, 200);
-      throw new Error(model.label + ': нет choices в ответе: ' + hint2);
+      throw new Error(model.label + ': ' + (parsed2.error && parsed2.error.message ? parsed2.error.message : body2.substring(0, 200)));
     }
-    var content2 = parsed2.choices[0].message.content;
-    try { return JSON.parse(stripJsonMarkdown_(content2)); } catch (_) {
-      throw new Error(model.label + ': модель вернула не JSON: «' + content2.substring(0, 150) + '»');
+    try { return JSON.parse(stripJsonMarkdown_(parsed2.choices[0].message.content)); } catch (_) {
+      throw new Error(model.label + ': не JSON: «' + parsed2.choices[0].message.content.substring(0, 150) + '»');
     }
   }
   var err2 = model.label + ' HTTP ' + code2;
