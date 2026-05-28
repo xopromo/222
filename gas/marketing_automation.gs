@@ -1103,13 +1103,15 @@ function callModelApi_(settings, model, messages, maxTokens) {
   throw new Error(err2);
 }
 
-// Извлекает JSON из ответа модели: убирает ```json...``` и любой текст до/после блока
+// Извлекает JSON из ответа модели: убирает ```json...``` и любой текст до/после
 function stripJsonMarkdown_(text) {
   var t = text.trim();
-  // Есть markdown-блок где угодно в тексте — берём его содержимое
+  // Есть открывающий и закрывающий блок ```
   var match = t.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   if (match) return match[1].trim();
-  // Нет блока — возвращаем как есть
+  // Есть только открывающий ``` (ответ обрезан или без закрывающего)
+  var match2 = t.match(/```(?:json)?\s*([\s\S]+)/i);
+  if (match2) return match2[1].trim();
   return t;
 }
 
