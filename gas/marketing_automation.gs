@@ -13,7 +13,7 @@ var CHECKLIST_SHEET = 'Чеклист';
 // Пул LLM-провайдеров — используются по порядку, переключение при 429
 var LLM_PROVIDERS = [
   { name: 'Groq',     url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile', keyProp: 'groqKey',     pauseMs: 62000 },
-  { name: 'Cerebras', url: 'https://api.cerebras.ai/v1/chat/completions',        model: 'llama-3.3-70b',           keyProp: 'cerebrasKey', pauseMs: 5000  },
+  { name: 'Cerebras', url: 'https://api.cerebras.ai/v1/chat/completions',        model: 'llama3.3-70b',            keyProp: 'cerebrasKey', pauseMs: 5000  },
   { name: 'Mistral',  url: 'https://api.mistral.ai/v1/chat/completions',         model: 'mistral-small-latest',    keyProp: 'mistralKey',  pauseMs: 5000  }
 ];
 
@@ -950,10 +950,10 @@ function callLlmApi_(settings, messages, maxTokens, exhausted) {
       return { result: JSON.parse(JSON.parse(body).choices[0].message.content), provider: p.name };
     }
 
-    if (code === 429 || code === 503 || code === 413) {
+    if (code === 429 || code === 503 || code === 413 || code === 404) {
       var limitMsg = '';
       try { limitMsg = JSON.parse(body).error.message || ''; } catch (_) {}
-      var reason = code === 413 ? 'запрос слишком большой' : 'лимит';
+      var reason = code === 413 ? 'запрос слишком большой' : code === 404 ? 'модель не найдена' : 'лимит';
       Logger.log('⚠️ ' + p.name + ' ' + reason + ' (HTTP ' + code + '): ' + limitMsg.substring(0, 120));
       exhausted[p.name] = true;
       continue; // немедленно пробуем следующий провайдер
