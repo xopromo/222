@@ -32,6 +32,7 @@ var PRICING_ = {
 
 // Накопитель расходов текущего запуска — сбрасывается при старте runMarketingAnalysis
 var RUN_COSTS_ = [];
+var RUN_START_MS_ = 0; // время старта текущего выполнения (мс)
 
 function recordCost_(step, providerLabel, modelId, tokensIn, tokensOut) {
   var p   = PRICING_[modelId] || PRICING_[providerLabel.toLowerCase()] || { in: 0, out: 0 };
@@ -81,6 +82,15 @@ var GEMINI_MIMES = {
   'audio/mpeg': 'audio',    'audio/mp4': 'audio',   'audio/wav': 'audio',
   'audio/aac':  'audio',    'audio/flac': 'audio',  'audio/ogg': 'audio'
 };
+
+// ─── Автоперезапуск: константы ───────────────────────────────
+var STATE_KEY_    = 'MKT_STATE';
+var ANALYSIS_KEY_ = 'MKT_ANALYSIS';
+var TRIGGER_KEY_  = 'MKT_TRIGGER_ID';
+var MAX_CYCLES_   = 10;      // защита от бесконечного цикла
+var MAX_RUN_MS_   = 270000;  // 4 мин 30 сек — порог для планирования перезапуска
+
+function timeIsLow_() { return (new Date().getTime() - RUN_START_MS_) > MAX_RUN_MS_; }
 
 // ─── Меню ────────────────────────────────────────────────────
 function onOpen() {
@@ -274,147 +284,265 @@ function testKieAiVideo() {
   }
 }
 
-// ─── Точка входа ─────────────────────────────────────────────
+// ─── Точка входа (поддерживает автоперезапуск при таймауте) ───
 function runMarketingAnalysis() {
+  RUN_START_MS_ = new Date().getTime();
+  var state = _loadState_();
+
+  if (state) {
+    // Автоматический перезапуск по триггеру
+    state.cycleCount = (state.cycleCount || 1) + 1;
+    if (state.cycleCount > MAX_CYCLES_) {
+      _clearState_();
+      updateChecklist_(0, '❌ Превышено максимальное число автоперезапусков (' + MAX_CYCLES_ + '). Проверьте ошибки и запустите вручную.');
+      return;
+    }
+    Logger.log('🔄 Автоперезапуск #' + state.cycleCount + ' | фаза: ' + state.phase);
+    updateChecklist_(2, '🔄 Автоперезапуск #' + state.cycleCount + ' | фаза: ' + state.phase + '...');
+    _resumeRun_(state);
+  } else {
+    _startFreshRun_();
+  }
+}
+
+// ─── Свежий запуск (инициирован пользователем) ────────────────
+function _startFreshRun_() {
   var ui = SpreadsheetApp.getUi();
   try {
     resetChecklist_();
     RUN_COSTS_ = [];
 
-    // Шаг 1 — настройки
-    Logger.log('=== [1/6] Настройки ===');
     var settings = readSettings_();
-    var hasLlm = settings.groqKey || settings.cerebrasKey || settings.mistralKey;
-    if (!hasLlm) { ui.alert('Ошибка', 'Не указан ни один LLM-ключ (Groq B2, Cerebras B9, Mistral B10)', ui.ButtonSet.OK); return; }
-    if (!settings.sources || settings.sources.length === 0) { ui.alert('Ошибка', 'Не указан ни один источник (ячейка B3)', ui.ButtonSet.OK); return; }
-    var llmInfo = ['Groq','Cerebras','Mistral'].filter(function(n) { return settings[n.toLowerCase()+'Key'] || (n==='Groq'&&settings.groqKey); }).join('+');
-    var llmKeys = LLM_PROVIDERS.filter(function(p){return !!settings[p.keyProp];}).map(function(p){return p.name;});
-    updateChecklist_(1, '✅ Настройки прочитаны | LLM: ' + (llmKeys.join(', ')||'—') + (settings.geminiKey ? ' | Gemini ✓' : ''));
+    var hasLlm = settings.groqKey || settings.groqKey2 || settings.cerebrasKey || settings.mistralKey;
+    if (!hasLlm) { ui.alert('Ошибка', 'Не указан ни один LLM-ключ (B2/B9/B10/B13)', ui.ButtonSet.OK); return; }
+    if (!settings.sources || !settings.sources.length) { ui.alert('Ошибка', 'Не указан источник (B3)', ui.ButtonSet.OK); return; }
+    if (!settings.selectedModels || !settings.selectedModels.length) { ui.alert('Ошибка', 'Не выбрана ни одна модель (Настройки, строки 15+)', ui.ButtonSet.OK); return; }
 
-    // Шаг 2 — сбор файлов (или кэш)
-    Logger.log('=== [2/6] Читаем файлы ===');
-    var cacheKey = computeCacheKey_(settings);
+    var llmKeys = LLM_PROVIDERS.filter(function(p) { return !!settings[p.keyProp]; }).map(function(p) { return p.name; });
+    updateChecklist_(1, '✅ Настройки прочитаны | LLM: ' + (llmKeys.join(', ') || '—') + (settings.geminiKey ? ' | Gemini ✓' : ''));
+
     var ss       = SpreadsheetApp.getActiveSpreadsheet();
+    var cacheKey = computeCacheKey_(settings);
     var cached   = loadContextCache_(ss, cacheKey);
-    var context;
 
     if (cached) {
-      context = cached;
-      updateChecklist_(2, '📦 Контекст из кэша: ' + Math.round(context.length / 1000) + 'k симв.\nУдалите лист «Кэш» для пересборки из файлов.');
-      Logger.log('📦 Кэш найден: ' + context.length + ' симв.');
-    } else {
-      updateChecklist_(2, '⏳ Сканируем папку...');
-      var result   = collectDriveContext_(settings);
-      context      = result.context;
-      var skipped  = result.skipped;
-      var geminiOk = result.geminiUsed;
-      if (!context || !context.trim()) {
-        ui.alert('Ошибка', 'Нет читаемых файлов в папке.', ui.ButtonSet.OK); return;
-      }
-      var statusMsg = '✅ Обнаружено файлов: ' + result.filesFound + ' | обработано: ' + result.filesRead + ' | символов контекста: ' + context.length;
-      if (result.mediaLogs && result.mediaLogs.length) {
-        statusMsg += '\n\n🤖 Gemini расшифровал (' + result.mediaLogs.length + '):\n' + result.mediaLogs.join('\n');
-      }
-      if (skipped.length)  statusMsg += '\n\n⚠️ Пропущено (Gemini недоступен): ' + skipped.join(', ');
-      if (!geminiOk && settings.geminiKey) statusMsg += '\n⚠️ Gemini лимит исчерпан — медиафайлы пропущены';
-
-      // Сжимаем если больше лимита LLM
-      var MAX_CONTEXT = 40000;
-      if (context.length > MAX_CONTEXT) {
-        if (settings.geminiKey) {
-          var nChunks = Math.ceil(context.length / 3000000);
-          updateChecklist_(2, statusMsg + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — сжимаем через Gemini (' + nChunks + ' запр.)...');
-          context = compressContextWithGemini_(context, settings.geminiKey, settings.kieaiKey);
-          statusMsg += '\n\n✅ Gemini сжал до ' + Math.round(context.length / 1000) + 'k симв.';
-        } else {
-          var trimmed = context.substring(0, MAX_CONTEXT);
-          var lastBoundary = trimmed.lastIndexOf('\n--- ');
-          if (lastBoundary > MAX_CONTEXT * 0.7) trimmed = trimmed.substring(0, lastBoundary);
-          context = trimmed + '\n\n[⚠️ Контекст обрезан]';
-          statusMsg += '\n\n⚠️ Контекст обрезан — добавьте ключ Gemini (B4) для полного анализа.';
-        }
-      }
-
-      saveContextCache_(ss, cacheKey, context);
-      statusMsg += '\n\n💾 Сохранено в кэш. Повторные запуски не будут читать файлы заново.';
-      updateChecklist_(2, statusMsg);
+      updateChecklist_(2, '📦 Контекст из кэша: ' + Math.round(cached.length / 1000) + 'k симв.\nДля пересборки из файлов — удалите лист «Кэш».');
+      _phaseAnalyze_(settings, cacheKey, [], {}, 1);
+      return;
     }
 
-    // Шаг 3 — анализ продукта и ЦА
-    var exhausted = {}; // провайдеры, исчерпавшие лимит
-    Logger.log('=== [3/6] Запрос 1 — Анализ ===');
+    updateChecklist_(2, '⏳ Сканируем источники...');
+    var result  = collectDriveContext_(settings);
+    var context = result.context;
+    if (!context || !context.trim()) { ui.alert('Ошибка', 'Нет читаемых файлов.', ui.ButtonSet.OK); return; }
+
+    var status2 = '✅ Файлов: ' + result.filesFound + ' | обработано: ' + result.filesRead + ' | ' + Math.round(context.length / 1000) + 'k симв.';
+    if (result.mediaLogs && result.mediaLogs.length) status2 += '\n🤖 Gemini (' + result.mediaLogs.length + '):\n' + result.mediaLogs.join('\n');
+    if (result.skipped   && result.skipped.length)   status2 += '\n⚠️ Пропущено: ' + result.skipped.join(', ');
+    updateChecklist_(2, status2);
+
+    if (context.length <= 40000 || !settings.geminiKey) {
+      if (context.length > 40000) {
+        context = context.substring(0, 40000) + '\n[⚠️ Обрезано — нет ключа Gemini в B4]';
+        updateChecklist_(2, status2 + '\n⚠️ Обрезано до 40k (нет ключа Gemini в B4)');
+      }
+      saveContextCache_(ss, cacheKey, context);
+      _phaseAnalyze_(settings, cacheKey, [], {}, 1);
+      return;
+    }
+
+    var totalChunks = Math.ceil(context.length / 3000000);
+    updateChecklist_(2, status2 + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — начинаем сжатие (' + totalChunks + ' частей)...');
+
+    var rawFileId = _saveRawToDrive_(context);
+    _phaseCompress_({
+      phase:          'compress',
+      cacheKey:       cacheKey,
+      rawFileId:      rawFileId,
+      chunksDone:     0,
+      totalChunks:    totalChunks,
+      settingsPacked: _packSettingIds_(settings),
+      cycleCount:     1,
+      status2:        status2,
+      costsJson:      '[]'
+    }, settings);
+
+  } catch (e) {
+    _clearState_();
+    Logger.log('ОШИБКА (fresh): ' + e.message);
+    updateChecklist_(0, '❌ ' + e.message);
+    ui.alert('Ошибка', e.message, ui.ButtonSet.OK);
+  }
+}
+
+// ─── Продолжение после автоперезапуска ────────────────────────
+function _resumeRun_(state) {
+  var settings = _unpackSettings_(state.settingsPacked);
+  try { RUN_COSTS_ = JSON.parse(state.costsJson || '[]'); } catch (_) { RUN_COSTS_ = []; }
+  try {
+    if (state.phase === 'compress') {
+      _phaseCompress_(state, settings);
+    } else if (state.phase === 'analyze') {
+      _phaseAnalyze_(settings, state.cacheKey, state.completedModelIds || [], state.exhausted || {}, state.cycleCount);
+    } else {
+      _clearState_();
+      updateChecklist_(0, '❌ Неизвестная фаза «' + state.phase + '». Запустите вручную.');
+    }
+  } catch (e) {
+    _clearState_();
+    Logger.log('ОШИБКА (resume, фаза ' + state.phase + '): ' + e.message);
+    updateChecklist_(0, '❌ Ошибка при автоперезапуске: ' + e.message);
+  }
+}
+
+// ─── Фаза сжатия: чанк за чанком, с сохранением прогресса ────
+function _phaseCompress_(state, settings) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  var rawText;
+  try { rawText = _loadRawFromDrive_(state.rawFileId); } catch (e) {
+    _clearState_();
+    updateChecklist_(0, '❌ Не удалось загрузить временный файл Drive: ' + e.message);
+    return;
+  }
+
+  var CHUNK_SIZE = 3000000;
+  var parts = [];
+  for (var i = 0; i < rawText.length; i += CHUNK_SIZE) parts.push(rawText.substring(i, i + CHUNK_SIZE));
+  var totalChunks = parts.length;
+  var chunksDone  = state.chunksDone || 0;
+
+  if (chunksDone === 0) _initPartialCache_(ss, state.cacheKey);
+
+  for (var c = chunksDone; c < totalChunks; c++) {
+    if (timeIsLow_()) {
+      state.chunksDone = c;
+      state.costsJson  = JSON.stringify(RUN_COSTS_);
+      _saveState_(state);
+      _scheduleResume_();
+      updateChecklist_(2, (state.status2 || '') + '\n\n⏳ Сжато ' + c + '/' + totalChunks + ' частей. Продолжение через ~75 сек автоматически...');
+      return;
+    }
+
+    updateChecklist_(2, (state.status2 || '') + '\n\n⏳ Gemini: часть ' + (c + 1) + '/' + totalChunks + '...');
+    if (c > 0) Utilities.sleep(5000);
+
+    var summary = _compressOneChunk_(parts[c], c, totalChunks, settings);
+    _appendSummaryToCache_(ss, summary);
+    Logger.log('✅ Chunk ' + (c + 1) + '/' + totalChunks + ' → ' + Math.round(summary.length / 1000) + 'k симв.');
+  }
+
+  _finalizePartialCache_(ss, state.cacheKey);
+  _deleteTempFile_(state.rawFileId);
+
+  var compressed = loadContextCache_(ss, state.cacheKey);
+  var sz = compressed ? Math.round(compressed.length / 1000) : 0;
+  updateChecklist_(2, (state.status2 || '') + '\n\n✅ Gemini сжал ' + totalChunks + ' частей → ' + sz + 'k симв. Сохранено в кэш.');
+
+  if (timeIsLow_()) {
+    _saveState_({ phase: 'analyze', cacheKey: state.cacheKey, completedModelIds: [], exhausted: {}, settingsPacked: state.settingsPacked, cycleCount: state.cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
+    _scheduleResume_();
+    updateChecklist_(3, '⏳ Анализ запустится автоматически через ~75 сек...');
+    return;
+  }
+
+  _phaseAnalyze_(settings, state.cacheKey, [], {}, state.cycleCount);
+}
+
+// ─── Фаза анализа: шаги 3-5 с автоперезапуском ───────────────
+function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleCount) {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var props = PropertiesService.getScriptProperties();
+
+  var context = loadContextCache_(ss, cacheKey);
+  if (!context) {
+    _clearState_();
+    updateChecklist_(0, '❌ Кэш контекста утерян (ключ ' + cacheKey + '). Запустите заново.');
+    return;
+  }
+
+  // Шаг 3 — анализ продукта (если ещё не выполнен)
+  var analysisStr = props.getProperty(ANALYSIS_KEY_);
+  var analysisData;
+
+  if (!analysisStr) {
     updateChecklist_(3, '⏳ LLM: анализ продукта и ЦА...');
     var r1 = callLlmApi_(settings, buildPrompt1_(context), 8192, exhausted);
     writeAnalysisSheet_(r1.result);
+    analysisData = r1.result;
     updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ']');
+    try { props.setProperty(ANALYSIS_KEY_, JSON.stringify(analysisData)); } catch (_) {}
 
-    // Шаги 4+5 — цикл по выбранным моделям
-    var models = settings.selectedModels;
-    if (!models || models.length === 0) {
-      ui.alert('Ошибка', 'Не выбрана ни одна модель для генерации гипотез.\nОтметьте хотя бы одну в листе «Настройки» (строки 15+).', ui.ButtonSet.OK);
+    if (timeIsLow_()) {
+      _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
+      _scheduleResume_();
+      updateChecklist_(4, '⏳ Генерация заходов запустится автоматически через ~75 сек...');
       return;
     }
-    Logger.log('=== [4-5/6] Генерация гипотез (' + models.length + ' моделей) ===');
-    updateChecklist_(4, '⏳ Генерация заходов · 0 / ' + models.length + ' моделей...');
-    updateChecklist_(5, '⏳ Ожидание...');
+  } else {
+    try { analysisData = JSON.parse(analysisStr); } catch (e) {
+      _clearState_();
+      updateChecklist_(0, '❌ Ошибка восстановления анализа: ' + e.message);
+      return;
+    }
+  }
 
-    var completedSheets = [];
+  // Шаги 4-5 — цикл по выбранным моделям
+  var models    = settings.selectedModels;
+  var remaining = models.filter(function(m) { return completedModelIds.indexOf(m.id) < 0; });
 
-    for (var mi = 0; mi < models.length; mi++) {
-      var model = models[mi];
-      var mLabel = model.label;
-      var hypoSheet  = 'Гипотезы — ' + mLabel;
-      var launchSheet = 'Лучшие — ' + mLabel;
+  updateChecklist_(4, '⏳ Заходы: ' + completedModelIds.length + ' / ' + models.length + ' готово...');
+  updateChecklist_(5, '⏳ Ожидание...');
 
-      try {
-        // Пауза между моделями (не перед первой)
-        if (mi > 0) Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
-
-        updateChecklist_(4, '⏳ [' + (mi+1) + '/' + models.length + '] ' + mLabel + ': генерация 15 заходов...');
-        var r2 = callModelApi_(settings, model, buildPrompt2a_(r1.result), 5500);
-        writeHypothesesSheet_(hypoSheet, r2, ss);
-
-        var pause45 = model.provider === 'groq' ? 62000 : 3000;
-        Utilities.sleep(pause45);
-
-        updateChecklist_(5, '⏳ [' + (mi+1) + '/' + models.length + '] ' + mLabel + ': отбор 10 лучших...');
-        var r3 = callModelApi_(settings, model, buildPrompt2b_(r2), 3500);
-        writeLaunchSheet_(launchSheet, r3, ss);
-
-        completedSheets.push(mLabel);
-        appendChecklistLog_('✅ ' + mLabel + ' → «' + hypoSheet + '» + «' + launchSheet + '»', true);
-        updateChecklist_(4, '✅ Заходы: ' + completedSheets.length + ' / ' + models.length + ' моделей готово');
-
-      } catch (modelErr) {
-        Logger.log('Ошибка модели ' + mLabel + ': ' + modelErr.message);
-        appendChecklistLog_('❌ ' + mLabel + ': ' + modelErr.message, false);
-      }
+  for (var mi = 0; mi < remaining.length; mi++) {
+    if (timeIsLow_()) {
+      _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
+      _scheduleResume_();
+      updateChecklist_(4, '⏳ [' + completedModelIds.length + '/' + models.length + '] Продолжение через ~75 сек...');
+      return;
     }
 
-    if (completedSheets.length === 0) throw new Error('Все выбранные модели вернули ошибки. Проверьте ключи и лимиты.');
+    var model  = remaining[mi];
+    var mLabel = model.label;
 
-    updateChecklist_(5, '✅ Отбор завершён для ' + completedSheets.length + ' моделей');
+    try {
+      if (mi > 0 || completedModelIds.length > 0) Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
 
-    var totalUsd = writeExpensesSheet_(SpreadsheetApp.getActiveSpreadsheet());
-    var totalRub = (totalUsd * USD_TO_RUB_).toFixed(0);
-    updateChecklist_(6, '✅ Готово! Создано ' + (completedSheets.length * 2) + ' листов.\n💰 Расходы за запуск: $' + totalUsd.toFixed(4) + ' ≈ ' + totalRub + ' ₽ (лист «Расходы»)');
+      updateChecklist_(4, '⏳ [' + (completedModelIds.length + mi + 1) + '/' + models.length + '] ' + mLabel + ': 15 заходов...');
+      var r2 = callModelApi_(settings, model, buildPrompt2a_(analysisData), 5500);
+      writeHypothesesSheet_('Гипотезы — ' + mLabel, r2, ss);
 
-    ui.alert('Успех',
-      'Анализ завершён!\n\n' +
-      '• «Анализ» — продукт и сегменты ЦА\n' +
-      completedSheets.map(function(l) {
-        return '• «Гипотезы — ' + l + '» + «Лучшие — ' + l + '»';
-      }).join('\n') + '\n' +
-      '• «Расходы» — детализация по токенам и деньгам\n' +
-      '• «Чеклист» — статус каждого шага\n\n' +
-      '💰 Расходы за этот запуск: $' + totalUsd.toFixed(4) + ' ≈ ' + totalRub + ' ₽',
-      ui.ButtonSet.OK);
+      Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
 
-  } catch (e) {
-    Logger.log('ОШИБКА: ' + e.message);
-    updateChecklist_(0, '❌ ' + e.message);
-    ui.alert('Ошибка выполнения', e.message, ui.ButtonSet.OK);
+      updateChecklist_(5, '⏳ [' + (completedModelIds.length + mi + 1) + '/' + models.length + '] ' + mLabel + ': отбор 10...');
+      var r3 = callModelApi_(settings, model, buildPrompt2b_(r2), 3500);
+      writeLaunchSheet_('Лучшие — ' + mLabel, r3, ss);
+
+      completedModelIds.push(model.id);
+      appendChecklistLog_('✅ ' + mLabel + ' → «Гипотезы» + «Лучшие»', true);
+      updateChecklist_(4, '✅ Заходы: ' + completedModelIds.length + ' / ' + models.length);
+
+    } catch (modelErr) {
+      Logger.log('Ошибка модели ' + mLabel + ': ' + modelErr.message);
+      appendChecklistLog_('❌ ' + mLabel + ': ' + modelErr.message, false);
+      completedModelIds.push(model.id); // пропустить при следующем цикле
+    }
   }
+
+  // Всё готово
+  _clearState_();
+  props.deleteProperty(ANALYSIS_KEY_);
+
+  var doneCount = models.filter(function(m) { return completedModelIds.indexOf(m.id) >= 0; }).length;
+  if (doneCount === 0) {
+    updateChecklist_(0, '❌ Все выбранные модели вернули ошибки. Проверьте ключи и лимиты.');
+    return;
+  }
+
+  var totalUsd = writeExpensesSheet_(ss);
+  var totalRub = (totalUsd * USD_TO_RUB_).toFixed(0);
+  updateChecklist_(5, '✅ Отбор завершён для ' + doneCount + ' моделей');
+  updateChecklist_(6, '✅ Готово! Создано ' + (doneCount * 2) + ' листов.\n💰 Расходы: $' + totalUsd.toFixed(4) + ' ≈ ' + totalRub + ' ₽ (лист «Расходы»)');
 }
 
 // ─── Настройки ───────────────────────────────────────────────
@@ -1783,6 +1911,182 @@ function createChecklistSheet_(ss) {
   sheet.setColumnWidth(1, 70); sheet.setColumnWidth(2, 340); sheet.setColumnWidth(3, 500);
   for (var r = 2; r <= 7; r++) sheet.setRowHeight(r, 40);
   sheet.setRowHeight(3, 80); // строка шага 2 — для логов файлов
+}
+
+// ─── State machine: вспомогательные функции ───────────────────
+
+function _saveState_(obj) {
+  PropertiesService.getScriptProperties().setProperty(STATE_KEY_, JSON.stringify(obj));
+}
+
+function _loadState_() {
+  var s = PropertiesService.getScriptProperties().getProperty(STATE_KEY_);
+  return s ? JSON.parse(s) : null;
+}
+
+function _clearState_() {
+  var props = PropertiesService.getScriptProperties();
+  props.deleteProperty(STATE_KEY_);
+  var tid = props.getProperty(TRIGGER_KEY_);
+  if (tid) {
+    ScriptApp.getProjectTriggers().forEach(function(t) {
+      if (t.getUniqueId() === tid) ScriptApp.deleteTrigger(t);
+    });
+    props.deleteProperty(TRIGGER_KEY_);
+  }
+}
+
+function _scheduleResume_() {
+  var props  = PropertiesService.getScriptProperties();
+  var oldId  = props.getProperty(TRIGGER_KEY_);
+  if (oldId) {
+    ScriptApp.getProjectTriggers().forEach(function(t) {
+      if (t.getUniqueId() === oldId) ScriptApp.deleteTrigger(t);
+    });
+  }
+  var trigger = ScriptApp.newTrigger('runMarketingAnalysis')
+    .timeBased().at(new Date(new Date().getTime() + 75000)).create();
+  props.setProperty(TRIGGER_KEY_, trigger.getUniqueId());
+  Logger.log('⏰ Триггер создан: старт через 75 сек');
+}
+
+function _saveRawToDrive_(text) {
+  var blob = Utilities.newBlob(text, 'text/plain', 'mkt_raw_tmp.txt');
+  var file = DriveApp.createFile(blob);
+  Logger.log('💾 Raw → Drive: ' + file.getId() + ' (' + Math.round(text.length / 1000) + 'k симв.)');
+  return file.getId();
+}
+
+function _loadRawFromDrive_(fileId) {
+  return DriveApp.getFileById(fileId).getBlob().getDataAsString('UTF-8');
+}
+
+function _deleteTempFile_(fileId) {
+  if (!fileId) return;
+  try { DriveApp.getFileById(fileId).setTrashed(true); Logger.log('🗑️ Temp файл удалён: ' + fileId); } catch (e) {}
+}
+
+function _packSettingIds_(settings) {
+  return {
+    groqKey:            settings.groqKey,
+    groqKey2:           settings.groqKey2,
+    geminiKey:          settings.geminiKey,
+    cerebrasKey:        settings.cerebrasKey,
+    mistralKey:         settings.mistralKey,
+    kieaiKey:           settings.kieaiKey,
+    sources:            settings.sources,
+    blacklist:          settings.blacklist,
+    whitelist:          settings.whitelist,
+    maxImagesPerFolder: settings.maxImagesPerFolder,
+    followLinks:        settings.followLinks,
+    selectedModelIds:   settings.selectedModels.map(function(m) { return m.id; })
+  };
+}
+
+function _unpackSettings_(packed) {
+  var ids = packed.selectedModelIds || [];
+  var sel = MODEL_CATALOG.filter(function(m) { return ids.indexOf(m.id) >= 0; });
+  sel.sort(function(a, b) { return ids.indexOf(a.id) - ids.indexOf(b.id); });
+  return {
+    groqKey:            packed.groqKey            || '',
+    groqKey2:           packed.groqKey2           || '',
+    geminiKey:          packed.geminiKey          || '',
+    cerebrasKey:        packed.cerebrasKey        || '',
+    mistralKey:         packed.mistralKey         || '',
+    kieaiKey:           packed.kieaiKey           || '',
+    sources:            packed.sources            || [],
+    blacklist:          packed.blacklist          || [],
+    whitelist:          packed.whitelist          || [],
+    maxImagesPerFolder: packed.maxImagesPerFolder || 10,
+    followLinks:        !!packed.followLinks,
+    selectedModels:     sel
+  };
+}
+
+// Инициализирует лист «Кэш» для пошагового сохранения (partial mode)
+function _initPartialCache_(ss, key) {
+  var sheet = ss.getSheetByName('Кэш');
+  if (!sheet) { sheet = ss.insertSheet('Кэш'); sheet.hideSheet(); }
+  sheet.clearContents();
+  sheet.getRange(1, 1).setValue('PARTIAL:' + key);
+  sheet.getRange(1, 2).setValue(new Date().toISOString());
+  SpreadsheetApp.flush();
+}
+
+// Дописывает очередную сводку чанка в конец листа «Кэш» (45k симв./ячейка)
+function _appendSummaryToCache_(ss, summary) {
+  var sheet = ss.getSheetByName('Кэш');
+  if (!sheet) throw new Error('Лист «Кэш» не найден при дозаписи сводки');
+  var CHUNK = 45000;
+  var row   = sheet.getLastRow() + 1;
+  for (var i = 0; i < summary.length; i += CHUNK) {
+    sheet.getRange(row++, 1).setValue(summary.substring(i, i + CHUNK));
+  }
+  SpreadsheetApp.flush();
+}
+
+// Превращает partial-кэш в полноценный (убирает префикс «PARTIAL:»)
+function _finalizePartialCache_(ss, key) {
+  var sheet = ss.getSheetByName('Кэш');
+  if (!sheet) return;
+  sheet.getRange(1, 1).setValue(key);
+  sheet.getRange(1, 3).setValue('~' + Math.round(sheet.getLastRow() * 45 / 1000) + 'k симв.');
+  SpreadsheetApp.flush();
+}
+
+// Сжимает один чанк через Gemini (с фоллбэком на kie.ai при 429/503)
+function _compressOneChunk_(chunkText, chunkIdx, totalChunks, settings) {
+  var prompt = [
+    'Ты — ассистент маркетолога. Из этих материалов проекта извлеки и структурируй ВСЁ важное:',
+    '',
+    '1. ПРОДУКТ: название (дословно), оффер с посадочной, формат, цена, преимущества, методика, результаты',
+    '2. ЦЕЛЕВАЯ АУДИТОРИЯ: боли с цитатами, потребности языком ЦА, возражения, описания сегментов',
+    '3. СПИКЕР: имя, опыт (лет), достижения, регалии, цифры',
+    '4. КАСТДЕВЫ И ИНТЕРВЬЮ: ключевые цитаты клиентов, инсайты, боли их словами',
+    '5. КЕЙСЫ: конкретные результаты учеников с цифрами',
+    '6. ПРОЧЕЕ: уникальные смыслы, формулировки с лендинга, конкурентные преимущества',
+    '',
+    'Пиши плотно — каждое слово должно нести смысл. Сохрани цитаты, цифры, названия.',
+    'Часть ' + (chunkIdx + 1) + ' из ' + totalChunks + ':',
+    '',
+    chunkText
+  ].join('\n');
+
+  var resp = UrlFetchApp.fetch(GEMINI_API_URL + '?key=' + settings.geminiKey, {
+    method: 'post', contentType: 'application/json',
+    payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 8192 } }),
+    muteHttpExceptions: true, deadline: 120
+  });
+
+  var code = resp.getResponseCode();
+  if (code === 200) {
+    var pf   = JSON.parse(resp.getContentText());
+    var um   = pf.usageMetadata || {};
+    recordCost_('Сжатие контекста', 'Gemini (free)', 'gemini-free', um.promptTokenCount || 0, um.candidatesTokenCount || 0);
+    var cand = pf.candidates && pf.candidates[0];
+    var text = (cand && cand.content && cand.content.parts && cand.content.parts[0]) ? cand.content.parts[0].text : null;
+    if (text) return '[Экстракт ' + (chunkIdx + 1) + '/' + totalChunks + ']\n' + text;
+    Logger.log('⚠️ Gemini вернул пустой ответ для части ' + (chunkIdx + 1));
+  } else if ((code === 429 || code === 503) && settings.kieaiKey) {
+    Logger.log('⚠️ Gemini ' + code + ' → kie.ai Gemini 2.5 Flash');
+    var kr = UrlFetchApp.fetch('https://api.kie.ai/gemini-2.5-flash/v1/chat/completions', {
+      method: 'post', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + settings.kieaiKey },
+      payload: JSON.stringify({ model: 'gemini-2.5-flash', messages: [{ role: 'user', content: prompt }], temperature: 0.1, max_tokens: 8192 }),
+      muteHttpExceptions: true, deadline: 120
+    });
+    if (kr.getResponseCode() === 200) {
+      var kp = JSON.parse(kr.getContentText());
+      var ku = kp.usage || {};
+      recordCost_('Сжатие (kie.ai)', 'kie.ai Gemini', 'gemini-2.5-flash', ku.prompt_tokens || 0, ku.completion_tokens || 0);
+      return '[Экстракт ' + (chunkIdx + 1) + '/' + totalChunks + ' via kie.ai]\n' + kp.choices[0].message.content;
+    }
+    Logger.log('❌ kie.ai тоже не ответил: HTTP ' + kr.getResponseCode());
+  } else {
+    Logger.log('❌ Gemini HTTP ' + code + ': ' + resp.getContentText().substring(0, 100));
+  }
+
+  return '[Часть ' + (chunkIdx + 1) + ' — обрезано]\n' + chunkText.substring(0, 15000);
 }
 
 function createAnalysisSheet_(ss) {
