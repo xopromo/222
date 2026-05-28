@@ -13,6 +13,7 @@ var CHECKLIST_SHEET = 'Чеклист';
 // Пул LLM-провайдеров — используются по порядку, переключение при 429
 var LLM_PROVIDERS = [
   { name: 'Groq',     url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile', keyProp: 'groqKey',     pauseMs: 62000 },
+  { name: 'Groq 2',   url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile', keyProp: 'groqKey2',    pauseMs: 62000 },
   { name: 'Cerebras', url: 'https://api.cerebras.ai/v1/chat/completions',        model: 'llama3.3-70b',            keyProp: 'cerebrasKey', pauseMs: 5000  },
   { name: 'Mistral',  url: 'https://api.mistral.ai/v1/chat/completions',         model: 'mistral-small-latest',    keyProp: 'mistralKey',  pauseMs: 5000  }
 ];
@@ -31,7 +32,7 @@ var MODEL_CATALOG = [
   { id: 'mistral',           label: 'Mistral Small',        provider: 'mistral',  apiFormat: 'openai',    url: null,                                                      hint: 'бесплатно'         }
 ];
 // Строка первого чекбокса в листе Настройки
-var MODEL_ROW_START = 15;
+var MODEL_ROW_START = 16;
 
 var GEMINI_API_URL    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 var GEMINI_UPLOAD_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
@@ -326,6 +327,7 @@ function readSettings_() {
     cerebrasKey:        (sheet.getRange('B9').getValue() + '').trim(),
     mistralKey:         (sheet.getRange('B10').getValue() + '').trim(),
     kieaiKey:           (sheet.getRange('B11').getValue() + '').trim(),
+    groqKey2:           (sheet.getRange('B13').getValue() + '').trim(),
     selectedModels:     selectedModels
   };
 }
@@ -1399,8 +1401,8 @@ function createSettingsSheet_(ss) {
   if (!sheet) sheet = ss.insertSheet(SETTINGS_SHEET);
   sheet.clearContents();
 
-  // Строки 1-12: основные настройки
-  sheet.getRange(1, 1, 12, 2).setValues([
+  // Строки 1-13: основные настройки
+  sheet.getRange(1, 1, 13, 2).setValues([
     ['Параметр',                                    'Значение'],
     ['API-ключ Groq (основной LLM)',                 ''],
     ['Источники (по одному в строке Alt+Enter)',     ''],
@@ -1413,20 +1415,21 @@ function createSettingsSheet_(ss) {
     ['API-ключ Mistral (резервный LLM)',             ''],
     ['API-ключ kie.ai (все платные модели)',         ''],
     ['Последний файл для теста kie.ai (ID)',         ''],
+    ['API-ключ Groq 2 (второй аккаунт)',             ''],
   ]);
   sheet.getRange(1, 1, 1, 3).setBackground('#4A90D9').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.getRange(2, 1, 11, 1).setFontWeight('bold');
+  sheet.getRange(2, 1, 12, 1).setFontWeight('bold');
   sheet.getRange(3, 2).setWrap(true);
   sheet.setRowHeight(3, 100);
   sheet.setColumnWidth(1, 280);
   sheet.setColumnWidth(2, 380);
   sheet.setColumnWidth(3, 200);
 
-  // Строка 13: заголовок секции моделей
-  sheet.getRange(13, 1).setValue('▼ Модели для гипотез (шаги 4–5)');
-  sheet.getRange(13, 2).setValue('Вкл?');
-  sheet.getRange(13, 3).setValue('Стоимость / запуск');
-  sheet.getRange(13, 1, 1, 3).setBackground('#37474F').setFontColor('#FFFFFF').setFontWeight('bold');
+  // Строка 14: заголовок секции моделей
+  sheet.getRange(14, 1).setValue('▼ Модели для гипотез (шаги 4–5)');
+  sheet.getRange(14, 2).setValue('Вкл?');
+  sheet.getRange(14, 3).setValue('Стоимость / запуск');
+  sheet.getRange(14, 1, 1, 3).setBackground('#37474F').setFontColor('#FFFFFF').setFontWeight('bold');
 
   // Строки MODEL_ROW_START+: чекбоксы моделей
   MODEL_CATALOG.forEach(function(m, i) {
@@ -1445,7 +1448,7 @@ function createSettingsSheet_(ss) {
   var hintsRow = MODEL_ROW_START + MODEL_CATALOG.length + 1;
   sheet.getRange(hintsRow, 1).setValue('Подсказки:').setFontWeight('bold');
   [
-    ['Groq:',         'console.groq.com → API Keys  (бесплатно 100k токенов/день)'],
+    ['Groq:',         'console.groq.com → API Keys  (бесплатно 100k токенов/день, B2 + B13 — два разных аккаунта)'],
     ['Cerebras:',     'cloud.cerebras.ai → API Keys  (бесплатно, быстрый)'],
     ['Mistral:',      'console.mistral.ai → API Keys  (бесплатно)'],
     ['Gemini:',       'aistudio.google.com → Get API Key  (для PDF, фото, видео)'],
