@@ -194,48 +194,54 @@ function runMarketingAnalysis() {
     var llmKeys = LLM_PROVIDERS.filter(function(p){return !!settings[p.keyProp];}).map(function(p){return p.name;});
     updateChecklist_(1, '✅ Настройки прочитаны | LLM: ' + (llmKeys.join(', ')||'—') + (settings.geminiKey ? ' | Gemini ✓' : ''));
 
-    // Шаг 2 — сбор файлов
+    // Шаг 2 — сбор файлов (или кэш)
     Logger.log('=== [2/6] Читаем файлы ===');
-    updateChecklist_(2, '⏳ Сканируем папку...');
-    var result   = collectDriveContext_(settings);
-    var context  = result.context;
-    var skipped  = result.skipped;
-    var geminiOk = result.geminiUsed;
-    if (!context || !context.trim()) {
-      ui.alert('Ошибка', 'Нет читаемых файлов в папке.', ui.ButtonSet.OK); return;
-    }
-    var statusMsg = '✅ Обнаружено файлов: ' + result.filesFound + ' | обработано: ' + result.filesRead + ' | символов контекста: ' + context.length;
-    if (result.mediaLogs && result.mediaLogs.length) {
-      statusMsg += '\n\n🤖 Gemini расшифровал (' + result.mediaLogs.length + '):\n' + result.mediaLogs.join('\n');
-    }
-    if (skipped.length)  statusMsg += '\n\n⚠️ Пропущено (Gemini недоступен): ' + skipped.join(', ');
-    if (!geminiOk && settings.geminiKey) statusMsg += '\n⚠️ Gemini лимит исчерпан — медиафайлы пропущены';
+    var cacheKey = computeCacheKey_(settings);
+    var ss       = SpreadsheetApp.getActiveSpreadsheet();
+    var cached   = loadContextCache_(ss, cacheKey);
+    var context;
 
-    // Сжимаем контекст если он больше лимита Groq (~40k символов)
-    var MAX_CONTEXT = 40000;
-    if (context.length > MAX_CONTEXT) {
-      var cacheKey = computeCacheKey_(settings);
-      var cached   = loadContextCache_(SpreadsheetApp.getActiveSpreadsheet(), cacheKey);
-
-      if (cached) {
-        context = cached;
-        statusMsg += '\n\n📦 Использован кэш (лист «Кэш»): ' + Math.round(context.length / 1000) + 'k симв. Удалите лист «Кэш» для принудительного пересжатия.';
-      } else if (settings.geminiKey) {
-        var nChunks = Math.ceil(context.length / 3000000);
-        updateChecklist_(2, statusMsg + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — сжимаем через Gemini (' + nChunks + ' запр.)...');
-        context = compressContextWithGemini_(context, settings.geminiKey);
-        saveContextCache_(SpreadsheetApp.getActiveSpreadsheet(), cacheKey, context);
-        statusMsg += '\n\n✅ Gemini сжал контекст до ' + Math.round(context.length / 1000) + 'k симв. и сохранил в кэш (лист «Кэш»). Повторные запуски бесплатны.';
-      } else {
-        var trimmed = context.substring(0, MAX_CONTEXT);
-        var lastBoundary = trimmed.lastIndexOf('\n--- ');
-        if (lastBoundary > MAX_CONTEXT * 0.7) trimmed = trimmed.substring(0, lastBoundary);
-        context = trimmed + '\n\n[⚠️ Контекст обрезан]';
-        statusMsg += '\n\n⚠️ Контекст обрезан — добавьте ключ Gemini (B4) для полного анализа всех ' + Math.round(result.context.length / 1000) + 'k симв.';
+    if (cached) {
+      context = cached;
+      updateChecklist_(2, '📦 Контекст из кэша: ' + Math.round(context.length / 1000) + 'k симв.\nУдалите лист «Кэш» для пересборки из файлов.');
+      Logger.log('📦 Кэш найден: ' + context.length + ' симв.');
+    } else {
+      updateChecklist_(2, '⏳ Сканируем папку...');
+      var result   = collectDriveContext_(settings);
+      context      = result.context;
+      var skipped  = result.skipped;
+      var geminiOk = result.geminiUsed;
+      if (!context || !context.trim()) {
+        ui.alert('Ошибка', 'Нет читаемых файлов в папке.', ui.ButtonSet.OK); return;
       }
-    }
+      var statusMsg = '✅ Обнаружено файлов: ' + result.filesFound + ' | обработано: ' + result.filesRead + ' | символов контекста: ' + context.length;
+      if (result.mediaLogs && result.mediaLogs.length) {
+        statusMsg += '\n\n🤖 Gemini расшифровал (' + result.mediaLogs.length + '):\n' + result.mediaLogs.join('\n');
+      }
+      if (skipped.length)  statusMsg += '\n\n⚠️ Пропущено (Gemini недоступен): ' + skipped.join(', ');
+      if (!geminiOk && settings.geminiKey) statusMsg += '\n⚠️ Gemini лимит исчерпан — медиафайлы пропущены';
 
-    updateChecklist_(2, statusMsg);
+      // Сжимаем если больше лимита LLM
+      var MAX_CONTEXT = 40000;
+      if (context.length > MAX_CONTEXT) {
+        if (settings.geminiKey) {
+          var nChunks = Math.ceil(context.length / 3000000);
+          updateChecklist_(2, statusMsg + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — сжимаем через Gemini (' + nChunks + ' запр.)...');
+          context = compressContextWithGemini_(context, settings.geminiKey);
+          statusMsg += '\n\n✅ Gemini сжал до ' + Math.round(context.length / 1000) + 'k симв.';
+        } else {
+          var trimmed = context.substring(0, MAX_CONTEXT);
+          var lastBoundary = trimmed.lastIndexOf('\n--- ');
+          if (lastBoundary > MAX_CONTEXT * 0.7) trimmed = trimmed.substring(0, lastBoundary);
+          context = trimmed + '\n\n[⚠️ Контекст обрезан]';
+          statusMsg += '\n\n⚠️ Контекст обрезан — добавьте ключ Gemini (B4) для полного анализа.';
+        }
+      }
+
+      saveContextCache_(ss, cacheKey, context);
+      statusMsg += '\n\n💾 Сохранено в кэш. Повторные запуски не будут читать файлы заново.';
+      updateChecklist_(2, statusMsg);
+    }
 
     // Шаг 3 — анализ продукта и ЦА
     var exhausted = {}; // провайдеры, исчерпавшие лимит
@@ -255,7 +261,6 @@ function runMarketingAnalysis() {
     updateChecklist_(4, '⏳ Генерация заходов · 0 / ' + models.length + ' моделей...');
     updateChecklist_(5, '⏳ Ожидание...');
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var completedSheets = [];
 
     for (var mi = 0; mi < models.length; mi++) {
