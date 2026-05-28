@@ -8,7 +8,37 @@
 var SETTINGS_SHEET  = 'Настройки';
 var ANALYSIS_SHEET  = 'Анализ';
 var CHECKLIST_SHEET = 'Чеклист';
-// Имена листов гипотез — динамические: 'Гипотезы — [модель]' и 'Лучшие — [модель]'
+var EXPENSES_SHEET  = 'Расходы';
+
+// Курс доллара → рубли (обновите вручную при необходимости)
+var USD_TO_RUB_ = 90;
+
+// Оценочная стоимость за 1000 токенов на kie.ai (рассчитана из hint-цен)
+// in/out — раздельно, т.к. вывод обычно дороже
+var PRICING_ = {
+  'gemini-2.5-flash':  { in: 0.000040, out: 0.000120 },
+  'gemini-3.1-pro':    { in: 0.000900, out: 0.002700 },
+  'claude-haiku-4-5':  { in: 0.000400, out: 0.001200 },
+  'claude-sonnet-4-6': { in: 0.001400, out: 0.004200 },
+  'claude-opus-4-5':   { in: 0.007000, out: 0.021000 },
+  'gpt-5-5':           { in: 0.000900, out: 0.002700 },
+  // бесплатные провайдеры
+  'groq':              { in: 0, out: 0 },
+  'groq 2':            { in: 0, out: 0 },
+  'cerebras':          { in: 0, out: 0 },
+  'mistral':           { in: 0, out: 0 },
+  'gemini-free':       { in: 0, out: 0 }
+};
+
+// Накопитель расходов текущего запуска — сбрасывается при старте runMarketingAnalysis
+var RUN_COSTS_ = [];
+
+function recordCost_(step, providerLabel, modelId, tokensIn, tokensOut) {
+  var p   = PRICING_[modelId] || PRICING_[providerLabel.toLowerCase()] || { in: 0, out: 0 };
+  var usd = (tokensIn * p.in + tokensOut * p.out) / 1000;
+  RUN_COSTS_.push({ step: step, provider: providerLabel, model: modelId, tokensIn: tokensIn, tokensOut: tokensOut, usd: usd });
+  Logger.log('💰 ' + step + ' [' + providerLabel + ']: вх.' + tokensIn + ' вых.' + tokensOut + ' → $' + usd.toFixed(5));
+}
 
 // Пул LLM-провайдеров — используются по порядку, переключение при 429
 var LLM_PROVIDERS = [
@@ -183,6 +213,7 @@ function runMarketingAnalysis() {
   var ui = SpreadsheetApp.getUi();
   try {
     resetChecklist_();
+    RUN_COSTS_ = [];
 
     // Шаг 1 — настройки
     Logger.log('=== [1/6] Настройки ===');
@@ -227,7 +258,7 @@ function runMarketingAnalysis() {
         if (settings.geminiKey) {
           var nChunks = Math.ceil(context.length / 3000000);
           updateChecklist_(2, statusMsg + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — сжимаем через Gemini (' + nChunks + ' запр.)...');
-          context = compressContextWithGemini_(context, settings.geminiKey);
+          context = compressContextWithGemini_(context, settings.geminiKey, settings.kieaiKey);
           statusMsg += '\n\n✅ Gemini сжал до ' + Math.round(context.length / 1000) + 'k симв.';
         } else {
           var trimmed = context.substring(0, MAX_CONTEXT);
@@ -297,14 +328,20 @@ function runMarketingAnalysis() {
     if (completedSheets.length === 0) throw new Error('Все выбранные модели вернули ошибки. Проверьте ключи и лимиты.');
 
     updateChecklist_(5, '✅ Отбор завершён для ' + completedSheets.length + ' моделей');
-    updateChecklist_(6, '✅ Готово! Создано ' + (completedSheets.length * 2) + ' листов.');
+
+    var totalUsd = writeExpensesSheet_(SpreadsheetApp.getActiveSpreadsheet());
+    var totalRub = (totalUsd * USD_TO_RUB_).toFixed(0);
+    updateChecklist_(6, '✅ Готово! Создано ' + (completedSheets.length * 2) + ' листов.\n💰 Расходы за запуск: $' + totalUsd.toFixed(4) + ' ≈ ' + totalRub + ' ₽ (лист «Расходы»)');
+
     ui.alert('Успех',
       'Анализ завершён!\n\n' +
       '• «Анализ» — продукт и сегменты ЦА\n' +
       completedSheets.map(function(l) {
         return '• «Гипотезы — ' + l + '» + «Лучшие — ' + l + '»';
       }).join('\n') + '\n' +
-      '• «Чеклист» — статус каждого шага',
+      '• «Расходы» — детализация по токенам и деньгам\n' +
+      '• «Чеклист» — статус каждого шага\n\n' +
+      '💰 Расходы за этот запуск: $' + totalUsd.toFixed(4) + ' ≈ ' + totalRub + ' ₽',
       ui.ButtonSet.OK);
 
   } catch (e) {
@@ -979,7 +1016,10 @@ function callLlmApi_(settings, messages, maxTokens, exhausted) {
 
     if (code === 200) {
       try {
-        var content = JSON.parse(body).choices[0].message.content;
+        var parsed0 = JSON.parse(body);
+        var content = parsed0.choices[0].message.content;
+        var u0 = parsed0.usage || {};
+        recordCost_('Анализ (шаг 3)', p.name, p.model, u0.prompt_tokens || 0, u0.completion_tokens || 0);
         return { result: JSON.parse(stripJsonMarkdown_(content)), provider: p.name };
       } catch (parseErr) {
         Logger.log('⚠️ ' + p.name + ' JSON обрезан или невалиден: ' + parseErr.message);
@@ -1050,17 +1090,18 @@ function callModelApi_(settings, model, messages, maxTokens) {
       var parsed;
       try { parsed = JSON.parse(body); } catch (_) { throw new Error('[' + model.label + '] невалидный ответ: ' + body.substring(0, 200)); }
 
-      // Извлекаем текст в зависимости от формата ответа
+      // Извлекаем текст и токены в зависимости от формата ответа
+      var tokIn = 0, tokOut = 0;
       if (model.apiFormat === 'anthropic') {
-        // Anthropic: {content: [{type:'text', text:'...'}]}
         if (!parsed.content || !parsed.content[0]) {
           var h = parsed.error ? (parsed.error.message || JSON.stringify(parsed.error)) : (parsed.msg || body.substring(0, 200));
           throw new Error('[' + model.label + '] ' + h);
         }
         rawText = parsed.content[0].text;
+        var ua = parsed.usage || {};
+        tokIn = ua.input_tokens || 0; tokOut = ua.output_tokens || 0;
 
       } else if (model.apiFormat === 'responses') {
-        // OpenAI Responses API: {output: [{type:'message', content:[{type:'output_text', text:'...'}]}]}
         var msgItem = null;
         if (parsed.output) {
           for (var oi = 0; oi < parsed.output.length; oi++) {
@@ -1072,16 +1113,20 @@ function callModelApi_(settings, model, messages, maxTokens) {
           throw new Error('[' + model.label + '] ' + h2);
         }
         rawText = msgItem.content[0].text;
+        var ur = parsed.usage || {};
+        tokIn = ur.input_tokens || ur.prompt_tokens || 0; tokOut = ur.output_tokens || ur.completion_tokens || 0;
 
       } else {
-        // OpenAI choices формат
         if (!parsed.choices || !parsed.choices[0]) {
           var h3 = parsed.msg || (parsed.error && (parsed.error.message || JSON.stringify(parsed.error))) || body.substring(0, 200);
           throw new Error('[' + model.label + '] ' + h3);
         }
         rawText = parsed.choices[0].message.content;
+        var uo = parsed.usage || {};
+        tokIn = uo.prompt_tokens || 0; tokOut = uo.completion_tokens || 0;
       }
 
+      recordCost_(model.label, model.label, model.id, tokIn, tokOut);
       try { return JSON.parse(stripJsonMarkdown_(rawText)); } catch (_) {
         throw new Error('[' + model.label + '] не JSON: «' + rawText.substring(0, 150) + '»');
       }
@@ -1164,7 +1209,7 @@ function saveContextCache_(ss, key, context) {
 
 // ─── Сжатие большого контекста через Gemini ──────────────────
 // Gemini принимает до ~4M символов; мы бьём на куски по 3M и просим извлечь маркетинг-суть
-function compressContextWithGemini_(fullContext, geminiKey) {
+function compressContextWithGemini_(fullContext, geminiKey, kieaiKey) {
   var CHUNK_SIZE = 3000000;
   var parts = [];
   for (var i = 0; i < fullContext.length; i += CHUNK_SIZE) {
@@ -1194,21 +1239,42 @@ function compressContextWithGemini_(fullContext, geminiKey) {
     ].join('\n');
 
     var resp = UrlFetchApp.fetch(GEMINI_API_URL + '?key=' + geminiKey, {
-      method: 'post',
-      contentType: 'application/json',
+      method: 'post', contentType: 'application/json',
       payload: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
       }),
-      muteHttpExceptions: true,
-      deadline: 120
+      muteHttpExceptions: true, deadline: 120
     });
 
     var code = resp.getResponseCode();
     if (code === 200) {
-      var text = JSON.parse(resp.getContentText()).candidates[0].content.parts[0].text;
+      var pf = JSON.parse(resp.getContentText());
+      var text = pf.candidates[0].content.parts[0].text;
+      var um = pf.usageMetadata || {};
+      recordCost_('Сжатие контекста', 'Gemini (free)', 'gemini-free', um.promptTokenCount || 0, um.candidatesTokenCount || 0);
       summaries.push('[Экстракт ' + (c + 1) + '/' + parts.length + ']\n' + text);
       Logger.log('  ✅ ' + text.length + ' симв.');
+    } else if ((code === 429 || code === 503) && kieaiKey) {
+      // Фоллбэк на kie.ai Gemini 2.5 Flash при исчерпании бесплатного лимита
+      Logger.log('  ⚠️ Gemini free ' + code + ' — пробуем kie.ai Gemini 2.5 Flash...');
+      var kieResp = UrlFetchApp.fetch('https://api.kie.ai/gemini-2.5-flash/v1/chat/completions', {
+        method: 'post', contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + kieaiKey },
+        payload: JSON.stringify({ model: 'gemini-2.5-flash', messages: [{ role: 'user', content: prompt }], temperature: 0.1, max_tokens: 8192 }),
+        muteHttpExceptions: true, deadline: 120
+      });
+      if (kieResp.getResponseCode() === 200) {
+        var kp = JSON.parse(kieResp.getContentText());
+        var ktext = kp.choices[0].message.content;
+        var ku = kp.usage || {};
+        recordCost_('Сжатие контекста (kie.ai)', 'kie.ai Gemini', 'gemini-2.5-flash', ku.prompt_tokens || 0, ku.completion_tokens || 0);
+        summaries.push('[Экстракт ' + (c + 1) + '/' + parts.length + ' via kie.ai]\n' + ktext);
+        Logger.log('  ✅ kie.ai: ' + ktext.length + ' симв.');
+      } else {
+        Logger.log('  ❌ kie.ai тоже не ответил: ' + kieResp.getResponseCode());
+        summaries.push('[Часть ' + (c + 1) + ' — обрезано]\n' + parts[c].substring(0, 15000));
+      }
     } else {
       Logger.log('  ❌ Gemini ' + code + ': ' + resp.getContentText().substring(0, 150));
       summaries.push('[Часть ' + (c + 1) + ' — обрезано]\n' + parts[c].substring(0, 15000));
@@ -1238,6 +1304,51 @@ function appendChecklistLog_(msg, ok) {
   sheet.getRange(r, 2, 1, 2).setBackground(bg).setFontColor(fc).setWrap(true);
   sheet.setRowHeight(r, 36);
   SpreadsheetApp.flush();
+}
+
+// ─── Лист расходов ───────────────────────────────────────────
+function writeExpensesSheet_(ss) {
+  var sheet = ss.getSheetByName(EXPENSES_SHEET);
+  if (!sheet) sheet = ss.insertSheet(EXPENSES_SHEET);
+  sheet.clearContents();
+
+  var headers = ['Шаг / Модель', 'Провайдер', 'Токены вход', 'Токены выход', 'USD (оценка)', 'RUB (оценка)'];
+  sheet.getRange(1, 1, 1, 6).setValues([headers])
+    .setBackground('#1565C0').setFontColor('#FFFFFF').setFontWeight('bold');
+
+  var totalUsd = 0;
+  RUN_COSTS_.forEach(function(c, i) {
+    var rub = (c.usd * USD_TO_RUB_).toFixed(2);
+    sheet.getRange(i + 2, 1, 1, 6).setValues([[
+      c.step, c.provider,
+      c.tokensIn, c.tokensOut,
+      c.usd > 0 ? ('$' + c.usd.toFixed(5)) : 'бесплатно',
+      c.usd > 0 ? (rub + ' ₽') : '—'
+    ]]);
+    totalUsd += c.usd;
+    var bg = c.usd === 0 ? '#E8F5E9' : '#FFF9C4';
+    sheet.getRange(i + 2, 1, 1, 6).setBackground(bg);
+  });
+
+  // Итоговая строка
+  var totalRow = RUN_COSTS_.length + 2;
+  sheet.getRange(totalRow, 1, 1, 6).setValues([[
+    'ИТОГО', '',
+    RUN_COSTS_.reduce(function(s, c) { return s + c.tokensIn; }, 0),
+    RUN_COSTS_.reduce(function(s, c) { return s + c.tokensOut; }, 0),
+    '$' + totalUsd.toFixed(5),
+    (totalUsd * USD_TO_RUB_).toFixed(2) + ' ₽'
+  ]]).setFontWeight('bold').setBackground('#E3F2FD');
+
+  sheet.getRange(totalRow, 5, 1, 2).setFontColor('#C62828').setFontSize(11);
+
+  [220, 160, 110, 110, 120, 120].forEach(function(w, i) { sheet.setColumnWidth(i + 1, w); });
+  sheet.getRange(1, 1, totalRow, 6).setWrap(false).setVerticalAlignment('middle');
+  sheet.setFrozenRows(1);
+  SpreadsheetApp.flush();
+
+  Logger.log('💰 Итого за запуск: $' + totalUsd.toFixed(5) + ' / ' + (totalUsd * USD_TO_RUB_).toFixed(2) + ' ₽');
+  return totalUsd;
 }
 
 // ─── Промпт 1: анализ продукта и ЦА ─────────────────────────
