@@ -57,15 +57,19 @@ function testKieAiVideo() {
   var savedKey    = props.getProperty('kieAiKey')    || '';
   var savedFileId = props.getProperty('kieAiFileId') || '';
 
-  var keyPrompt = 'Вставь API-ключ kie.ai:' + (savedKey ? '\n\n(последний: ' + savedKey.substring(0, 8) + '... — оставь пустым, чтобы использовать его)' : '');
-  var keyResp = ui.prompt('Тест kie.ai', keyPrompt, ui.ButtonSet.OK_CANCEL);
+  var keyPrompt = savedKey
+    ? 'Сохранённый ключ:\n' + savedKey + '\n\nВведи новый ключ или оставь поле пустым, чтобы использовать сохранённый:'
+    : 'Вставь API-ключ kie.ai:';
+  var keyResp = ui.prompt('Тест kie.ai — ключ', keyPrompt, ui.ButtonSet.OK_CANCEL);
   if (keyResp.getSelectedButton() !== ui.Button.OK) return;
   var kieKey = keyResp.getResponseText().trim() || savedKey;
   if (!kieKey) { ui.alert('Ключ не введён'); return; }
   props.setProperty('kieAiKey', kieKey);
 
-  var idPrompt = 'Вставь ID или ссылку на видеофайл из Google Drive:' + (savedFileId ? '\n\n(последний: ' + savedFileId + ' — оставь пустым, чтобы использовать его)' : '');
-  var idResp = ui.prompt('Тест kie.ai', idPrompt, ui.ButtonSet.OK_CANCEL);
+  var idPrompt = savedFileId
+    ? 'Сохранённый файл:\n' + savedFileId + '\n\nВведи новый ID/ссылку или оставь поле пустым, чтобы использовать сохранённый:'
+    : 'Вставь ID или ссылку на видеофайл из Google Drive:';
+  var idResp = ui.prompt('Тест kie.ai — файл', idPrompt, ui.ButtonSet.OK_CANCEL);
   if (idResp.getSelectedButton() !== ui.Button.OK) return;
   var fileId = (idResp.getResponseText().trim() || savedFileId).replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, '$1');
   if (!fileId) { ui.alert('ID не введён'); return; }
