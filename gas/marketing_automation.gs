@@ -2,13 +2,13 @@
 //  Автоматизация маркетингового анализа
 //  LLM-пул: Groq → Cerebras → Mistral (авто-переключение при 429)
 //  Gemini (PDF, фото, видео, аудио)
+//  Гипотезы: мульти-модель с чекбоксами в настройках
 // ============================================================
 
 var SETTINGS_SHEET  = 'Настройки';
 var ANALYSIS_SHEET  = 'Анализ';
-var ALL_HYPO_SHEET  = 'Все гипотезы (15)';
-var LAUNCH_SHEET    = 'Подготовка к запуску';
 var CHECKLIST_SHEET = 'Чеклист';
+// Имена листов гипотез — динамические: 'Гипотезы — [модель]' и 'Лучшие — [модель]'
 
 // Пул LLM-провайдеров — используются по порядку, переключение при 429
 var LLM_PROVIDERS = [
@@ -16,6 +16,21 @@ var LLM_PROVIDERS = [
   { name: 'Cerebras', url: 'https://api.cerebras.ai/v1/chat/completions',        model: 'llama-3.3-70b',           keyProp: 'cerebrasKey', pauseMs: 5000  },
   { name: 'Mistral',  url: 'https://api.mistral.ai/v1/chat/completions',         model: 'mistral-small-latest',    keyProp: 'mistralKey',  pauseMs: 5000  }
 ];
+
+// Каталог моделей для генерации гипотез — порядок = порядок строк в листе Настройки
+var MODEL_CATALOG = [
+  { id: 'gemini-2.5-flash',  label: 'Gemini 2.5 Flash',     provider: 'kieai',    hint: '~$0.001 / запуск' },
+  { id: 'gemini-3.1-pro',    label: 'Gemini 3.1 Pro',       provider: 'kieai',    hint: '~$0.024 / запуск' },
+  { id: 'claude-haiku-4-5',  label: 'Claude Haiku 4.5',     provider: 'kieai',    hint: '~$0.011 / запуск' },
+  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6',    provider: 'kieai',    hint: '~$0.039 / запуск' },
+  { id: 'claude-opus-4-5',   label: 'Claude Opus 4.5',      provider: 'kieai',    hint: '~$0.195 / запуск' },
+  { id: 'gpt-5',             label: 'GPT-5',                provider: 'kieai',    hint: '~$0.025 / запуск' },
+  { id: 'groq',              label: 'Groq / Llama 3.3',     provider: 'groq',     hint: 'бесплатно'         },
+  { id: 'cerebras',          label: 'Cerebras / Llama 3.3', provider: 'cerebras', hint: 'бесплатно'         },
+  { id: 'mistral',           label: 'Mistral Small',        provider: 'mistral',  hint: 'бесплатно'         }
+];
+// Строка первого чекбокса в листе Настройки
+var MODEL_ROW_START = 15;
 
 var GEMINI_API_URL    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 var GEMINI_UPLOAD_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
@@ -215,32 +230,60 @@ function runMarketingAnalysis() {
     writeAnalysisSheet_(r1.result);
     updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ']');
 
-    // Шаг 4 — 15 заходов
-    var pause4 = r1.provider === 'Groq' ? 62000 : 5000;
-    updateChecklist_(4, '⏳ Пауза ' + (pause4/1000) + ' сек (' + r1.provider + ')...');
-    Utilities.sleep(pause4);
-    Logger.log('=== [4/6] Запрос 2 — 15 заходов ===');
-    updateChecklist_(4, '⏳ LLM: генерация 15 заходов...');
-    var r2 = callLlmApi_(settings, buildPrompt2a_(r1.result), 4096, exhausted);
-    writeAllHypothesesSheet_(r2.result);
-    updateChecklist_(4, '✅ ' + (r2.result.hypotheses||[]).length + ' заходов → лист «Все гипотезы (15)» [' + r2.provider + ']');
+    // Шаги 4+5 — цикл по выбранным моделям
+    var models = settings.selectedModels;
+    if (!models || models.length === 0) {
+      ui.alert('Ошибка', 'Не выбрана ни одна модель для генерации гипотез.\nОтметьте хотя бы одну в листе «Настройки» (строки 15+).', ui.ButtonSet.OK);
+      return;
+    }
+    Logger.log('=== [4-5/6] Генерация гипотез (' + models.length + ' моделей) ===');
+    updateChecklist_(4, '⏳ Генерация заходов · 0 / ' + models.length + ' моделей...');
+    updateChecklist_(5, '⏳ Ожидание...');
 
-    // Шаг 5 — отбор 10 лучших
-    var pause5 = r2.provider === 'Groq' ? 62000 : 5000;
-    updateChecklist_(5, '⏳ Пауза ' + (pause5/1000) + ' сек (' + r2.provider + ')...');
-    Utilities.sleep(pause5);
-    Logger.log('=== [5/6] Запрос 3 — Топ 10 ===');
-    updateChecklist_(5, '⏳ LLM: отбор 10 лучших заходов...');
-    var r3 = callLlmApi_(settings, buildPrompt2b_(r2.result), 3500, exhausted);
-    writeLaunchSheet_(r3.result);
-    updateChecklist_(5, '✅ 10 лучших → лист «Подготовка к запуску» [' + r3.provider + ']');
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var completedSheets = [];
 
-    updateChecklist_(6, '✅ Готово! Анализ завершён успешно.');
+    for (var mi = 0; mi < models.length; mi++) {
+      var model = models[mi];
+      var mLabel = model.label;
+      var hypoSheet  = 'Гипотезы — ' + mLabel;
+      var launchSheet = 'Лучшие — ' + mLabel;
+
+      try {
+        // Пауза между моделями (не перед первой)
+        if (mi > 0) Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
+
+        updateChecklist_(4, '⏳ [' + (mi+1) + '/' + models.length + '] ' + mLabel + ': генерация 15 заходов...');
+        var r2 = callModelApi_(settings, model, buildPrompt2a_(r1.result), 4096);
+        writeHypothesesSheet_(hypoSheet, r2, ss);
+
+        var pause45 = model.provider === 'groq' ? 62000 : 3000;
+        Utilities.sleep(pause45);
+
+        updateChecklist_(5, '⏳ [' + (mi+1) + '/' + models.length + '] ' + mLabel + ': отбор 10 лучших...');
+        var r3 = callModelApi_(settings, model, buildPrompt2b_(r2), 3500);
+        writeLaunchSheet_(launchSheet, r3, ss);
+
+        completedSheets.push(mLabel);
+        appendChecklistLog_('✅ ' + mLabel + ' → «' + hypoSheet + '» + «' + launchSheet + '»', true);
+        updateChecklist_(4, '✅ Заходы: ' + completedSheets.length + ' / ' + models.length + ' моделей готово');
+
+      } catch (modelErr) {
+        Logger.log('Ошибка модели ' + mLabel + ': ' + modelErr.message);
+        appendChecklistLog_('❌ ' + mLabel + ': ' + modelErr.message, false);
+      }
+    }
+
+    if (completedSheets.length === 0) throw new Error('Все выбранные модели вернули ошибки. Проверьте ключи и лимиты.');
+
+    updateChecklist_(5, '✅ Отбор завершён для ' + completedSheets.length + ' моделей');
+    updateChecklist_(6, '✅ Готово! Создано ' + (completedSheets.length * 2) + ' листов.');
     ui.alert('Успех',
       'Анализ завершён!\n\n' +
       '• «Анализ» — продукт и сегменты ЦА\n' +
-      '• «Все гипотезы (15)» — все варианты заходов\n' +
-      '• «Подготовка к запуску» — топ 10\n' +
+      completedSheets.map(function(l) {
+        return '• «Гипотезы — ' + l + '» + «Лучшие — ' + l + '»';
+      }).join('\n') + '\n' +
       '• «Чеклист» — статус каждого шага',
       ui.ButtonSet.OK);
 
@@ -263,6 +306,14 @@ function readSettings_() {
   var rawSources = sheet.getRange('B3').getValue() + '';
   var sources    = rawSources.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
 
+  // Читаем чекбоксы моделей (строки MODEL_ROW_START и далее)
+  var selectedModels = [];
+  MODEL_CATALOG.forEach(function(m, i) {
+    if (sheet.getRange(MODEL_ROW_START + i, 2).getValue() === true) {
+      selectedModels.push(m);
+    }
+  });
+
   return {
     groqKey:            (sheet.getRange('B2').getValue() + '').trim(),
     sources:            sources,
@@ -272,7 +323,9 @@ function readSettings_() {
     maxImagesPerFolder: isNaN(maxImg) || maxImg <= 0 ? 10 : maxImg,
     followLinks:        followLinks !== 'нет' && followLinks !== 'no' && followLinks !== 'false',
     cerebrasKey:        (sheet.getRange('B9').getValue() + '').trim(),
-    mistralKey:         (sheet.getRange('B10').getValue() + '').trim()
+    mistralKey:         (sheet.getRange('B10').getValue() + '').trim(),
+    kieaiKey:           (sheet.getRange('B11').getValue() + '').trim(),
+    selectedModels:     selectedModels
   };
 }
 
@@ -918,6 +971,72 @@ function callLlmApi_(settings, messages, maxTokens, exhausted) {
   throw new Error('Все LLM-провайдеры исчерпали лимиты: ' + configured.join(', ') + '.\nПодождите до следующего дня (UTC) или добавьте ключи оставшихся провайдеров.');
 }
 
+// ─── Вызов конкретной модели (kie.ai или бесплатный LLM) ──────
+function callModelApi_(settings, model, messages, maxTokens) {
+  if (model.provider === 'kieai') {
+    var key = settings.kieaiKey;
+    if (!key) throw new Error('Не указан API-ключ kie.ai (B11) для модели ' + model.label);
+    var payload = JSON.stringify({
+      model: model.id,
+      messages: messages,
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      max_tokens: maxTokens || 4096
+    });
+    var response = UrlFetchApp.fetch('https://api.kie.ai/' + model.id + '/v1/chat/completions', {
+      method: 'post', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + key },
+      payload: payload, muteHttpExceptions: true
+    });
+    var code = response.getResponseCode();
+    var body = response.getContentText();
+    if (code === 200) {
+      return JSON.parse(JSON.parse(body).choices[0].message.content);
+    }
+    var errMsg = 'kie.ai [' + model.label + '] HTTP ' + code;
+    try { var ep = JSON.parse(body); if (ep.error && ep.error.message) errMsg += ': ' + ep.error.message; } catch (_) {}
+    throw new Error(errMsg);
+  }
+
+  // Бесплатный провайдер — находим в LLM_PROVIDERS и вызываем напрямую
+  var prov = null;
+  for (var i = 0; i < LLM_PROVIDERS.length; i++) {
+    if (LLM_PROVIDERS[i].name.toLowerCase() === model.provider) { prov = LLM_PROVIDERS[i]; break; }
+  }
+  if (!prov) throw new Error('Провайдер не найден: ' + model.provider);
+  var key2 = settings[prov.keyProp];
+  if (!key2) throw new Error('Не указан ключ для ' + model.label + ' (провайдер ' + prov.name + ')');
+  var payload2 = JSON.stringify({
+    model: prov.model, messages: messages,
+    response_format: { type: 'json_object' },
+    temperature: 0.7, max_tokens: maxTokens || 4096
+  });
+  var resp2 = UrlFetchApp.fetch(prov.url, {
+    method: 'post', contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + key2 },
+    payload: payload2, muteHttpExceptions: true
+  });
+  var code2 = resp2.getResponseCode();
+  var body2 = resp2.getContentText();
+  if (code2 === 200) return JSON.parse(JSON.parse(body2).choices[0].message.content);
+  var err2 = model.label + ' HTTP ' + code2;
+  try { var ep2 = JSON.parse(body2); if (ep2.error && ep2.error.message) err2 += ': ' + ep2.error.message; } catch (_) {}
+  throw new Error(err2);
+}
+
+// ─── Дополнительная строка в чеклист (для прогресса по моделям) ─
+function appendChecklistLog_(msg, ok) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CHECKLIST_SHEET);
+  if (!sheet) return;
+  var r = sheet.getLastRow() + 1;
+  sheet.getRange(r, 1, 1, 3).setValues([['-', 'Модели', msg]]);
+  var bg = ok === true ? '#C8E6C9' : ok === false ? '#FFCDD2' : '#FFF9C4';
+  var fc = ok === true ? '#1B5E20' : ok === false ? '#B71C1C' : '#F57F17';
+  sheet.getRange(r, 2, 1, 2).setBackground(bg).setFontColor(fc).setWrap(true);
+  sheet.setRowHeight(r, 36);
+  SpreadsheetApp.flush();
+}
+
 // ─── Промпт 1: анализ продукта и ЦА ─────────────────────────
 function buildPrompt1_(context) {
   var system = [
@@ -1070,12 +1189,18 @@ function writeAnalysisSheet_(data) {
   });
 }
 
-function writeAllHypothesesSheet_(data) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ALL_HYPO_SHEET);
-  if (!sheet) throw new Error('Лист «Все гипотезы (15)» не найден.');
+function writeHypothesesSheet_(sheetName, data, ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    var h = ['Сегмент','Описание сегмента','Заход / Хук','Ключевое сообщение','Структура и содержание','Эмоции и триггеры','Идеи заголовков'];
+    sheet.getRange(1,1,1,h.length).setValues([h]);
+    sheet.getRange(1,1,1,h.length).setBackground('#E65100').setFontColor('#FFFFFF').setFontWeight('bold');
+    [100,160,260,200,230,190,210].forEach(function(w,i) { sheet.setColumnWidth(i+1, w); });
+  }
   var last = sheet.getLastRow();
   if (last >= 2) sheet.getRange(2, 1, last - 1, 7).clearContent();
-
   (data.hypotheses || []).forEach(function(h, i) {
     var row = 2 + i;
     sheet.getRange(row, 1).setValue(h.segment_name || 'Сегмент ' + h.segment_id);
@@ -1085,15 +1210,22 @@ function writeAllHypothesesSheet_(data) {
     sheet.getRange(row, 5).setValue(h.structure);
     sheet.getRange(row, 6).setValue(h.emotions_triggers);
     sheet.getRange(row, 7).setValue(h.headline_ideas);
+    sheet.getRange(row, 1, 1, 7).setWrap(true).setVerticalAlignment('top');
+    sheet.setRowHeight(row, 110);
   });
 }
 
-function writeLaunchSheet_(data) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LAUNCH_SHEET);
-  if (!sheet) throw new Error('Лист «Подготовка к запуску» не найден.');
+function writeLaunchSheet_(sheetName, data, ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    sheet.getRange(1,1,1,3).setValues([['Сегмент ЦА','Описание сегмента','Промо-гипотеза']]);
+    sheet.getRange(1,1,1,3).setBackground('#6A1B9A').setFontColor('#FFFFFF').setFontWeight('bold');
+    sheet.setColumnWidth(1,120); sheet.setColumnWidth(2,200); sheet.setColumnWidth(3,600);
+  }
   var last = sheet.getLastRow();
   if (last >= 2) sheet.getRange(2, 1, last - 1, 3).clearContent();
-
   (data.hypotheses || []).slice(0, 10).forEach(function(h, i) {
     var combined = [
       'Заход: ' + h.hook, '',
@@ -1106,6 +1238,8 @@ function writeLaunchSheet_(data) {
     sheet.getRange(row, 1).setValue(h.segment_name || 'Сегмент ' + h.segment_id);
     sheet.getRange(row, 2).setValue(h.segment_description);
     sheet.getRange(row, 3).setValue(combined);
+    sheet.getRange(row, 1, 1, 3).setWrap(true).setVerticalAlignment('top');
+    sheet.setRowHeight(row, 200);
   });
 }
 
@@ -1116,11 +1250,11 @@ function resetChecklist_() {
   var last = sheet.getLastRow();
   if (last > 7) sheet.deleteRows(8, last - 7);
   sheet.getRange(2, 1, 6, 3).setValues([
-    [1, 'Читаем настройки (API-ключи, ID папки)',          '⬜ Ожидание'],
+    [1, 'Читаем настройки (API-ключи, источники)',          '⬜ Ожидание'],
     [2, 'Читаем файлы (текст + Gemini для медиа)',          '⬜ Ожидание'],
-    [3, 'Запрос 1 (Groq): анализ продукта и ЦА',           '⬜ Ожидание'],
-    [4, 'Запрос 2 (Groq): генерация 15 заходов',            '⬜ Ожидание'],
-    [5, 'Запрос 3 (Groq): отбор 10 лучших заходов',         '⬜ Ожидание'],
+    [3, 'Запрос 1: анализ продукта и ЦА',                  '⬜ Ожидание'],
+    [4, 'Генерация 15 заходов (по выбранным моделям)',      '⬜ Ожидание'],
+    [5, 'Отбор 10 лучших (по выбранным моделям)',           '⬜ Ожидание'],
     [6, 'Финал',                                            '⬜ Ожидание']
   ]);
   sheet.getRange(2, 3, 6, 1).setBackground('#F5F5F5').setFontColor('#888888');
@@ -1154,8 +1288,6 @@ function initSheets() {
   createSettingsSheet_(ss);
   createChecklistSheet_(ss);
   createAnalysisSheet_(ss);
-  createAllHypothesesSheet_(ss);
-  createLaunchSheet_(ss);
   SpreadsheetApp.getUi().alert('Готово',
     'Шаблон создан.\n\nЗаполните лист «Настройки»:\n' +
     '• B2 — API-ключ Groq (основной LLM)\n' +
@@ -1163,8 +1295,9 @@ function initSheets() {
     '• B4 — API-ключ Gemini (для PDF, фото, видео)\n' +
     '• B9 — API-ключ Cerebras (резервный LLM)\n' +
     '• B10 — API-ключ Mistral (резервный LLM)\n' +
-    '• B11 — API-ключ kie.ai (платный, для теста видео)\n\n' +
-    'Нужен хотя бы один LLM-ключ (B2, B9 или B10).',
+    '• B11 — API-ключ kie.ai (Claude, GPT-5, Gemini Pro)\n\n' +
+    'Листы гипотез создаются автоматически при запуске анализа\n' +
+    '(по одной паре «Гипотезы / Лучшие» на каждую выбранную модель).',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
@@ -1173,45 +1306,65 @@ function createSettingsSheet_(ss) {
   if (!sheet) sheet = ss.insertSheet(SETTINGS_SHEET);
   sheet.clearContents();
 
-  sheet.getRange(1, 1, 13, 2).setValues([
+  // Строки 1-12: основные настройки
+  sheet.getRange(1, 1, 12, 2).setValues([
     ['Параметр',                                    'Значение'],
-    ['API-ключ Groq (основной)',                     ''],
+    ['API-ключ Groq (основной LLM)',                 ''],
     ['Источники (по одному в строке Alt+Enter)',     ''],
     ['API-ключ Gemini (для PDF/фото/видео)',         ''],
     ['Чёрный список папок (через запятую)',          ''],
     ['Белый список папок (через запятую)',           ''],
     ['Макс. фото из одной папки',                    10],
     ['Переходить по ссылкам из таблиц (да / нет)',  'да'],
-    ['API-ключ Cerebras (резервный)',                ''],
-    ['API-ключ Mistral (резервный)',                 ''],
-    ['API-ключ kie.ai (Gemini 2.5 Flash, платный)', ''],
+    ['API-ключ Cerebras (резервный LLM)',            ''],
+    ['API-ключ Mistral (резервный LLM)',             ''],
+    ['API-ключ kie.ai (все платные модели)',         ''],
     ['Последний файл для теста kie.ai (ID)',         ''],
-    ['',                                             '']
   ]);
-
-  sheet.getRange(1, 1, 1, 2).setBackground('#4A90D9').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.getRange(2, 1, 12, 1).setFontWeight('bold');
-  // B3 — многострочная ячейка для источников
+  sheet.getRange(1, 1, 1, 3).setBackground('#4A90D9').setFontColor('#FFFFFF').setFontWeight('bold');
+  sheet.getRange(2, 1, 11, 1).setFontWeight('bold');
   sheet.getRange(3, 2).setWrap(true);
   sheet.setRowHeight(3, 100);
-  sheet.setColumnWidth(1, 290);
-  sheet.setColumnWidth(2, 460);
+  sheet.setColumnWidth(1, 280);
+  sheet.setColumnWidth(2, 380);
+  sheet.setColumnWidth(3, 200);
 
-  sheet.getRange(12, 1).setValue('Подсказки:').setFontWeight('bold');
+  // Строка 13: заголовок секции моделей
+  sheet.getRange(13, 1).setValue('▼ Модели для гипотез (шаги 4–5)');
+  sheet.getRange(13, 2).setValue('Вкл?');
+  sheet.getRange(13, 3).setValue('Стоимость / запуск');
+  sheet.getRange(13, 1, 1, 3).setBackground('#37474F').setFontColor('#FFFFFF').setFontWeight('bold');
+
+  // Строки MODEL_ROW_START+: чекбоксы моделей
+  MODEL_CATALOG.forEach(function(m, i) {
+    var row = MODEL_ROW_START + i;
+    sheet.getRange(row, 1).setValue(m.label).setFontWeight('bold');
+    sheet.getRange(row, 2).insertCheckboxes().setValue(i === 0); // Gemini 2.5 Flash включён по умолчанию
+    sheet.getRange(row, 3).setValue(m.hint).setFontColor('#888888').setFontStyle('italic');
+    // kie.ai — голубоватый фон, бесплатные — зеленоватый
+    var bg = m.provider === 'kieai'
+      ? (i % 2 === 0 ? '#E3F2FD' : '#BBDEFB')
+      : (i % 2 === 0 ? '#E8F5E9' : '#C8E6C9');
+    sheet.getRange(row, 1, 1, 3).setBackground(bg);
+  });
+
+  // Подсказки — ниже моделей
+  var hintsRow = MODEL_ROW_START + MODEL_CATALOG.length + 1;
+  sheet.getRange(hintsRow, 1).setValue('Подсказки:').setFontWeight('bold');
   [
-    ['Groq:',     'console.groq.com → API Keys → Create API Key  (бесплатно 100k токенов/день)'],
-    ['Cerebras:', 'cloud.cerebras.ai → API Keys  (бесплатно, быстрый)'],
-    ['Mistral:',  'console.mistral.ai → API Keys  (бесплатно)'],
-    ['Gemini:',   'aistudio.google.com → Get API Key  (для PDF, фото, видео)'],
-    ['kie.ai:',   'kie.ai → платный прокси Gemini 2.5 Flash, один ключ на все инструменты'],
-    ['Источники:', 'URL папки Drive, ссылка на Google Doc, внешний сайт — по одному на строку'],
-    ['Чёрный список:', 'Фото спикера, Архив, Личное  (папки, которые НЕ читать)'],
+    ['Groq:',         'console.groq.com → API Keys  (бесплатно 100k токенов/день)'],
+    ['Cerebras:',     'cloud.cerebras.ai → API Keys  (бесплатно, быстрый)'],
+    ['Mistral:',      'console.mistral.ai → API Keys  (бесплатно)'],
+    ['Gemini:',       'aistudio.google.com → Get API Key  (для PDF, фото, видео)'],
+    ['kie.ai:',       'kie.ai → один ключ для всех платных моделей (Claude, GPT-5, Gemini Pro)'],
+    ['Источники:',    'URL папки Drive, ссылка на Google Doc, внешний сайт — по одному на строку'],
+    ['Чёрный список:','Фото спикера, Архив, Личное  (папки, которые НЕ читать)'],
     ['Белый список:', 'Кастдевы, Посадочные  (если пусто — читать все папки)'],
-    ['Макс. фото:', 'По умолчанию 10. Защита от папок с фотосессиями спикера.'],
-    ['Ссылки:', 'да — скрипт читает Google Docs/Sheets/сайты из ячеек таблиц']
+    ['Макс. фото:',   'По умолчанию 10. Защита от папок с фотосессиями спикера.'],
+    ['Ссылки:',       'да — скрипт читает Google Docs/Sheets/сайты из ячеек таблиц']
   ].forEach(function(row, i) {
-    sheet.getRange(13 + i, 1).setValue(row[0]).setFontColor('#888888').setFontStyle('italic');
-    sheet.getRange(13 + i, 2).setValue(row[1]).setFontColor('#888888').setFontStyle('italic');
+    sheet.getRange(hintsRow + 1 + i, 1).setValue(row[0]).setFontColor('#888888').setFontStyle('italic');
+    sheet.getRange(hintsRow + 1 + i, 2).setValue(row[1]).setFontColor('#888888').setFontStyle('italic');
   });
 }
 
@@ -1222,12 +1375,12 @@ function createChecklistSheet_(ss) {
   sheet.getRange(1, 1, 1, 3).setValues([['№ шага', 'Описание', 'Статус']]);
   sheet.getRange(1, 1, 1, 3).setBackground('#37474F').setFontColor('#FFFFFF').setFontWeight('bold');
   sheet.getRange(2, 1, 6, 3).setValues([
-    [1, 'Читаем настройки (API-ключи, ID папки)',         '⬜ Ожидание'],
+    [1, 'Читаем настройки (API-ключи, источники)',         '⬜ Ожидание'],
     [2, 'Читаем файлы (текст + Gemini для медиа)',         '⬜ Ожидание'],
-    [3, 'Запрос 1 (Groq): анализ продукта и ЦА',          '⬜ Ожидание'],
-    [4, 'Запрос 2 (Groq): генерация 15 заходов',           '⬜ Ожидание'],
-    [5, 'Запрос 3 (Groq): отбор 10 лучших заходов',        '⬜ Ожидание'],
-    [6, 'Финал',                                           '⬜ Ожидание']
+    [3, 'Запрос 1: анализ продукта и ЦА',                 '⬜ Ожидание'],
+    [4, 'Генерация 15 заходов (по выбранным моделям)',     '⬜ Ожидание'],
+    [5, 'Отбор 10 лучших (по выбранным моделям)',          '⬜ Ожидание'],
+    [6, 'Финал',                                          '⬜ Ожидание']
   ]);
   sheet.getRange(2, 3, 6, 1).setBackground('#F5F5F5').setFontColor('#888888');
   sheet.getRange(2, 1, 6, 3).setWrap(true).setVerticalAlignment('top');
@@ -1256,23 +1409,3 @@ function createAnalysisSheet_(ss) {
   sheet.getRange(5,1,3,9).setWrap(true);
 }
 
-function createAllHypothesesSheet_(ss) {
-  var sheet = ss.getSheetByName(ALL_HYPO_SHEET);
-  if (!sheet) sheet = ss.insertSheet(ALL_HYPO_SHEET);
-  sheet.clearContents();
-  var h = ['Сегмент','Описание сегмента','Заход / Хук','Ключевое сообщение','Структура и содержание','Эмоции и триггеры','Идеи заголовков'];
-  sheet.getRange(1,1,1,h.length).setValues([h]);
-  sheet.getRange(1,1,1,h.length).setBackground('#E65100').setFontColor('#FFFFFF').setFontWeight('bold');
-  for (var i = 2; i <= 16; i++) { sheet.setRowHeight(i, 110); sheet.getRange(i,1,1,7).setWrap(true); }
-  [100,160,260,200,230,190,210].forEach(function(w,i) { sheet.setColumnWidth(i+1, w); });
-}
-
-function createLaunchSheet_(ss) {
-  var sheet = ss.getSheetByName(LAUNCH_SHEET);
-  if (!sheet) sheet = ss.insertSheet(LAUNCH_SHEET);
-  sheet.clearContents();
-  sheet.getRange(1,1,1,3).setValues([['Сегмент ЦА','Описание сегмента','Промо-гипотеза']]);
-  sheet.getRange(1,1,1,3).setBackground('#6A1B9A').setFontColor('#FFFFFF').setFontWeight('bold');
-  for (var i = 2; i <= 11; i++) { sheet.setRowHeight(i, 200); sheet.getRange(i,3).setWrap(true); }
-  sheet.setColumnWidth(1,120); sheet.setColumnWidth(2,200); sheet.setColumnWidth(3,600);
-}
