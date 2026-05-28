@@ -1,6 +1,7 @@
 // ============================================================
 //  Автоматизация маркетингового анализа
-//  Groq (анализ) + Gemini (PDF, фото, видео, аудио)
+//  LLM-пул: Groq → Cerebras → Mistral (авто-переключение при 429)
+//  Gemini (PDF, фото, видео, аудио)
 // ============================================================
 
 var SETTINGS_SHEET  = 'Настройки';
@@ -9,8 +10,12 @@ var ALL_HYPO_SHEET  = 'Все гипотезы (15)';
 var LAUNCH_SHEET    = 'Подготовка к запуску';
 var CHECKLIST_SHEET = 'Чеклист';
 
-var GROQ_API_URL    = 'https://api.groq.com/openai/v1/chat/completions';
-var GROQ_MODEL      = 'llama-3.3-70b-versatile';
+// Пул LLM-провайдеров — используются по порядку, переключение при 429
+var LLM_PROVIDERS = [
+  { name: 'Groq',     url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile', keyProp: 'groqKey',     pauseMs: 62000 },
+  { name: 'Cerebras', url: 'https://api.cerebras.ai/v1/chat/completions',        model: 'llama-3.3-70b',           keyProp: 'cerebrasKey', pauseMs: 5000  },
+  { name: 'Mistral',  url: 'https://api.mistral.ai/v1/chat/completions',         model: 'mistral-small-latest',    keyProp: 'mistralKey',  pauseMs: 5000  }
+];
 
 var GEMINI_API_URL    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 var GEMINI_UPLOAD_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
@@ -50,9 +55,12 @@ function runMarketingAnalysis() {
     // Шаг 1 — настройки
     Logger.log('=== [1/6] Настройки ===');
     var settings = readSettings_();
-    if (!settings.groqKey)  { ui.alert('Ошибка', 'Нет API-ключа Groq (ячейка B2)',  ui.ButtonSet.OK); return; }
+    var hasLlm = settings.groqKey || settings.cerebrasKey || settings.mistralKey;
+    if (!hasLlm) { ui.alert('Ошибка', 'Не указан ни один LLM-ключ (Groq B2, Cerebras B9, Mistral B10)', ui.ButtonSet.OK); return; }
     if (!settings.sources || settings.sources.length === 0) { ui.alert('Ошибка', 'Не указан ни один источник (ячейка B3)', ui.ButtonSet.OK); return; }
-    updateChecklist_(1, '✅ Настройки прочитаны' + (settings.geminiKey ? ' (Gemini ✓)' : ' (Gemini — нет ключа)'));
+    var llmInfo = ['Groq','Cerebras','Mistral'].filter(function(n) { return settings[n.toLowerCase()+'Key'] || (n==='Groq'&&settings.groqKey); }).join('+');
+    var llmKeys = LLM_PROVIDERS.filter(function(p){return !!settings[p.keyProp];}).map(function(p){return p.name;});
+    updateChecklist_(1, '✅ Настройки прочитаны | LLM: ' + (llmKeys.join(', ')||'—') + (settings.geminiKey ? ' | Gemini ✓' : ''));
 
     // Шаг 2 — сбор файлов
     Logger.log('=== [2/6] Читаем файлы ===');
@@ -85,29 +93,32 @@ function runMarketingAnalysis() {
     updateChecklist_(2, statusMsg);
 
     // Шаг 3 — анализ продукта и ЦА
+    var exhausted = {}; // провайдеры, исчерпавшие лимит
     Logger.log('=== [3/6] Запрос 1 — Анализ ===');
-    updateChecklist_(3, '⏳ Groq: анализ продукта и ЦА...');
-    var analysisJson = callGroqApi_(settings.groqKey, buildPrompt1_(context));
-    writeAnalysisSheet_(analysisJson);
-    updateChecklist_(3, '✅ Анализ записан в лист «Анализ»');
+    updateChecklist_(3, '⏳ LLM: анализ продукта и ЦА...');
+    var r1 = callLlmApi_(settings, buildPrompt1_(context), 4096, exhausted);
+    writeAnalysisSheet_(r1.result);
+    updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ']');
 
     // Шаг 4 — 15 заходов
-    Logger.log('Пауза 62 сек...'); updateChecklist_(4, '⏳ Пауза 62 сек (лимит Groq)...');
-    Utilities.sleep(62000);
+    var pause4 = r1.provider === 'Groq' ? 62000 : 5000;
+    updateChecklist_(4, '⏳ Пауза ' + (pause4/1000) + ' сек (' + r1.provider + ')...');
+    Utilities.sleep(pause4);
     Logger.log('=== [4/6] Запрос 2 — 15 заходов ===');
-    updateChecklist_(4, '⏳ Groq: генерация 15 заходов...');
-    var allHypo = callGroqApi_(settings.groqKey, buildPrompt2a_(analysisJson));
-    writeAllHypothesesSheet_(allHypo);
-    updateChecklist_(4, '✅ ' + (allHypo.hypotheses||[]).length + ' заходов → лист «Все гипотезы (15)»');
+    updateChecklist_(4, '⏳ LLM: генерация 15 заходов...');
+    var r2 = callLlmApi_(settings, buildPrompt2a_(r1.result), 4096, exhausted);
+    writeAllHypothesesSheet_(r2.result);
+    updateChecklist_(4, '✅ ' + (r2.result.hypotheses||[]).length + ' заходов → лист «Все гипотезы (15)» [' + r2.provider + ']');
 
     // Шаг 5 — отбор 10 лучших
-    Logger.log('Пауза 62 сек...'); updateChecklist_(5, '⏳ Пауза 62 сек (лимит Groq)...');
-    Utilities.sleep(62000);
+    var pause5 = r2.provider === 'Groq' ? 62000 : 5000;
+    updateChecklist_(5, '⏳ Пауза ' + (pause5/1000) + ' сек (' + r2.provider + ')...');
+    Utilities.sleep(pause5);
     Logger.log('=== [5/6] Запрос 3 — Топ 10 ===');
-    updateChecklist_(5, '⏳ Groq: отбор 10 лучших заходов...');
-    var top10 = callGroqApi_(settings.groqKey, buildPrompt2b_(allHypo), 3500);
-    writeLaunchSheet_(top10);
-    updateChecklist_(5, '✅ 10 лучших → лист «Подготовка к запуску»');
+    updateChecklist_(5, '⏳ LLM: отбор 10 лучших заходов...');
+    var r3 = callLlmApi_(settings, buildPrompt2b_(r2.result), 3500, exhausted);
+    writeLaunchSheet_(r3.result);
+    updateChecklist_(5, '✅ 10 лучших → лист «Подготовка к запуску» [' + r3.provider + ']');
 
     updateChecklist_(6, '✅ Готово! Анализ завершён успешно.');
     ui.alert('Успех',
@@ -144,7 +155,9 @@ function readSettings_() {
     blacklist:          parseNameList_(sheet.getRange('B5').getValue()),
     whitelist:          parseNameList_(sheet.getRange('B6').getValue()),
     maxImagesPerFolder: isNaN(maxImg) || maxImg <= 0 ? 10 : maxImg,
-    followLinks:        followLinks !== 'нет' && followLinks !== 'no' && followLinks !== 'false'
+    followLinks:        followLinks !== 'нет' && followLinks !== 'no' && followLinks !== 'false',
+    cerebrasKey:        (sheet.getRange('B9').getValue() + '').trim(),
+    mistralKey:         (sheet.getRange('B10').getValue() + '').trim()
   };
 }
 
@@ -734,54 +747,59 @@ function stripHtml_(html) {
 }
 
 // ─── Запрос к Groq API ────────────────────────────────────────
-function callGroqApi_(apiKey, messages, maxTokens) {
-  var payload = JSON.stringify({
-    model: GROQ_MODEL,
-    messages: messages,
-    response_format: { type: 'json_object' },
-    temperature: 0.7,
-    max_tokens: maxTokens || 4096
-  });
+// ─── Вызов LLM с автофallback Groq → Cerebras → Mistral ──────
+function callLlmApi_(settings, messages, maxTokens, exhausted) {
+  var tried = [];
+  for (var i = 0; i < LLM_PROVIDERS.length; i++) {
+    var p   = LLM_PROVIDERS[i];
+    var key = settings[p.keyProp];
+    if (!key)               continue; // ключ не настроен
+    if (exhausted[p.name])  continue; // уже исчерпан
 
-  var opts = {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { Authorization: 'Bearer ' + apiKey },
-    payload: payload,
-    muteHttpExceptions: true
-  };
+    Logger.log('🤖 ' + p.name + ': запрос...');
+    tried.push(p.name);
 
-  // До 3 попыток при 429 — ждём столько, сколько говорит Groq + 5 сек запаса
-  for (var attempt = 0; attempt < 3; attempt++) {
-    var response = UrlFetchApp.fetch(GROQ_API_URL, opts);
+    var payload = JSON.stringify({
+      model:           p.model,
+      messages:        messages,
+      response_format: { type: 'json_object' },
+      temperature:     0.7,
+      max_tokens:      maxTokens || 4096
+    });
+
+    var response = UrlFetchApp.fetch(p.url, {
+      method:      'post',
+      contentType: 'application/json',
+      headers:     { Authorization: 'Bearer ' + key },
+      payload:     payload,
+      muteHttpExceptions: true
+    });
+
     var code = response.getResponseCode();
     var body = response.getContentText();
 
     if (code === 200) {
-      return JSON.parse(JSON.parse(body).choices[0].message.content);
+      return { result: JSON.parse(JSON.parse(body).choices[0].message.content), provider: p.name };
     }
 
-    if (code === 429) {
-      var waitSec = 62; // дефолт — полная минута
-      try {
-        var msg = JSON.parse(body).error.message || '';
-        var m = msg.match(/try again in\s+([\d.]+)s/i);
-        if (m) waitSec = Math.ceil(parseFloat(m[1])) + 5;
-      } catch (_) {}
-      if (attempt < 2) {
-        Logger.log('Groq 429 — ждём ' + waitSec + ' сек (попытка ' + (attempt + 1) + ')');
-        Utilities.sleep(waitSec * 1000);
-        continue;
-      }
+    if (code === 429 || code === 503) {
+      var limitMsg = '';
+      try { limitMsg = JSON.parse(body).error.message || ''; } catch (_) {}
+      Logger.log('⚠️ ' + p.name + ' лимит (HTTP ' + code + '): ' + limitMsg.substring(0, 120));
+      exhausted[p.name] = true;
+      continue; // немедленно пробуем следующий провайдер
     }
 
-    var errMsg = 'Groq API вернул ошибку ' + code;
-    try {
-      var e = JSON.parse(body);
-      if (e.error && e.error.message) errMsg += ':\n' + e.error.message;
-    } catch (_) {}
+    // Прочие ошибки — бросаем исключение
+    var errMsg = p.name + ' API вернул ошибку ' + code;
+    try { var ep = JSON.parse(body); if (ep.error && ep.error.message) errMsg += ':\n' + ep.error.message; } catch (_) {}
     throw new Error(errMsg);
   }
+
+  // Все провайдеры исчерпаны или не настроены
+  var configured = LLM_PROVIDERS.filter(function(p) { return !!settings[p.keyProp]; }).map(function(p) { return p.name; });
+  if (configured.length === 0) throw new Error('Не настроен ни один LLM-ключ. Добавьте Groq (B2), Cerebras (B9) или Mistral (B10).');
+  throw new Error('Все LLM-провайдеры исчерпали лимиты: ' + configured.join(', ') + '.\nПодождите до следующего дня (UTC) или добавьте ключи оставшихся провайдеров.');
 }
 
 // ─── Промпт 1: анализ продукта и ЦА ─────────────────────────
@@ -1024,12 +1042,12 @@ function initSheets() {
   createLaunchSheet_(ss);
   SpreadsheetApp.getUi().alert('Готово',
     'Шаблон создан.\n\nЗаполните лист «Настройки»:\n' +
-    '• B2 — API-ключ Groq (обязательно)\n' +
-    '• B3 — ID папки Google Drive (обязательно)\n' +
+    '• B2 — API-ключ Groq (основной LLM)\n' +
+    '• B3 — Источники: папки Drive, ссылки, сайты\n' +
     '• B4 — API-ключ Gemini (для PDF, фото, видео)\n' +
-    '• B5 — Чёрный список папок (необязательно)\n' +
-    '• B6 — Белый список папок (необязательно)\n' +
-    '• B7 — Макс. фото из одной папки (по умолчанию 10)',
+    '• B9 — API-ключ Cerebras (резервный LLM)\n' +
+    '• B10 — API-ключ Mistral (резервный LLM)\n\n' +
+    'Нужен хотя бы один LLM-ключ (B2, B9 или B10).',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
@@ -1038,38 +1056,42 @@ function createSettingsSheet_(ss) {
   if (!sheet) sheet = ss.insertSheet(SETTINGS_SHEET);
   sheet.clearContents();
 
-  sheet.getRange(1, 1, 9, 2).setValues([
+  sheet.getRange(1, 1, 11, 2).setValues([
     ['Параметр',                                    'Значение'],
-    ['API-ключ Groq',                                ''],
+    ['API-ключ Groq (основной)',                     ''],
     ['Источники (по одному в строке Alt+Enter)',     ''],
     ['API-ключ Gemini (для PDF/фото/видео)',         ''],
     ['Чёрный список папок (через запятую)',          ''],
     ['Белый список папок (через запятую)',           ''],
     ['Макс. фото из одной папки',                    10],
     ['Переходить по ссылкам из таблиц (да / нет)',  'да'],
+    ['API-ключ Cerebras (резервный)',                ''],
+    ['API-ключ Mistral (резервный)',                 ''],
     ['',                                             '']
   ]);
 
   sheet.getRange(1, 1, 1, 2).setBackground('#4A90D9').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.getRange(2, 1, 7, 1).setFontWeight('bold');
+  sheet.getRange(2, 1, 10, 1).setFontWeight('bold');
   // B3 — многострочная ячейка для источников
   sheet.getRange(3, 2).setWrap(true);
   sheet.setRowHeight(3, 100);
   sheet.setColumnWidth(1, 290);
   sheet.setColumnWidth(2, 460);
 
-  sheet.getRange(10, 1).setValue('Подсказки:').setFontWeight('bold');
+  sheet.getRange(12, 1).setValue('Подсказки:').setFontWeight('bold');
   [
-    ['Groq API-ключ:', 'console.groq.com → API Keys → Create API Key'],
-    ['Gemini API-ключ:', 'aistudio.google.com → Get API Key (бесплатно)'],
-    ['ID папки Drive:', 'URL папки: .../folders/ВОТ_ЭТО_ID'],
+    ['Groq:',     'console.groq.com → API Keys → Create API Key  (бесплатно 100k токенов/день)'],
+    ['Cerebras:', 'cloud.cerebras.ai → API Keys  (бесплатно, быстрый)'],
+    ['Mistral:',  'console.mistral.ai → API Keys  (бесплатно)'],
+    ['Gemini:',   'aistudio.google.com → Get API Key  (для PDF, фото, видео)'],
+    ['Источники:', 'URL папки Drive, ссылка на Google Doc, внешний сайт — по одному на строку'],
     ['Чёрный список:', 'Фото спикера, Архив, Личное  (папки, которые НЕ читать)'],
     ['Белый список:', 'Кастдевы, Посадочные  (если пусто — читать все папки)'],
     ['Макс. фото:', 'По умолчанию 10. Защита от папок с фотосессиями спикера.'],
     ['Ссылки:', 'да — скрипт читает Google Docs/Sheets/сайты из ячеек таблиц']
   ].forEach(function(row, i) {
-    sheet.getRange(11 + i, 1).setValue(row[0]).setFontColor('#888888').setFontStyle('italic');
-    sheet.getRange(11 + i, 2).setValue(row[1]).setFontColor('#888888').setFontStyle('italic');
+    sheet.getRange(13 + i, 1).setValue(row[0]).setFontColor('#888888').setFontStyle('italic');
+    sheet.getRange(13 + i, 2).setValue(row[1]).setFontColor('#888888').setFontStyle('italic');
   });
 }
 
