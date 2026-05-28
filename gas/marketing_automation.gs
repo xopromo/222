@@ -1015,6 +1015,17 @@ function callModelApi_(settings, model, messages, maxTokens) {
     });
     var code = response.getResponseCode();
     var body = response.getContentText();
+    // Retry один раз при 500 (временная ошибка сервера)
+    if (code === 500) {
+      Utilities.sleep(5000);
+      var retry = UrlFetchApp.fetch(model.url, {
+        method: 'post', contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + key },
+        payload: payload, muteHttpExceptions: true
+      });
+      code = retry.getResponseCode();
+      body = retry.getContentText();
+    }
 
     if (code === 200) {
       var parsed;
@@ -1093,9 +1104,14 @@ function callModelApi_(settings, model, messages, maxTokens) {
   throw new Error(err2);
 }
 
-// Убирает markdown-обёртку ```json ... ``` если модель вернула её вместо чистого JSON
+// Извлекает JSON из ответа модели: убирает ```json...``` и любой текст до/после блока
 function stripJsonMarkdown_(text) {
-  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+  var t = text.trim();
+  // Есть markdown-блок где угодно в тексте — берём его содержимое
+  var match = t.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (match) return match[1].trim();
+  // Нет блока — возвращаем как есть
+  return t;
 }
 
 // ─── Дополнительная строка в чеклист (для прогресса по моделям) ─
