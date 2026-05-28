@@ -86,14 +86,80 @@ var GEMINI_MIMES = {
 function onOpen() {
   SpreadsheetApp.getActiveSpreadsheet()
     .addMenu('Автоматизация маркетинга', [
-      { name: 'Запустить анализ проекта',        functionName: 'runMarketingAnalysis' },
-      { name: '─────────────────',               functionName: 'noop' },
-      { name: 'Тест: распознать одно видео',     functionName: 'testKieAiVideo' },
-      { name: '· · · · · · · · ·',              functionName: 'noop' },
-      { name: 'Создать шаблон листов',           functionName: 'initSheets' }
+      { name: 'Запустить анализ проекта',               functionName: 'runMarketingAnalysis' },
+      { name: '─────────────────',                      functionName: 'noop' },
+      { name: '📦 Сжать контекст и сохранить в кэш',   functionName: 'runCompressOnly' },
+      { name: '─────────────────',                      functionName: 'noop' },
+      { name: 'Тест: распознать одно видео',            functionName: 'testKieAiVideo' },
+      { name: '· · · · · · · · ·',                     functionName: 'noop' },
+      { name: 'Создать шаблон листов',                  functionName: 'initSheets' }
     ]);
 }
 function noop() {}
+
+// ─── Только сжатие контекста → кэш (для больших папок > 4M символов) ─
+function runCompressOnly() {
+  var ui = SpreadsheetApp.getUi();
+  try {
+    var settings = readSettings_();
+    if (!settings.sources || settings.sources.length === 0) {
+      ui.alert('Ошибка', 'Не указан ни один источник (B3)', ui.ButtonSet.OK); return;
+    }
+    if (!settings.geminiKey) {
+      ui.alert('Ошибка', 'Не указан ключ Gemini (B4) — он нужен для сжатия', ui.ButtonSet.OK); return;
+    }
+
+    var ss       = SpreadsheetApp.getActiveSpreadsheet();
+    var cacheKey = computeCacheKey_(settings);
+
+    // Проверяем — вдруг кэш уже есть
+    if (loadContextCache_(ss, cacheKey)) {
+      var ans = ui.alert('Кэш уже существует',
+        'Лист «Кэш» уже содержит сжатый контекст для текущих источников.\nПересжать заново?',
+        ui.ButtonSet.YES_NO);
+      if (ans !== ui.Button.YES) return;
+    }
+
+    ui.alert('Запуск сжатия',
+      'Скрипт прочитает все файлы и сожмёт их через Gemini.\n' +
+      'Для больших папок (4M+ символов) это занимает 4–6 минут.\n\n' +
+      'Закройте это окно и не закрывайте браузер до завершения.',
+      ui.ButtonSet.OK);
+
+    Logger.log('=== Компрессия контекста ===');
+    var sheet = ss.getSheetByName(CHECKLIST_SHEET);
+    function log_(msg) {
+      if (sheet) { sheet.getRange(8, 3).setValue(msg); SpreadsheetApp.flush(); }
+      Logger.log(msg);
+    }
+
+    log_('⏳ Читаем файлы...');
+    var result = collectDriveContext_(settings);
+    var context = result.context;
+    if (!context || !context.trim()) {
+      ui.alert('Ошибка', 'Нет читаемых файлов.', ui.ButtonSet.OK); return;
+    }
+    log_('✅ Файлов: ' + result.filesRead + ' | ' + Math.round(context.length / 1000) + 'k симв. Запускаем Gemini...');
+
+    var nChunks = Math.ceil(context.length / 3000000);
+    log_('⏳ Gemini: сжимаем (' + nChunks + ' запрос(а))...');
+    var compressed = compressContextWithGemini_(context, settings.geminiKey, settings.kieaiKey);
+
+    saveContextCache_(ss, cacheKey, compressed);
+    log_('✅ Кэш сохранён: ' + Math.round(compressed.length / 1000) + 'k симв. Теперь запускайте «Запустить анализ проекта».');
+
+    ui.alert('Готово',
+      'Контекст сжат и сохранён в лист «Кэш».\n\n' +
+      'Исходный: ' + Math.round(context.length / 1000) + 'k симв.\n' +
+      'Сжатый: ' + Math.round(compressed.length / 1000) + 'k симв.\n\n' +
+      'Теперь запускайте «Запустить анализ проекта» — шаг 2 будет мгновенным.',
+      ui.ButtonSet.OK);
+
+  } catch (e) {
+    Logger.log('ОШИБКА компрессии: ' + e.message);
+    ui.alert('Ошибка сжатия', e.message, ui.ButtonSet.OK);
+  }
+}
 
 // ─── Тест: одно видео через kie.ai ───────────────────────────
 function testKieAiVideo() {
@@ -1250,11 +1316,21 @@ function compressContextWithGemini_(fullContext, geminiKey, kieaiKey) {
     var code = resp.getResponseCode();
     if (code === 200) {
       var pf = JSON.parse(resp.getContentText());
-      var text = pf.candidates[0].content.parts[0].text;
       var um = pf.usageMetadata || {};
       recordCost_('Сжатие контекста', 'Gemini (free)', 'gemini-free', um.promptTokenCount || 0, um.candidatesTokenCount || 0);
-      summaries.push('[Экстракт ' + (c + 1) + '/' + parts.length + ']\n' + text);
-      Logger.log('  ✅ ' + text.length + ' симв.');
+      var cand = pf.candidates && pf.candidates[0];
+      var text = (cand && cand.content && cand.content.parts && cand.content.parts[0])
+        ? cand.content.parts[0].text
+        : null;
+      if (!text) {
+        // Gemini заблокировал ответ (safety filter) — берём обрезку
+        Logger.log('  ⚠️ Gemini вернул пустой ответ для части ' + (c + 1) + ' (блокировка или пустой контент)');
+        summaries.push('[Часть ' + (c + 1) + ' — пропущена Gemini]\n' + parts[c].substring(0, 15000));
+      } else {
+        summaries.push('[Экстракт ' + (c + 1) + '/' + parts.length + ']\n' + text);
+        Logger.log('  ✅ ' + text.length + ' симв.');
+      }
+    // code === 200 закрыт выше
     } else if ((code === 429 || code === 503) && kieaiKey) {
       // Фоллбэк на kie.ai Gemini 2.5 Flash при исчерпании бесплатного лимита
       Logger.log('  ⚠️ Gemini free ' + code + ' — пробуем kie.ai Gemini 2.5 Flash...');
