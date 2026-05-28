@@ -211,15 +211,22 @@ function runMarketingAnalysis() {
     if (skipped.length)  statusMsg += '\n\n⚠️ Пропущено (Gemini недоступен): ' + skipped.join(', ');
     if (!geminiOk && settings.geminiKey) statusMsg += '\n⚠️ Gemini лимит исчерпан — медиафайлы пропущены';
 
-    // Обрезаем контекст до лимита Groq (~128k токенов ≈ 380k символов)
+    // Сжимаем контекст если он больше лимита Groq (~40k символов)
     var MAX_CONTEXT = 40000;
     if (context.length > MAX_CONTEXT) {
-      // Обрезаем по границе последнего документа, чтобы не резать на полуслове
-      var trimmed = context.substring(0, MAX_CONTEXT);
-      var lastBoundary = trimmed.lastIndexOf('\n--- ');
-      if (lastBoundary > MAX_CONTEXT * 0.7) trimmed = trimmed.substring(0, lastBoundary);
-      context = trimmed + '\n\n[⚠️ Контекст обрезан: использовано ' + context.length + ' символов из ' + MAX_CONTEXT + ' допустимых]';
-      statusMsg += '\n\n⚠️ Контекст обрезан до ' + MAX_CONTEXT + ' символов (лимит Groq 128k токенов). Исходный размер: ' + result.context.length;
+      if (settings.geminiKey) {
+        var nChunks = Math.ceil(context.length / 3000000);
+        updateChecklist_(2, statusMsg + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — извлекаем ключевое через Gemini (' + nChunks + ' запр.)...');
+        context = compressContextWithGemini_(context, settings.geminiKey);
+        statusMsg += '\n\n✅ Gemini сжал контекст до ' + Math.round(context.length / 1000) + 'k симв. (исходный: ' + Math.round(result.context.length / 1000) + 'k)';
+      } else {
+        // Нет Gemini — обрезаем, но предупреждаем
+        var trimmed = context.substring(0, MAX_CONTEXT);
+        var lastBoundary = trimmed.lastIndexOf('\n--- ');
+        if (lastBoundary > MAX_CONTEXT * 0.7) trimmed = trimmed.substring(0, lastBoundary);
+        context = trimmed + '\n\n[⚠️ Контекст обрезан]';
+        statusMsg += '\n\n⚠️ Контекст обрезан до ' + MAX_CONTEXT + ' символов — добавьте ключ Gemini (B4) для полного анализа всех ' + Math.round(result.context.length / 1000) + 'k симв.';
+      }
     }
 
     updateChecklist_(2, statusMsg);
@@ -1103,6 +1110,62 @@ function callModelApi_(settings, model, messages, maxTokens) {
   var err2 = model.label + ' HTTP ' + code2;
   try { var ep2 = JSON.parse(body2); if (ep2.error && ep2.error.message) err2 += ': ' + ep2.error.message; } catch (_) {}
   throw new Error(err2);
+}
+
+// ─── Сжатие большого контекста через Gemini ──────────────────
+// Gemini принимает до ~4M символов; мы бьём на куски по 3M и просим извлечь маркетинг-суть
+function compressContextWithGemini_(fullContext, geminiKey) {
+  var CHUNK_SIZE = 3000000;
+  var parts = [];
+  for (var i = 0; i < fullContext.length; i += CHUNK_SIZE) {
+    parts.push(fullContext.substring(i, i + CHUNK_SIZE));
+  }
+  Logger.log('🔍 Gemini сжимает контекст: ' + parts.length + ' части(ей), ' + Math.round(fullContext.length / 1000) + 'k симв.');
+
+  var summaries = [];
+  for (var c = 0; c < parts.length; c++) {
+    if (c > 0) Utilities.sleep(5000);
+    Logger.log('  Часть ' + (c + 1) + '/' + parts.length + ' (' + Math.round(parts[c].length / 1000) + 'k симв.)...');
+
+    var prompt = [
+      'Ты — ассистент маркетолога. Из этих материалов проекта извлеки и структурируй ВСЁ важное:',
+      '',
+      '1. ПРОДУКТ: название (дословно), оффер с посадочной, формат, цена, преимущества, методика, результаты',
+      '2. ЦЕЛЕВАЯ АУДИТОРИЯ: боли с цитатами, потребности языком ЦА, возражения, описания сегментов',
+      '3. СПИКЕР: имя, опыт (лет), достижения, регалии, цифры',
+      '4. КАСТДЕВЫ И ИНТЕРВЬЮ: ключевые цитаты клиентов, инсайты, боли их словами',
+      '5. КЕЙСЫ: конкретные результаты учеников с цифрами',
+      '6. ПРОЧЕЕ: уникальные смыслы, формулировки с лендинга, конкурентные преимущества',
+      '',
+      'Пиши плотно — каждое слово должно нести смысл. Сохрани цитаты, цифры, названия.',
+      'Часть ' + (c + 1) + ' из ' + parts.length + ':',
+      '',
+      parts[c]
+    ].join('\n');
+
+    var resp = UrlFetchApp.fetch(GEMINI_API_URL + '?key=' + geminiKey, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+      }),
+      muteHttpExceptions: true,
+      deadline: 120
+    });
+
+    var code = resp.getResponseCode();
+    if (code === 200) {
+      var text = JSON.parse(resp.getContentText()).candidates[0].content.parts[0].text;
+      summaries.push('[Экстракт ' + (c + 1) + '/' + parts.length + ']\n' + text);
+      Logger.log('  ✅ ' + text.length + ' симв.');
+    } else {
+      Logger.log('  ❌ Gemini ' + code + ': ' + resp.getContentText().substring(0, 150));
+      summaries.push('[Часть ' + (c + 1) + ' — обрезано]\n' + parts[c].substring(0, 15000));
+    }
+  }
+
+  return summaries.join('\n\n');
 }
 
 // Извлекает JSON из ответа модели: ищет первую { и последнюю }, отбрасывая всё вокруг
