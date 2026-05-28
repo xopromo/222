@@ -50,18 +50,26 @@ function noop() {}
 
 // ─── Тест: одно видео через kie.ai ───────────────────────────
 function testKieAiVideo() {
-  var ui = SpreadsheetApp.getUi();
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ui    = SpreadsheetApp.getUi();
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var props = PropertiesService.getUserProperties();
 
-  var keyResp = ui.prompt('Тест kie.ai', 'Вставь API-ключ kie.ai:', ui.ButtonSet.OK_CANCEL);
+  var savedKey    = props.getProperty('kieAiKey')    || '';
+  var savedFileId = props.getProperty('kieAiFileId') || '';
+
+  var keyPrompt = 'Вставь API-ключ kie.ai:' + (savedKey ? '\n\n(последний: ' + savedKey.substring(0, 8) + '... — оставь пустым, чтобы использовать его)' : '');
+  var keyResp = ui.prompt('Тест kie.ai', keyPrompt, ui.ButtonSet.OK_CANCEL);
   if (keyResp.getSelectedButton() !== ui.Button.OK) return;
-  var kieKey = keyResp.getResponseText().trim();
+  var kieKey = keyResp.getResponseText().trim() || savedKey;
   if (!kieKey) { ui.alert('Ключ не введён'); return; }
+  props.setProperty('kieAiKey', kieKey);
 
-  var idResp = ui.prompt('Тест kie.ai', 'Вставь ID видеофайла из Google Drive:', ui.ButtonSet.OK_CANCEL);
+  var idPrompt = 'Вставь ID или ссылку на видеофайл из Google Drive:' + (savedFileId ? '\n\n(последний: ' + savedFileId + ' — оставь пустым, чтобы использовать его)' : '');
+  var idResp = ui.prompt('Тест kie.ai', idPrompt, ui.ButtonSet.OK_CANCEL);
   if (idResp.getSelectedButton() !== ui.Button.OK) return;
-  var fileId = idResp.getResponseText().trim().replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, '$1');
+  var fileId = (idResp.getResponseText().trim() || savedFileId).replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, '$1');
   if (!fileId) { ui.alert('ID не введён'); return; }
+  props.setProperty('kieAiFileId', fileId);
 
   // Пишем логи в Чеклист (строки 9+)
   var logSheet = ss.getSheetByName(CHECKLIST_SHEET);
