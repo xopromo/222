@@ -1021,7 +1021,7 @@ function callModelApi_(settings, model, messages, maxTokens) {
     var response = UrlFetchApp.fetch(model.url, {
       method: 'post', contentType: 'application/json',
       headers: { Authorization: 'Bearer ' + key },
-      payload: payload, muteHttpExceptions: true
+      payload: payload, muteHttpExceptions: true, deadline: 55
     });
     var code = response.getResponseCode();
     var body = response.getContentText();
