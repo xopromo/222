@@ -991,7 +991,8 @@ function callModelApi_(settings, model, messages, maxTokens) {
     var code = response.getResponseCode();
     var body = response.getContentText();
     if (code === 200) {
-      return JSON.parse(JSON.parse(body).choices[0].message.content);
+      var content = JSON.parse(body).choices[0].message.content;
+      return JSON.parse(stripJsonMarkdown_(content));
     }
     var errMsg = 'kie.ai [' + model.label + '] HTTP ' + code;
     try { var ep = JSON.parse(body); if (ep.error && ep.error.message) errMsg += ': ' + ep.error.message; } catch (_) {}
@@ -1018,10 +1019,15 @@ function callModelApi_(settings, model, messages, maxTokens) {
   });
   var code2 = resp2.getResponseCode();
   var body2 = resp2.getContentText();
-  if (code2 === 200) return JSON.parse(JSON.parse(body2).choices[0].message.content);
+  if (code2 === 200) return JSON.parse(stripJsonMarkdown_(JSON.parse(body2).choices[0].message.content));
   var err2 = model.label + ' HTTP ' + code2;
   try { var ep2 = JSON.parse(body2); if (ep2.error && ep2.error.message) err2 += ': ' + ep2.error.message; } catch (_) {}
   throw new Error(err2);
+}
+
+// Убирает markdown-обёртку ```json ... ``` если модель вернула её вместо чистого JSON
+function stripJsonMarkdown_(text) {
+  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 }
 
 // ─── Дополнительная строка в чеклист (для прогресса по моделям) ─
