@@ -42,7 +42,7 @@ function onOpen() {
       { name: 'Запустить анализ проекта',        functionName: 'runMarketingAnalysis' },
       { name: '─────────────────',               functionName: 'noop' },
       { name: 'Тест: распознать одно видео',     functionName: 'testKieAiVideo' },
-      { name: '─────────────────',               functionName: 'noop' },
+      { name: '· · · · · · · · ·',              functionName: 'noop' },
       { name: 'Создать шаблон листов',           functionName: 'initSheets' }
     ]);
 }
