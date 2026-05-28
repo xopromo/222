@@ -1015,17 +1015,6 @@ function callModelApi_(settings, model, messages, maxTokens) {
     });
     var code = response.getResponseCode();
     var body = response.getContentText();
-    // Retry один раз при 500 (временная ошибка сервера)
-    if (code === 500) {
-      Utilities.sleep(5000);
-      var retry = UrlFetchApp.fetch(model.url, {
-        method: 'post', contentType: 'application/json',
-        headers: { Authorization: 'Bearer ' + key },
-        payload: payload, muteHttpExceptions: true
-      });
-      code = retry.getResponseCode();
-      body = retry.getContentText();
-    }
 
     if (code === 200) {
       var parsed;
