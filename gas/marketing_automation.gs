@@ -51,86 +51,100 @@ function noop() {}
 // ─── Тест: одно видео через kie.ai ───────────────────────────
 function testKieAiVideo() {
   var ui = SpreadsheetApp.getUi();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Запрашиваем ключ и ID файла
   var keyResp = ui.prompt('Тест kie.ai', 'Вставь API-ключ kie.ai:', ui.ButtonSet.OK_CANCEL);
   if (keyResp.getSelectedButton() !== ui.Button.OK) return;
   var kieKey = keyResp.getResponseText().trim();
   if (!kieKey) { ui.alert('Ключ не введён'); return; }
 
-  var idResp = ui.prompt('Тест kie.ai', 'Вставь ID файла видео из Google Drive\n(часть URL после /d/ ):', ui.ButtonSet.OK_CANCEL);
+  var idResp = ui.prompt('Тест kie.ai', 'Вставь ID видеофайла из Google Drive:', ui.ButtonSet.OK_CANCEL);
   if (idResp.getSelectedButton() !== ui.Button.OK) return;
-  var fileId = idResp.getResponseText().trim();
+  var fileId = idResp.getResponseText().trim().replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, '$1');
   if (!fileId) { ui.alert('ID не введён'); return; }
 
-  try {
-    ui.alert('Начинаем...', 'Загружаем файл из Drive и отправляем в kie.ai.\nЭто займёт 10–60 сек.', ui.ButtonSet.OK);
+  // Пишем логи в Чеклист (строки 9+)
+  var logSheet = ss.getSheetByName(CHECKLIST_SHEET);
+  if (!logSheet) { ui.alert('Сначала создай шаблон листов'); return; }
+  var lastRow = logSheet.getLastRow();
+  if (lastRow >= 9) logSheet.deleteRows(9, lastRow - 8);
+  logSheet.getRange(9, 1, 1, 3).setValues([['-', '── Тест kie.ai ──', '']]);
+  logSheet.getRange(9, 1, 1, 3).setBackground('#263238').setFontColor('#ECEFF1').setFontWeight('bold');
 
+  function log_(msg, ok) {
+    var r = logSheet.getLastRow() + 1;
+    logSheet.getRange(r, 1, 1, 3).setValues([['-', 'Тест', msg]]);
+    var bg = ok === true ? '#C8E6C9' : ok === false ? '#FFCDD2' : '#FFF9C4';
+    var fc = ok === true ? '#1B5E20' : ok === false ? '#B71C1C' : '#333333';
+    logSheet.getRange(r, 2, 1, 2).setBackground(bg).setFontColor(fc).setWrap(true);
+    logSheet.setRowHeight(r, 36);
+    SpreadsheetApp.flush();
+  }
+
+  try {
+    log_('⏳ Получаем информацию о файле...');
     var file     = DriveApp.getFileById(fileId);
     var fileName = file.getName();
     var mimeType = file.getMimeType();
-    var blob     = file.getBlob();
-    var bytes    = blob.getBytes();
-    var sizeMb   = (bytes.length / 1024 / 1024).toFixed(1);
+    var fileSize = file.getSize();
+    var sizeMb   = (fileSize / 1024 / 1024).toFixed(1);
+    log_('📁 ' + fileName + '  |  ' + sizeMb + ' МБ  |  ' + mimeType, true);
 
-    Logger.log('Файл: ' + fileName + ' | ' + mimeType + ' | ' + sizeMb + ' МБ');
+    if (fileSize > 40 * 1024 * 1024) {
+      log_('❌ Файл ' + sizeMb + ' МБ — слишком большой для GAS (лимит 6 мин).\nРешение: сделайте файл публичным ("Все, у кого есть ссылка") и вставьте прямую ссылку вместо ID.', false);
+      ui.alert('Файл слишком большой (' + sizeMb + ' МБ)', 'GAS не успевает загрузить его за 6 минут.\n\nРешение:\n1. Поделитесь файлом → "Все, у кого есть ссылка"\n2. Повторите тест, вставив полную ссылку вместо ID', ui.ButtonSet.OK);
+      return;
+    }
 
-    var base64 = Utilities.base64Encode(bytes);
+    log_('⏳ Загружаем файл из Drive (' + sizeMb + ' МБ)...');
+    var bytes  = file.getBlob().getBytes();
+    log_('⏳ Кодируем в base64...');
+    var base64  = Utilities.base64Encode(bytes);
     var dataUrl = 'data:' + mimeType + ';base64,' + base64;
+    log_('✅ Готово. Размер запроса: ' + (dataUrl.length / 1024 / 1024).toFixed(1) + ' МБ. Отправляем в kie.ai...', true);
 
     var payload = JSON.stringify({
       model: 'gemini-2.5-flash',
       stream: false,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image_url', image_url: { url: dataUrl } },
-          { type: 'text',      text: 'Транскрибируй это видео полностью. Если есть речь — запиши дословно. Имя файла: ' + fileName }
-        ]
-      }]
+      messages: [{ role: 'user', content: [
+        { type: 'image_url', image_url: { url: dataUrl } },
+        { type: 'text', text: 'Транскрибируй это видео полностью. Если есть речь — запиши дословно. Имя файла: ' + fileName }
+      ]}]
     });
 
     var response = UrlFetchApp.fetch('https://api.kie.ai/gemini-2.5-flash/v1/chat/completions', {
-      method: 'post',
-      contentType: 'application/json',
+      method: 'post', contentType: 'application/json',
       headers: { Authorization: 'Bearer ' + kieKey },
-      payload: payload,
-      muteHttpExceptions: true
+      payload: payload, muteHttpExceptions: true
     });
 
     var code = response.getResponseCode();
     var body = response.getContentText();
-    Logger.log('HTTP ' + code + ': ' + body.substring(0, 500));
 
     if (code !== 200) {
-      ui.alert('Ошибка HTTP ' + code, body.substring(0, 600), ui.ButtonSet.OK);
+      log_('❌ HTTP ' + code + ': ' + body.substring(0, 300), false);
+      ui.alert('Ошибка HTTP ' + code, body.substring(0, 500), ui.ButtonSet.OK);
       return;
     }
 
-    var parsed       = JSON.parse(body);
-    var text         = parsed.choices[0].message.content || '(пусто)';
-    var usage        = parsed.usage || {};
-    var tokensIn     = usage.prompt_tokens     || 0;
-    var tokensOut    = usage.completion_tokens  || 0;
-    var tokensTotal  = usage.total_tokens       || (tokensIn + tokensOut);
+    var parsed     = JSON.parse(body);
+    var text       = parsed.choices[0].message.content || '(пусто)';
+    var usage      = parsed.usage || {};
+    var tokensIn   = usage.prompt_tokens    || 0;
+    var tokensOut  = usage.completion_tokens || 0;
+    var tokensTotal = usage.total_tokens    || (tokensIn + tokensOut);
+    var preview    = text.substring(0, 300);
 
-    var preview = text.substring(0, 400) + (text.length > 400 ? '...' : '');
+    log_('✅ Ответ получен!', true);
+    log_('📊 Токены: вход ' + tokensIn + '  |  выход ' + tokensOut + '  |  итого ' + tokensTotal, true);
+    log_('📝 Транскрипция:\n«' + preview + (text.length > 300 ? '...»' : '»'), true);
+    log_('💡 Стоимость: kie.ai → Usage', true);
 
-    ui.alert(
-      '✅ Результат теста',
-      'Файл: ' + fileName + ' (' + sizeMb + ' МБ)\n\n' +
-      '📊 Токены:\n' +
-      '  • Входные (видео+промпт): ' + tokensIn + '\n' +
-      '  • Выходные (транскрипция): ' + tokensOut + '\n' +
-      '  • Итого: ' + tokensTotal + '\n\n' +
-      '📝 Первые 400 символов транскрипции:\n' + preview + '\n\n' +
-      '💡 Стоимость: смотри в личном кабинете kie.ai → Usage',
-      ui.ButtonSet.OK
-    );
+    ui.alert('✅ Тест завершён! Смотри логи в листе «Чеклист» (строки ниже шага 6).');
 
   } catch (e) {
+    log_('❌ Ошибка: ' + e.message, false);
     ui.alert('Ошибка', e.message, ui.ButtonSet.OK);
-    Logger.log('Ошибка теста: ' + e.message);
   }
 }
 
