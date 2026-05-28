@@ -52,28 +52,29 @@ function noop() {}
 function testKieAiVideo() {
   var ui    = SpreadsheetApp.getUi();
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var props = PropertiesService.getUserProperties();
+  var settingsSheet = ss.getSheetByName(SETTINGS_SHEET);
+  if (!settingsSheet) { ui.alert('Сначала создай шаблон листов'); return; }
 
-  var savedKey    = props.getProperty('kieAiKey')    || '';
-  var savedFileId = props.getProperty('kieAiFileId') || '';
+  var savedKey    = (settingsSheet.getRange('B11').getValue() + '').trim();
+  var savedFileId = (settingsSheet.getRange('B12').getValue() + '').trim();
 
   var keyPrompt = savedKey
-    ? 'Сохранённый ключ:\n' + savedKey + '\n\nВведи новый ключ или оставь поле пустым, чтобы использовать сохранённый:'
-    : 'Вставь API-ключ kie.ai:';
+    ? 'Сохранённый ключ (ячейка B11 листа «Настройки»):\n' + savedKey + '\n\nВведи новый ключ или оставь поле пустым, чтобы использовать сохранённый:'
+    : 'Вставь API-ключ kie.ai (сохранится в B11 листа «Настройки»):';
   var keyResp = ui.prompt('Тест kie.ai — ключ', keyPrompt, ui.ButtonSet.OK_CANCEL);
   if (keyResp.getSelectedButton() !== ui.Button.OK) return;
   var kieKey = keyResp.getResponseText().trim() || savedKey;
   if (!kieKey) { ui.alert('Ключ не введён'); return; }
-  props.setProperty('kieAiKey', kieKey);
+  settingsSheet.getRange('B11').setValue(kieKey);
 
   var idPrompt = savedFileId
-    ? 'Сохранённый файл:\n' + savedFileId + '\n\nВведи новый ID/ссылку или оставь поле пустым, чтобы использовать сохранённый:'
-    : 'Вставь ID или ссылку на видеофайл из Google Drive:';
+    ? 'Сохранённый файл (ячейка B12 листа «Настройки»):\n' + savedFileId + '\n\nВведи новый ID/ссылку или оставь поле пустым, чтобы использовать сохранённый:'
+    : 'Вставь ID или ссылку на видеофайл из Google Drive (сохранится в B12):';
   var idResp = ui.prompt('Тест kie.ai — файл', idPrompt, ui.ButtonSet.OK_CANCEL);
   if (idResp.getSelectedButton() !== ui.Button.OK) return;
   var fileId = (idResp.getResponseText().trim() || savedFileId).replace(/.*\/d\/([a-zA-Z0-9_-]+).*/, '$1');
   if (!fileId) { ui.alert('ID не введён'); return; }
-  props.setProperty('kieAiFileId', fileId);
+  settingsSheet.getRange('B12').setValue(fileId);
 
   // Пишем логи в Чеклист (строки 9+)
   var logSheet = ss.getSheetByName(CHECKLIST_SHEET);
@@ -1161,7 +1162,8 @@ function initSheets() {
     '• B3 — Источники: папки Drive, ссылки, сайты\n' +
     '• B4 — API-ключ Gemini (для PDF, фото, видео)\n' +
     '• B9 — API-ключ Cerebras (резервный LLM)\n' +
-    '• B10 — API-ключ Mistral (резервный LLM)\n\n' +
+    '• B10 — API-ключ Mistral (резервный LLM)\n' +
+    '• B11 — API-ключ kie.ai (платный, для теста видео)\n\n' +
     'Нужен хотя бы один LLM-ключ (B2, B9 или B10).',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
@@ -1171,7 +1173,7 @@ function createSettingsSheet_(ss) {
   if (!sheet) sheet = ss.insertSheet(SETTINGS_SHEET);
   sheet.clearContents();
 
-  sheet.getRange(1, 1, 11, 2).setValues([
+  sheet.getRange(1, 1, 13, 2).setValues([
     ['Параметр',                                    'Значение'],
     ['API-ключ Groq (основной)',                     ''],
     ['Источники (по одному в строке Alt+Enter)',     ''],
@@ -1182,11 +1184,13 @@ function createSettingsSheet_(ss) {
     ['Переходить по ссылкам из таблиц (да / нет)',  'да'],
     ['API-ключ Cerebras (резервный)',                ''],
     ['API-ключ Mistral (резервный)',                 ''],
+    ['API-ключ kie.ai (Gemini 2.5 Flash, платный)', ''],
+    ['Последний файл для теста kie.ai (ID)',         ''],
     ['',                                             '']
   ]);
 
   sheet.getRange(1, 1, 1, 2).setBackground('#4A90D9').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.getRange(2, 1, 10, 1).setFontWeight('bold');
+  sheet.getRange(2, 1, 12, 1).setFontWeight('bold');
   // B3 — многострочная ячейка для источников
   sheet.getRange(3, 2).setWrap(true);
   sheet.setRowHeight(3, 100);
@@ -1199,6 +1203,7 @@ function createSettingsSheet_(ss) {
     ['Cerebras:', 'cloud.cerebras.ai → API Keys  (бесплатно, быстрый)'],
     ['Mistral:',  'console.mistral.ai → API Keys  (бесплатно)'],
     ['Gemini:',   'aistudio.google.com → Get API Key  (для PDF, фото, видео)'],
+    ['kie.ai:',   'kie.ai → платный прокси Gemini 2.5 Flash, один ключ на все инструменты'],
     ['Источники:', 'URL папки Drive, ссылка на Google Doc, внешний сайт — по одному на строку'],
     ['Чёрный список:', 'Фото спикера, Архив, Личное  (папки, которые НЕ читать)'],
     ['Белый список:', 'Кастдевы, Посадочные  (если пусто — читать все папки)'],
