@@ -782,10 +782,11 @@ function callLlmApi_(settings, messages, maxTokens, exhausted) {
       return { result: JSON.parse(JSON.parse(body).choices[0].message.content), provider: p.name };
     }
 
-    if (code === 429 || code === 503) {
+    if (code === 429 || code === 503 || code === 413) {
       var limitMsg = '';
       try { limitMsg = JSON.parse(body).error.message || ''; } catch (_) {}
-      Logger.log('⚠️ ' + p.name + ' лимит (HTTP ' + code + '): ' + limitMsg.substring(0, 120));
+      var reason = code === 413 ? 'запрос слишком большой' : 'лимит';
+      Logger.log('⚠️ ' + p.name + ' ' + reason + ' (HTTP ' + code + '): ' + limitMsg.substring(0, 120));
       exhausted[p.name] = true;
       continue; // немедленно пробуем следующий провайдер
     }
