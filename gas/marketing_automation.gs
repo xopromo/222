@@ -214,18 +214,24 @@ function runMarketingAnalysis() {
     // Сжимаем контекст если он больше лимита Groq (~40k символов)
     var MAX_CONTEXT = 40000;
     if (context.length > MAX_CONTEXT) {
-      if (settings.geminiKey) {
+      var cacheKey = computeCacheKey_(settings);
+      var cached   = loadContextCache_(SpreadsheetApp.getActiveSpreadsheet(), cacheKey);
+
+      if (cached) {
+        context = cached;
+        statusMsg += '\n\n📦 Использован кэш (лист «Кэш»): ' + Math.round(context.length / 1000) + 'k симв. Удалите лист «Кэш» для принудительного пересжатия.';
+      } else if (settings.geminiKey) {
         var nChunks = Math.ceil(context.length / 3000000);
-        updateChecklist_(2, statusMsg + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — извлекаем ключевое через Gemini (' + nChunks + ' запр.)...');
+        updateChecklist_(2, statusMsg + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — сжимаем через Gemini (' + nChunks + ' запр.)...');
         context = compressContextWithGemini_(context, settings.geminiKey);
-        statusMsg += '\n\n✅ Gemini сжал контекст до ' + Math.round(context.length / 1000) + 'k симв. (исходный: ' + Math.round(result.context.length / 1000) + 'k)';
+        saveContextCache_(SpreadsheetApp.getActiveSpreadsheet(), cacheKey, context);
+        statusMsg += '\n\n✅ Gemini сжал контекст до ' + Math.round(context.length / 1000) + 'k симв. и сохранил в кэш (лист «Кэш»). Повторные запуски бесплатны.';
       } else {
-        // Нет Gemini — обрезаем, но предупреждаем
         var trimmed = context.substring(0, MAX_CONTEXT);
         var lastBoundary = trimmed.lastIndexOf('\n--- ');
         if (lastBoundary > MAX_CONTEXT * 0.7) trimmed = trimmed.substring(0, lastBoundary);
         context = trimmed + '\n\n[⚠️ Контекст обрезан]';
-        statusMsg += '\n\n⚠️ Контекст обрезан до ' + MAX_CONTEXT + ' символов — добавьте ключ Gemini (B4) для полного анализа всех ' + Math.round(result.context.length / 1000) + 'k симв.';
+        statusMsg += '\n\n⚠️ Контекст обрезан — добавьте ключ Gemini (B4) для полного анализа всех ' + Math.round(result.context.length / 1000) + 'k симв.';
       }
     }
 
@@ -1110,6 +1116,45 @@ function callModelApi_(settings, model, messages, maxTokens) {
   var err2 = model.label + ' HTTP ' + code2;
   try { var ep2 = JSON.parse(body2); if (ep2.error && ep2.error.message) err2 += ': ' + ep2.error.message; } catch (_) {}
   throw new Error(err2);
+}
+
+// ─── Кэш сжатого контекста (лист «Кэш» в той же таблице) ─────
+// Ключ = MD5 от списка источников (B3). Изменились источники → новый ключ → пересборка.
+// Для ручного сброса — просто удалите лист «Кэш».
+
+function computeCacheKey_(settings) {
+  var data  = settings.sources.slice().sort().join('|');
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, data);
+  return bytes.map(function(b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('').substring(0, 16);
+}
+
+function loadContextCache_(ss, key) {
+  var sheet = ss.getSheetByName('Кэш');
+  if (!sheet) return null;
+  if ((sheet.getRange(1, 1).getValue() + '').trim() !== key) return null;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  var text = values.map(function(r) { return r[0] + ''; }).join('');
+  return text || null;
+}
+
+function saveContextCache_(ss, key, context) {
+  var sheet = ss.getSheetByName('Кэш');
+  if (!sheet) { sheet = ss.insertSheet('Кэш'); sheet.hideSheet(); }
+  sheet.clearContents();
+  // Строка 1: мета-данные
+  sheet.getRange(1, 1).setValue(key);
+  sheet.getRange(1, 2).setValue(new Date().toISOString());
+  sheet.getRange(1, 3).setValue(Math.round(context.length / 1000) + 'k симв.');
+  // Строки 2+: контекст кусками по 45k символов (лимит ячейки Google Sheets — 50k)
+  var CHUNK = 45000;
+  var row   = 2;
+  for (var i = 0; i < context.length; i += CHUNK) {
+    sheet.getRange(row++, 1).setValue(context.substring(i, i + CHUNK));
+  }
+  SpreadsheetApp.flush();
+  Logger.log('💾 Кэш сохранён: ' + Math.round(context.length / 1000) + 'k симв., ' + (row - 2) + ' строк');
 }
 
 // ─── Сжатие большого контекста через Gemini ──────────────────
