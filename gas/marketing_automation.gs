@@ -70,6 +70,18 @@ function runMarketingAnalysis() {
     }
     if (skipped.length)  statusMsg += '\n\n⚠️ Пропущено (Gemini недоступен): ' + skipped.join(', ');
     if (!geminiOk && settings.geminiKey) statusMsg += '\n⚠️ Gemini лимит исчерпан — медиафайлы пропущены';
+
+    // Обрезаем контекст до лимита Groq (~128k токенов ≈ 380k символов)
+    var MAX_CONTEXT = 380000;
+    if (context.length > MAX_CONTEXT) {
+      // Обрезаем по границе последнего документа, чтобы не резать на полуслове
+      var trimmed = context.substring(0, MAX_CONTEXT);
+      var lastBoundary = trimmed.lastIndexOf('\n--- ');
+      if (lastBoundary > MAX_CONTEXT * 0.7) trimmed = trimmed.substring(0, lastBoundary);
+      context = trimmed + '\n\n[⚠️ Контекст обрезан: использовано ' + context.length + ' символов из ' + MAX_CONTEXT + ' допустимых]';
+      statusMsg += '\n\n⚠️ Контекст обрезан до ' + MAX_CONTEXT + ' символов (лимит Groq 128k токенов). Исходный размер: ' + result.context.length;
+    }
+
     updateChecklist_(2, statusMsg);
 
     // Шаг 3 — анализ продукта и ЦА
