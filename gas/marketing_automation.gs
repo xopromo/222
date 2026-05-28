@@ -255,7 +255,7 @@ function runMarketingAnalysis() {
         if (mi > 0) Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
 
         updateChecklist_(4, '⏳ [' + (mi+1) + '/' + models.length + '] ' + mLabel + ': генерация 15 заходов...');
-        var r2 = callModelApi_(settings, model, buildPrompt2a_(r1.result), 8192);
+        var r2 = callModelApi_(settings, model, buildPrompt2a_(r1.result), 5500);
         writeHypothesesSheet_(hypoSheet, r2, ss);
 
         var pause45 = model.provider === 'groq' ? 62000 : 3000;
@@ -1201,8 +1201,8 @@ function buildPrompt2a_(analysisData) {
     'Разные механики: боль, выгода, закрытие возражения, эмоция, кейс, провокация.',
     'Каждый заход должен вызывать желание дочитать пост до конца.',
     '',
-    'Каждое поле — отдельная колонка таблицы. Заполни каждое поле отдельно.',
-    'Верни ТОЛЬКО валидный JSON (15 объектов):',
+    'ВАЖНО: каждое поле — кратко и ёмко, не более 2-3 предложений.',
+    'Верни ТОЛЬКО валидный JSON (15 объектов), без текста до или после:',
     JSON.stringify({ hypotheses: [{
       segment_id: 1, segment_name: 'Сегмент 1', segment_description: '...',
       hook: 'Текст захода — первый цепляющий абзац',
