@@ -568,6 +568,14 @@ function processFolder_(folder, settings, state, depth) {
         }
         imageCount++;
       }
+      // Лимит видео/аудио на всю сессию (защита от перерасхода Gemini)
+      if (geminiType === 'video' || geminiType === 'audio') {
+        if ((state.videoCount || 0) >= (settings.maxVideosTotal || 10)) {
+          Logger.log(indent + '🚫 Лимит видео/аудио (' + (settings.maxVideosTotal || 10) + '): ' + fname);
+          continue;
+        }
+        state.videoCount = (state.videoCount || 0) + 1;
+      }
 
       if (!state.geminiAvailable) {
         Logger.log(indent + '⚠️ Gemini недоступен, пропуск: ' + fname);
@@ -613,6 +621,7 @@ function processFolder_(folder, settings, state, depth) {
       continue;
     }
 
+    if (depth >= 5) { Logger.log(indent2 + '⚠️ Макс. глубина папок (5), пропускаем: ' + subName); continue; }
     var subParts = processFolder_(sub, settings, state, depth + 1);
     parts = parts.concat(subParts);
   }
@@ -804,13 +813,14 @@ function followLinksInSheet_(fileId, settings, state) {
       });
     });
 
-    // Дедупликация
+    // Дедупликация + лимит ссылок из одной таблицы
+    var MAX_LINKS = 20;
     var unique = [];
     urls.forEach(function(url) {
-      // Очищаем мусорные символы в конце URL
       url = url.replace(/[.,;:!?]+$/, '');
-      if (!seen[url]) { seen[url] = true; unique.push(url); }
+      if (!seen[url] && unique.length < MAX_LINKS) { seen[url] = true; unique.push(url); }
     });
+    if (urls.length > MAX_LINKS) Logger.log('    ⚠️ Ограничение: взято ' + MAX_LINKS + ' из ' + urls.length + ' ссылок');
 
     Logger.log('    Найдено ссылок в таблице: ' + unique.length);
 
