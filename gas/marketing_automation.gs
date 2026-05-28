@@ -72,7 +72,7 @@ function runMarketingAnalysis() {
     if (!geminiOk && settings.geminiKey) statusMsg += '\n⚠️ Gemini лимит исчерпан — медиафайлы пропущены';
 
     // Обрезаем контекст до лимита Groq (~128k токенов ≈ 380k символов)
-    var MAX_CONTEXT = 120000;
+    var MAX_CONTEXT = 40000;
     if (context.length > MAX_CONTEXT) {
       // Обрезаем по границе последнего документа, чтобы не резать на полуслове
       var trimmed = context.substring(0, MAX_CONTEXT);
