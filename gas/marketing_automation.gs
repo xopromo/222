@@ -1001,8 +1001,8 @@ function callModelApi_(settings, model, messages, maxTokens) {
       var parsed;
       try { parsed = JSON.parse(body); } catch (_) { throw new Error('kie.ai [' + model.label + ']: невалидный ответ: ' + body.substring(0, 200)); }
       if (!parsed.choices || !parsed.choices[0]) {
-        var hint = parsed.error ? parsed.error.message || JSON.stringify(parsed.error) : body.substring(0, 200);
-        throw new Error('kie.ai [' + model.label + ']: нет choices в ответе: ' + hint);
+        var hint = parsed.msg || (parsed.error && (parsed.error.message || JSON.stringify(parsed.error))) || body.substring(0, 200);
+        throw new Error('kie.ai [' + model.label + ']: ' + hint);
       }
       var content = parsed.choices[0].message.content;
       var clean = stripJsonMarkdown_(content);
