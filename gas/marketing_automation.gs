@@ -226,7 +226,7 @@ function runMarketingAnalysis() {
     var exhausted = {}; // провайдеры, исчерпавшие лимит
     Logger.log('=== [3/6] Запрос 1 — Анализ ===');
     updateChecklist_(3, '⏳ LLM: анализ продукта и ЦА...');
-    var r1 = callLlmApi_(settings, buildPrompt1_(context), 4096, exhausted);
+    var r1 = callLlmApi_(settings, buildPrompt1_(context), 8192, exhausted);
     writeAnalysisSheet_(r1.result);
     updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ']');
 
@@ -947,7 +947,14 @@ function callLlmApi_(settings, messages, maxTokens, exhausted) {
     var body = response.getContentText();
 
     if (code === 200) {
-      return { result: JSON.parse(JSON.parse(body).choices[0].message.content), provider: p.name };
+      try {
+        var content = JSON.parse(body).choices[0].message.content;
+        return { result: JSON.parse(stripJsonMarkdown_(content)), provider: p.name };
+      } catch (parseErr) {
+        Logger.log('⚠️ ' + p.name + ' JSON обрезан или невалиден: ' + parseErr.message);
+        exhausted[p.name] = true;
+        continue;
+      }
     }
 
     if (code === 429 || code === 503 || code === 413 || code === 404) {
