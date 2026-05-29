@@ -1466,6 +1466,10 @@ function compressContextWithGemini_(fullContext, geminiKey, kieaiKey) {
 // Извлекает JSON из ответа модели: ищет первую { и последнюю }, отбрасывая всё вокруг
 function stripJsonMarkdown_(text) {
   var t = text.trim();
+  // Сначала извлекаем содержимое блока ```json ... ``` (или ``` ... ```)
+  var fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) t = fence[1].trim();
+  // Затем ищем первый { до последнего }
   var start = t.indexOf('{');
   var end   = t.lastIndexOf('}');
   if (start !== -1 && end !== -1 && end > start) return t.substring(start, end + 1);
@@ -1563,7 +1567,13 @@ function buildPrompt2a_(analysisData) {
     'Каждый заход должен вызывать желание дочитать пост до конца.',
     '',
     'ВАЖНО: каждое поле — кратко и ёмко, не более 2-3 предложений.',
-    'Верни ТОЛЬКО валидный JSON (15 объектов), без текста до или после:',
+    '',
+    '⚠️ КРИТИЧЕСКИ ВАЖНО: твой ответ должен быть ТОЛЬКО валидным JSON.',
+    'НЕ пиши вступление, анализ, объяснения, markdown или любой текст вне JSON.',
+    'Первый символ ответа = {',
+    'Последний символ ответа = }',
+    '',
+    'Формат (15 объектов):',
     JSON.stringify({ hypotheses: [{
       segment_id: 1, segment_name: 'Сегмент 1', segment_description: '...',
       hook: 'Текст захода — первый цепляющий абзац',
