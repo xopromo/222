@@ -85,7 +85,7 @@ var GEMINI_MIMES = {
 
 // ─── Автоперезапуск: константы ───────────────────────────────
 var STATE_KEY_    = 'MKT_STATE';
-var ANALYSIS_KEY_ = 'MKT_ANALYSIS';
+var STATE_SHEET_  = 'МктСтейт'; // скрытый лист для хранения прогресса
 var MAX_CYCLES_   = 10;      // защита от бесконечного цикла
 var MAX_RUN_MS_   = 270000;  // 4 мин 30 сек — порог для сохранения прогресса
 
@@ -448,8 +448,7 @@ function _phaseCompress_(state, settings) {
 
 // ─── Фаза анализа: шаги 3-5 с автоперезапуском ───────────────
 function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleCount) {
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var props = PropertiesService.getScriptProperties();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   var context = loadContextCache_(ss, cacheKey);
   if (!context) {
@@ -459,16 +458,16 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
   }
 
   // Шаг 3 — анализ продукта (если ещё не выполнен)
-  var analysisStr = props.getProperty(ANALYSIS_KEY_);
+  var savedAnalysis = _loadAnalysis_();
   var analysisData;
 
-  if (!analysisStr) {
+  if (!savedAnalysis) {
     updateChecklist_(3, '⏳ LLM: анализ продукта и ЦА...');
     var r1 = callLlmApi_(settings, buildPrompt1_(context), 8192, exhausted);
     writeAnalysisSheet_(r1.result);
     analysisData = r1.result;
     updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ']');
-    try { props.setProperty(ANALYSIS_KEY_, JSON.stringify(analysisData)); } catch (_) {}
+    _saveAnalysis_(analysisData);
 
     if (timeIsLow_()) {
       _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
@@ -476,11 +475,7 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
       return;
     }
   } else {
-    try { analysisData = JSON.parse(analysisStr); } catch (e) {
-      _clearState_();
-      updateChecklist_(0, '❌ Ошибка восстановления анализа: ' + e.message);
-      return;
-    }
+    analysisData = savedAnalysis;
   }
 
   // Шаги 4-5 — цикл по выбранным моделям
@@ -526,7 +521,6 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
 
   // Всё готово
   _clearState_();
-  props.deleteProperty(ANALYSIS_KEY_);
 
   var doneCount = models.filter(function(m) { return completedModelIds.indexOf(m.id) >= 0; }).length;
   if (doneCount === 0) {
@@ -1910,19 +1904,50 @@ function createChecklistSheet_(ss) {
 
 // ─── State machine: вспомогательные функции ───────────────────
 
+function _getStateSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(STATE_SHEET_);
+  if (!sheet) { sheet = ss.insertSheet(STATE_SHEET_); sheet.hideSheet(); }
+  return sheet;
+}
+
 function _saveState_(obj) {
-  PropertiesService.getScriptProperties().setProperty(STATE_KEY_, JSON.stringify(obj));
+  _getStateSheet_().getRange('A1').setValue(JSON.stringify(obj));
+  SpreadsheetApp.flush();
 }
 
 function _loadState_() {
-  var s = PropertiesService.getScriptProperties().getProperty(STATE_KEY_);
-  return s ? JSON.parse(s) : null;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(STATE_SHEET_);
+  if (!sheet) return null;
+  var val = sheet.getRange('A1').getValue() + '';
+  if (!val) return null;
+  try { return JSON.parse(val); } catch (_e) { return null; }
+}
+
+function _saveAnalysis_(data) {
+  var json = JSON.stringify(data);
+  var sheet = _getStateSheet_();
+  sheet.getRange('B1').setValue(json.substring(0, 45000));
+  if (json.length > 45000) sheet.getRange('B2').setValue(json.substring(45000));
+  SpreadsheetApp.flush();
+}
+
+function _loadAnalysis_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(STATE_SHEET_);
+  if (!sheet) return null;
+  var b1 = sheet.getRange('B1').getValue() + '';
+  var b2 = sheet.getRange('B2').getValue() + '';
+  var json = b1 + b2;
+  if (!json) return null;
+  try { return JSON.parse(json); } catch (_e) { return null; }
 }
 
 function _clearState_() {
-  var props = PropertiesService.getScriptProperties();
-  props.deleteProperty(STATE_KEY_);
-  props.deleteProperty(ANALYSIS_KEY_);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(STATE_SHEET_);
+  if (sheet) ss.deleteSheet(sheet);
 }
 
 function _saveRawToDrive_(text) {
