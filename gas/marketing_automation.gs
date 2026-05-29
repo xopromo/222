@@ -457,78 +457,59 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
     return;
   }
 
-  // Шаг 3 — анализ продукта (если ещё не выполнен)
-  var savedAnalysis = _loadAnalysis_();
-  var analysisData;
-
-  if (!savedAnalysis) {
-    // Определяем модель для анализа (первая выбранная платная модель или бесплатный пул)
-    var analysisModel    = (settings.analyzeWithPaidModel && settings.selectedModels.length > 0)
-                            ? settings.selectedModels[0] : null;
-    var analysisModelId  = analysisModel ? analysisModel.id : 'free_pool';
-    var analysisCacheKey = computeAnalysisCacheKey_(context, analysisModelId);
-
-    // Проверяем кэш анализа
-    var cachedAnalysis = settings.cacheAnalysis ? loadAnalysisCache_(ss, analysisCacheKey) : null;
-
-    if (cachedAnalysis) {
-      analysisData = cachedAnalysis;
-      writeAnalysisSheet_(analysisData);
-      updateChecklist_(3, '✅ Анализ из кэша [' + analysisModelId + ']\n(для нового анализа снимите чекбокс «Кэшировать анализ» в настройках)');
-    } else {
-      var analysisLabel = analysisModel ? analysisModel.label : 'LLM-пул';
-      updateChecklist_(3, '⏳ ' + analysisLabel + ': анализ продукта и ЦА...');
-      var r1;
-      if (analysisModel) {
-        var r1raw = callModelApi_(settings, analysisModel, buildPrompt1_(context), 8192);
-        r1 = { result: r1raw, provider: analysisModel.label };
-      } else {
-        r1 = callLlmApi_(settings, buildPrompt1_(context), 8192, exhausted);
-      }
-      analysisData = r1.result;
-      writeAnalysisSheet_(analysisData);
-      if (settings.cacheAnalysis) {
-        saveAnalysisCache_(ss, analysisCacheKey, analysisData);
-        updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ', кэшировано]');
-      } else {
-        updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ']');
-      }
-    }
-
-    _saveAnalysis_(analysisData);
-
-    if (timeIsLow_()) {
-      _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
-      updateChecklist_(4, '⏳ Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим с генерации заходов.');
-      return;
-    }
-  } else {
-    analysisData = savedAnalysis;
-  }
-
-  // Шаги 4-5 — цикл по выбранным моделям
+  // Шаги 3-4-5: для каждой выбранной модели — свой анализ, свои гипотезы, свой отбор
   var models    = settings.selectedModels;
   var remaining = models.filter(function(m) { return completedModelIds.indexOf(m.id) < 0; });
 
-  updateChecklist_(4, '⏳ Заходы: ' + completedModelIds.length + ' / ' + models.length + ' готово...');
+  updateChecklist_(3, '⏳ Анализ: ' + completedModelIds.length + ' / ' + models.length + ' готово...');
+  updateChecklist_(4, '⏳ Ожидание...');
   updateChecklist_(5, '⏳ Ожидание...');
 
   for (var mi = 0; mi < remaining.length; mi++) {
     if (timeIsLow_()) {
       _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
-      updateChecklist_(4, '⏳ [' + completedModelIds.length + '/' + models.length + '] Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим.');
+      updateChecklist_(3, '⏳ [' + completedModelIds.length + '/' + models.length + '] Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим.');
       return;
     }
 
     var model  = remaining[mi];
     var mLabel = model.label;
+    var mNum   = completedModelIds.length + mi + 1;
 
     try {
+      // ─── Шаг 3: анализ этой моделью (или бесплатным пулом) ───
+      var analysisModelId  = settings.analyzeWithPaidModel ? model.id : 'free_pool';
+      var analysisCacheKey = computeAnalysisCacheKey_(context, analysisModelId);
+      var cachedAnalysis   = settings.cacheAnalysis ? loadAnalysisCache_(ss, analysisCacheKey) : null;
+      var analysisData;
+
+      if (cachedAnalysis) {
+        analysisData = cachedAnalysis;
+        writeAnalysisSheet_(analysisData);
+        updateChecklist_(3, '⏳ [' + mNum + '/' + models.length + '] ' + mLabel + ': анализ из кэша ✓');
+      } else {
+        updateChecklist_(3, '⏳ [' + mNum + '/' + models.length + '] ' + mLabel + ': анализ продукта и ЦА...');
+        if (settings.analyzeWithPaidModel) {
+          analysisData = callModelApi_(settings, model, buildPrompt1_(context), 8192);
+        } else {
+          var r1 = callLlmApi_(settings, buildPrompt1_(context), 8192, exhausted);
+          analysisData = r1.result;
+        }
+        writeAnalysisSheet_(analysisData);
+        if (settings.cacheAnalysis) {
+          saveAnalysisCache_(ss, analysisCacheKey, analysisData);
+          updateChecklist_(3, '⏳ [' + mNum + '/' + models.length + '] ' + mLabel + ': анализ ✓ (кэшировано)');
+        } else {
+          updateChecklist_(3, '⏳ [' + mNum + '/' + models.length + '] ' + mLabel + ': анализ ✓');
+        }
+      }
+
       if (mi > 0 || completedModelIds.length > 0) Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
 
+      // ─── Шаг 4: 3 батча по 5 гипотез ───
       var allHyps = [];
       for (var bi = 0; bi < 3; bi++) {
-        updateChecklist_(4, '⏳ [' + (completedModelIds.length + mi + 1) + '/' + models.length + '] ' + mLabel + ': заходы ' + (bi * 5 + 1) + '-' + ((bi + 1) * 5) + '...');
+        updateChecklist_(4, '⏳ [' + mNum + '/' + models.length + '] ' + mLabel + ': заходы ' + (bi * 5 + 1) + '-' + ((bi + 1) * 5) + '...');
         var batchRes = null;
         for (var ri = 0; ri <= 2; ri++) {
           try {
@@ -544,23 +525,23 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
         allHyps = allHyps.concat((batchRes && batchRes.hypotheses) || []);
         if (bi < 2) Utilities.sleep(model.provider === 'groq' ? 5000 : 2000);
       }
-      var r2 = { hypotheses: allHyps };
-      writeHypothesesSheet_('Гипотезы — ' + mLabel, r2, ss);
+      writeHypothesesSheet_('Гипотезы — ' + mLabel, { hypotheses: allHyps }, ss);
 
       Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
 
-      updateChecklist_(5, '⏳ [' + (completedModelIds.length + mi + 1) + '/' + models.length + '] ' + mLabel + ': отбор 10...');
-      var r3 = callModelApi_(settings, model, buildPrompt2b_(r2), 3500);
+      // ─── Шаг 5: отбор топ-10 ───
+      updateChecklist_(5, '⏳ [' + mNum + '/' + models.length + '] ' + mLabel + ': отбор 10...');
+      var r3 = callModelApi_(settings, model, buildPrompt2b_({ hypotheses: allHyps }), 3500);
       writeLaunchSheet_('Лучшие — ' + mLabel, r3, ss);
 
       completedModelIds.push(model.id);
-      appendChecklistLog_('✅ ' + mLabel + ' → «Гипотезы» + «Лучшие»', true);
-      updateChecklist_(4, '✅ Заходы: ' + completedModelIds.length + ' / ' + models.length);
+      appendChecklistLog_('✅ ' + mLabel + ' → Анализ + Гипотезы + Лучшие', true);
+      updateChecklist_(3, '✅ Анализ + заходы: ' + completedModelIds.length + ' / ' + models.length);
 
     } catch (modelErr) {
       Logger.log('Ошибка модели ' + mLabel + ': ' + modelErr.message);
       appendChecklistLog_('❌ ' + mLabel + ': ' + modelErr.message, false);
-      completedModelIds.push(model.id); // пропустить при следующем цикле
+      completedModelIds.push(model.id);
     }
   }
 
@@ -1803,12 +1784,12 @@ function resetChecklist_() {
   var last = sheet.getLastRow();
   if (last > 7) sheet.deleteRows(8, last - 7);
   sheet.getRange(2, 1, 6, 3).setValues([
-    [1, 'Читаем настройки (API-ключи, источники)',          '⬜ Ожидание'],
-    [2, 'Читаем файлы (текст + Gemini для медиа)',          '⬜ Ожидание'],
-    [3, 'Запрос 1: анализ продукта и ЦА',                  '⬜ Ожидание'],
-    [4, 'Генерация 15 заходов (по выбранным моделям)',      '⬜ Ожидание'],
-    [5, 'Отбор 10 лучших (по выбранным моделям)',           '⬜ Ожидание'],
-    [6, 'Финал',                                            '⬜ Ожидание']
+    [1, 'Читаем настройки (API-ключи, источники)',              '⬜ Ожидание'],
+    [2, 'Читаем файлы (текст + Gemini для медиа)',              '⬜ Ожидание'],
+    [3, 'Анализ продукта и ЦА (по каждой модели, Шаг 3)',      '⬜ Ожидание'],
+    [4, 'Генерация 15 заходов (по выбранным моделям)',          '⬜ Ожидание'],
+    [5, 'Отбор 10 лучших (по выбранным моделям)',               '⬜ Ожидание'],
+    [6, 'Финал',                                               '⬜ Ожидание']
   ]);
   sheet.getRange(2, 3, 6, 1).setBackground('#F5F5F5').setFontColor('#888888');
   SpreadsheetApp.flush();
@@ -1938,12 +1919,12 @@ function createChecklistSheet_(ss) {
   sheet.getRange(1, 1, 1, 3).setValues([['№ шага', 'Описание', 'Статус']]);
   sheet.getRange(1, 1, 1, 3).setBackground('#37474F').setFontColor('#FFFFFF').setFontWeight('bold');
   sheet.getRange(2, 1, 6, 3).setValues([
-    [1, 'Читаем настройки (API-ключи, источники)',         '⬜ Ожидание'],
-    [2, 'Читаем файлы (текст + Gemini для медиа)',         '⬜ Ожидание'],
-    [3, 'Запрос 1: анализ продукта и ЦА',                 '⬜ Ожидание'],
-    [4, 'Генерация 15 заходов (по выбранным моделям)',     '⬜ Ожидание'],
-    [5, 'Отбор 10 лучших (по выбранным моделям)',          '⬜ Ожидание'],
-    [6, 'Финал',                                          '⬜ Ожидание']
+    [1, 'Читаем настройки (API-ключи, источники)',              '⬜ Ожидание'],
+    [2, 'Читаем файлы (текст + Gemini для медиа)',              '⬜ Ожидание'],
+    [3, 'Анализ продукта и ЦА (по каждой модели, Шаг 3)',      '⬜ Ожидание'],
+    [4, 'Генерация 15 заходов (по выбранным моделям)',          '⬜ Ожидание'],
+    [5, 'Отбор 10 лучших (по выбранным моделям)',               '⬜ Ожидание'],
+    [6, 'Финал',                                               '⬜ Ожидание']
   ]);
   sheet.getRange(2, 3, 6, 1).setBackground('#F5F5F5').setFontColor('#888888');
   sheet.getRange(2, 1, 6, 3).setWrap(true).setVerticalAlignment('top');
