@@ -30,7 +30,21 @@ var MODEL_CATALOG = [
   { id: 'mistral',           label: 'Mistral Small',        provider: 'mistral',  apiFormat: 'openai',    url: null,                                                      hint: 'бесплатно'         }
 ];
 // Строка первого чекбокса в листе Настройки
-var MODEL_ROW_START = 16;
+var MODEL_ROW_START = 18;
+
+// Цены в $/млн токенов для расчёта стоимости запуска
+var MODEL_PRICES_ = {
+  'claude-haiku-4-5':         { in: 0.80,  out: 4.00  },
+  'claude-sonnet-4-6':        { in: 3.00,  out: 15.00 },
+  'claude-opus-4-5':          { in: 15.00, out: 75.00 },
+  'gemini-2.5-flash':         { in: 0.075, out: 0.30  },
+  'gemini-3.1-pro':           { in: 1.25,  out: 5.00  },
+  'gpt-5-5':                  { in: 10.00, out: 30.00 },
+  'gemini-free':              { in: 0,     out: 0     },
+  'llama-3.3-70b-versatile':  { in: 0,     out: 0     },
+  'llama3.3-70b':             { in: 0,     out: 0     },
+  'mistral-small-latest':     { in: 0,     out: 0     }
+};
 
 var GEMINI_API_URL    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 var GEMINI_UPLOAD_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
@@ -58,7 +72,28 @@ var STATE_SHEET_  = 'МктСтейт';
 var MAX_CYCLES_   = 10;
 var MAX_RUN_MS_   = 270000;
 function timeIsLow_() { return (new Date().getTime() - RUN_START_MS_) > MAX_RUN_MS_; }
-function recordCost_() {}
+
+function recordCost_(label, provider, modelId, tokIn, tokOut) {
+  var prices = MODEL_PRICES_[modelId] || { in: 0, out: 0 };
+  var cost   = (tokIn * prices.in + tokOut * prices.out) / 1000000;
+  RUN_COSTS_.push({ label: label, provider: provider, model: modelId, tokIn: tokIn, tokOut: tokOut, costUsd: cost });
+}
+
+function formatCostSummary_() {
+  if (!RUN_COSTS_ || !RUN_COSTS_.length) return '';
+  var totalIn = 0, totalOut = 0, totalCost = 0;
+  var lines = ['💰 Стоимость запуска:'];
+  RUN_COSTS_.forEach(function(c) {
+    totalIn += c.tokIn; totalOut += c.tokOut; totalCost += c.costUsd;
+    if (c.tokIn + c.tokOut === 0) return;
+    var provStr  = (c.provider && c.provider !== c.label) ? ' [' + c.provider + ']' : '';
+    var costStr  = c.costUsd > 0 ? ' ≈ $' + c.costUsd.toFixed(4) : ' (бесплатно)';
+    lines.push('  ' + c.label + provStr + ': ' + c.tokIn + ' вх. + ' + c.tokOut + ' вых.' + costStr);
+  });
+  var totalCostStr = totalCost > 0 ? ' ≈ $' + totalCost.toFixed(4) : ' (бесплатно)';
+  lines.push('Итого: ' + totalIn + ' вх. + ' + totalOut + ' вых. токенов' + totalCostStr);
+  return lines.join('\n');
+}
 
 // ─── Меню ────────────────────────────────────────────────────
 function onOpen() {
@@ -427,11 +462,39 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
   var analysisData;
 
   if (!savedAnalysis) {
-    updateChecklist_(3, '⏳ LLM: анализ продукта и ЦА...');
-    var r1 = callLlmApi_(settings, buildPrompt1_(context), 8192, exhausted);
-    writeAnalysisSheet_(r1.result);
-    analysisData = r1.result;
-    updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ']');
+    // Определяем модель для анализа (первая выбранная платная модель или бесплатный пул)
+    var analysisModel    = (settings.analyzeWithPaidModel && settings.selectedModels.length > 0)
+                            ? settings.selectedModels[0] : null;
+    var analysisModelId  = analysisModel ? analysisModel.id : 'free_pool';
+    var analysisCacheKey = computeAnalysisCacheKey_(context, analysisModelId);
+
+    // Проверяем кэш анализа
+    var cachedAnalysis = settings.cacheAnalysis ? loadAnalysisCache_(ss, analysisCacheKey) : null;
+
+    if (cachedAnalysis) {
+      analysisData = cachedAnalysis;
+      writeAnalysisSheet_(analysisData);
+      updateChecklist_(3, '✅ Анализ из кэша [' + analysisModelId + ']\n(для нового анализа снимите чекбокс «Кэшировать анализ» в настройках)');
+    } else {
+      var analysisLabel = analysisModel ? analysisModel.label : 'LLM-пул';
+      updateChecklist_(3, '⏳ ' + analysisLabel + ': анализ продукта и ЦА...');
+      var r1;
+      if (analysisModel) {
+        var r1raw = callModelApi_(settings, analysisModel, buildPrompt1_(context), 8192);
+        r1 = { result: r1raw, provider: analysisModel.label };
+      } else {
+        r1 = callLlmApi_(settings, buildPrompt1_(context), 8192, exhausted);
+      }
+      analysisData = r1.result;
+      writeAnalysisSheet_(analysisData);
+      if (settings.cacheAnalysis) {
+        saveAnalysisCache_(ss, analysisCacheKey, analysisData);
+        updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ', кэшировано]');
+      } else {
+        updateChecklist_(3, '✅ Анализ записан в лист «Анализ» [' + r1.provider + ']');
+      }
+    }
+
     _saveAnalysis_(analysisData);
 
     if (timeIsLow_()) {
@@ -511,7 +574,8 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
   }
 
   updateChecklist_(5, '✅ Отбор завершён для ' + doneCount + ' моделей');
-  updateChecklist_(6, '✅ Готово! Создано ' + (doneCount * 2) + ' листов.');
+  var costSummary = formatCostSummary_();
+  updateChecklist_(6, '✅ Готово! Создано ' + (doneCount * 2) + ' листов.' + (costSummary ? '\n\n' + costSummary : ''));
 }
 
 // ─── Настройки ───────────────────────────────────────────────
@@ -546,6 +610,8 @@ function readSettings_() {
     mistralKey:         (sheet.getRange('B10').getValue() + '').trim(),
     kieaiKey:           (sheet.getRange('B11').getValue() + '').trim(),
     groqKey2:           (sheet.getRange('B13').getValue() + '').trim(),
+    analyzeWithPaidModel: sheet.getRange('B14').getValue() !== false,
+    cacheAnalysis:        sheet.getRange('B15').getValue() !== false,
     selectedModels:     selectedModels
   };
 }
@@ -1793,8 +1859,8 @@ function createSettingsSheet_(ss) {
   if (!sheet) sheet = ss.insertSheet(SETTINGS_SHEET);
   sheet.clearContents();
 
-  // Строки 1-13: основные настройки
-  sheet.getRange(1, 1, 13, 2).setValues([
+  // Строки 1-15: основные настройки
+  sheet.getRange(1, 1, 15, 2).setValues([
     ['Параметр',                                    'Значение'],
     ['API-ключ Groq (основной LLM)',                 ''],
     ['Источники (по одному в строке Alt+Enter)',     ''],
@@ -1808,20 +1874,29 @@ function createSettingsSheet_(ss) {
     ['API-ключ kie.ai (все платные модели)',         ''],
     ['Последний файл для теста kie.ai (ID)',         ''],
     ['API-ключ Groq 2 (второй аккаунт)',             ''],
+    ['Анализ платной моделью (Шаг 3)',               ''],
+    ['Кэшировать анализ (КэшАнализ)',               ''],
   ]);
   sheet.getRange(1, 1, 1, 3).setBackground('#4A90D9').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.getRange(2, 1, 12, 1).setFontWeight('bold');
+  sheet.getRange(2, 1, 14, 1).setFontWeight('bold');
   sheet.getRange(3, 2).setWrap(true);
   sheet.setRowHeight(3, 100);
   sheet.setColumnWidth(1, 280);
   sheet.setColumnWidth(2, 380);
   sheet.setColumnWidth(3, 200);
 
-  // Строка 14: заголовок секции моделей
-  sheet.getRange(14, 1).setValue('▼ Модели для гипотез (шаги 4–5)');
-  sheet.getRange(14, 2).setValue('Вкл?');
-  sheet.getRange(14, 3).setValue('Стоимость / запуск');
-  sheet.getRange(14, 1, 1, 3).setBackground('#37474F').setFontColor('#FFFFFF').setFontWeight('bold');
+  // Чекбоксы для строк 14-15 (по умолчанию включены)
+  sheet.getRange(14, 2).insertCheckboxes().setValue(true);
+  sheet.getRange(15, 2).insertCheckboxes().setValue(true);
+  sheet.getRange(14, 3).setValue('ON = шаг 3 использует выбранную платную модель').setFontColor('#888888').setFontStyle('italic');
+  sheet.getRange(15, 3).setValue('ON = повторный запуск не тратит токены на анализ').setFontColor('#888888').setFontStyle('italic');
+  sheet.getRange(14, 1, 2, 3).setBackground('#FFF8E1');
+
+  // Строка 16: заголовок секции моделей
+  sheet.getRange(16, 1).setValue('▼ Модели для гипотез (шаги 4–5)');
+  sheet.getRange(16, 2).setValue('Вкл?');
+  sheet.getRange(16, 3).setValue('Стоимость / запуск');
+  sheet.getRange(16, 1, 1, 3).setBackground('#37474F').setFontColor('#FFFFFF').setFontWeight('bold');
 
   // Строки MODEL_ROW_START+: чекбоксы моделей
   MODEL_CATALOG.forEach(function(m, i) {
@@ -1953,18 +2028,20 @@ function _loadRawFromState_() {
 
 function _packSettingIds_(settings) {
   return {
-    groqKey:            settings.groqKey,
-    groqKey2:           settings.groqKey2,
-    geminiKey:          settings.geminiKey,
-    cerebrasKey:        settings.cerebrasKey,
-    mistralKey:         settings.mistralKey,
-    kieaiKey:           settings.kieaiKey,
-    sources:            settings.sources,
-    blacklist:          settings.blacklist,
-    whitelist:          settings.whitelist,
-    maxImagesPerFolder: settings.maxImagesPerFolder,
-    followLinks:        settings.followLinks,
-    selectedModelIds:   settings.selectedModels.map(function(m) { return m.id; })
+    groqKey:              settings.groqKey,
+    groqKey2:             settings.groqKey2,
+    geminiKey:            settings.geminiKey,
+    cerebrasKey:          settings.cerebrasKey,
+    mistralKey:           settings.mistralKey,
+    kieaiKey:             settings.kieaiKey,
+    sources:              settings.sources,
+    blacklist:            settings.blacklist,
+    whitelist:            settings.whitelist,
+    maxImagesPerFolder:   settings.maxImagesPerFolder,
+    followLinks:          settings.followLinks,
+    analyzeWithPaidModel: settings.analyzeWithPaidModel,
+    cacheAnalysis:        settings.cacheAnalysis,
+    selectedModelIds:     settings.selectedModels.map(function(m) { return m.id; })
   };
 }
 
@@ -1973,18 +2050,20 @@ function _unpackSettings_(packed) {
   var sel = MODEL_CATALOG.filter(function(m) { return ids.indexOf(m.id) >= 0; });
   sel.sort(function(a, b) { return ids.indexOf(a.id) - ids.indexOf(b.id); });
   return {
-    groqKey:            packed.groqKey            || '',
-    groqKey2:           packed.groqKey2           || '',
-    geminiKey:          packed.geminiKey          || '',
-    cerebrasKey:        packed.cerebrasKey        || '',
-    mistralKey:         packed.mistralKey         || '',
-    kieaiKey:           packed.kieaiKey           || '',
-    sources:            packed.sources            || [],
-    blacklist:          packed.blacklist          || [],
-    whitelist:          packed.whitelist          || [],
-    maxImagesPerFolder: packed.maxImagesPerFolder || 10,
-    followLinks:        !!packed.followLinks,
-    selectedModels:     sel
+    groqKey:              packed.groqKey            || '',
+    groqKey2:             packed.groqKey2           || '',
+    geminiKey:            packed.geminiKey          || '',
+    cerebrasKey:          packed.cerebrasKey        || '',
+    mistralKey:           packed.mistralKey         || '',
+    kieaiKey:             packed.kieaiKey           || '',
+    sources:              packed.sources            || [],
+    blacklist:            packed.blacklist          || [],
+    whitelist:            packed.whitelist          || [],
+    maxImagesPerFolder:   packed.maxImagesPerFolder || 10,
+    followLinks:          !!packed.followLinks,
+    analyzeWithPaidModel: packed.analyzeWithPaidModel !== false,
+    cacheAnalysis:        packed.cacheAnalysis !== false,
+    selectedModels:       sel
   };
 }
 
@@ -2083,6 +2162,61 @@ function _compressOneChunk_(chunkText, chunkIdx, totalChunks, settings) {
   }
 
   return '[Часть ' + (chunkIdx + 1) + ' — обрезано]\n' + chunkText.substring(0, 15000);
+}
+
+// ─── Кэш результатов анализа (КэшАнализ) ─────────────────────
+// Ключ = MD5(весь контекст + '|' + modelId). Изменился контент → новый хэш → новый анализ.
+
+function computeAnalysisCacheKey_(context, modelId) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, context + '|' + modelId);
+  return bytes.map(function(b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('').substring(0, 16);
+}
+
+function loadAnalysisCache_(ss, key) {
+  var sheet = ss.getSheetByName('КэшАнализ');
+  if (!sheet) return null;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  var data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  for (var i = 0; i < data.length; i++) {
+    if ((data[i][0] + '') === key) {
+      try { return JSON.parse(data[i][1] + ''); } catch (_) { return null; }
+    }
+  }
+  return null;
+}
+
+function saveAnalysisCache_(ss, key, data) {
+  var sheet = ss.getSheetByName('КэшАнализ');
+  if (!sheet) {
+    sheet = ss.insertSheet('КэшАнализ');
+    sheet.hideSheet();
+    sheet.getRange(1, 1, 1, 3).setValues([['Ключ', 'JSON', 'Дата']]);
+    sheet.getRange(1, 1, 1, 3).setBackground('#37474F').setFontColor('#FFFFFF').setFontWeight('bold');
+  }
+  var json    = JSON.stringify(data);
+  var lastRow = sheet.getLastRow();
+  // Обновляем существующую запись если ключ совпадает
+  if (lastRow >= 2) {
+    var keys = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < keys.length; i++) {
+      if ((keys[i][0] + '') === key) {
+        var r = i + 2;
+        sheet.getRange(r, 2).setValue(json.substring(0, 45000));
+        sheet.getRange(r, 3).setValue(new Date().toISOString());
+        SpreadsheetApp.flush();
+        Logger.log('💾 Кэш анализа обновлён: ключ ' + key);
+        return;
+      }
+    }
+  }
+  // Новая запись
+  var newRow = sheet.getLastRow() + 1;
+  sheet.getRange(newRow, 1).setValue(key);
+  sheet.getRange(newRow, 2).setValue(json.substring(0, 45000));
+  sheet.getRange(newRow, 3).setValue(new Date().toISOString());
+  SpreadsheetApp.flush();
+  Logger.log('💾 Кэш анализа сохранён: ключ ' + key);
 }
 
 function createAnalysisSheet_(ss) {
