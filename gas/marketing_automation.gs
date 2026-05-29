@@ -920,7 +920,14 @@ function transcribeWithGemini_(geminiKey, file, mimeType, fileName, state) {
     }
 
     var parsed = JSON.parse(body);
-    return parsed.candidates[0].content.parts[0].text;
+    var cand = parsed.candidates && parsed.candidates[0];
+    if (!cand || !cand.content || !cand.content.parts || !cand.content.parts[0]) {
+      var fb = parsed.promptFeedback || parsed.error || {};
+      Logger.log('    Gemini пустой ответ (' + fileName + '): ' + JSON.stringify(fb).substring(0, 120));
+      state.skipped.push(fileName + ' (Gemini: пустой ответ)');
+      return null;
+    }
+    return cand.content.parts[0].text;
 
   } catch (e) {
     Logger.log('    Ошибка Gemini (' + fileName + '): ' + e.message);
@@ -2006,7 +2013,9 @@ function _compressOneChunk_(chunkText, chunkIdx, totalChunks, settings) {
       var kp = JSON.parse(kr.getContentText());
       var ku = kp.usage || {};
       recordCost_('Сжатие (kie.ai)', 'kie.ai Gemini', 'gemini-2.5-flash', ku.prompt_tokens || 0, ku.completion_tokens || 0);
-      return '[Экстракт ' + (chunkIdx + 1) + '/' + totalChunks + ' via kie.ai]\n' + kp.choices[0].message.content;
+      var kpText = kp.choices && kp.choices[0] && kp.choices[0].message && kp.choices[0].message.content;
+      if (kpText) return '[Экстракт ' + (chunkIdx + 1) + '/' + totalChunks + ' via kie.ai]\n' + kpText;
+      Logger.log('❌ kie.ai вернул неожиданный формат: ' + kr.getContentText().substring(0, 150));
     }
     Logger.log('❌ kie.ai тоже не ответил: HTTP ' + kr.getResponseCode());
   } else {
