@@ -50,6 +50,8 @@ var GEMINI_MIMES = {
   'audio/aac':  'audio',    'audio/flac': 'audio',  'audio/ogg': 'audio'
 };
 
+var PER_FILE_COMPRESS_ = 25000; // сжимать через Gemini файлы длиннее этого порога
+
 var RUN_COSTS_    = [];
 var RUN_START_MS_ = 0;
 var STATE_SHEET_  = 'МктСтейт';
@@ -305,10 +307,10 @@ function _startFreshRun_() {
     if (result.skipped   && result.skipped.length)   status2 += '\n⚠️ Пропущено: ' + result.skipped.join(', ');
     updateChecklist_(2, status2);
 
-    if (context.length <= 40000 || !settings.geminiKey) {
-      if (context.length > 40000) {
-        context = context.substring(0, 40000) + '\n[⚠️ Обрезано — нет ключа Gemini в B4]';
-        updateChecklist_(2, status2 + '\n⚠️ Обрезано до 40k (нет ключа Gemini в B4)');
+    if (context.length <= 80000 || !settings.geminiKey) {
+      if (context.length > 80000) {
+        context = context.substring(0, 80000) + '\n[⚠️ Обрезано — нет ключа Gemini в B4]';
+        updateChecklist_(2, status2 + '\n⚠️ Обрезано до 80k (нет ключа Gemini в B4)');
       }
       saveContextCache_(ss, cacheKey, context);
       _phaseAnalyze_(settings, cacheKey, [], {}, 1);
@@ -588,6 +590,7 @@ function processSource_(source, settings, state) {
         var text = DocumentApp.openById(classified.id).getBody().getText();
         if (!text.trim()) return [];
         state.filesRead++;
+        text = _compressFileText_(text, 'Google Doc: ' + source, settings, state);
         return ['--- Google Doc: ' + source + ' ---\n' + text];
       }
 
@@ -596,6 +599,7 @@ function processSource_(source, settings, state) {
         var parts = [];
         var sheetText = extractSheetText_(classified.id);
         if (sheetText.trim()) {
+          sheetText = _compressFileText_(sheetText, 'Google Sheet: ' + source, settings, state);
           parts.push('--- Google Sheet: ' + source + ' ---\n' + sheetText);
           state.filesRead++;
         }
@@ -610,6 +614,7 @@ function processSource_(source, settings, state) {
         var slideText = extractSlidesText_(classified.id);
         if (!slideText.trim()) return [];
         state.filesRead++;
+        slideText = _compressFileText_(slideText, 'Google Slides: ' + source, settings, state);
         return ['--- Google Slides: ' + source + ' ---\n' + slideText];
       }
 
@@ -629,6 +634,7 @@ function processSource_(source, settings, state) {
           var t = file.getBlob().getDataAsString('UTF-8');
           if (!t.trim()) return [];
           state.filesRead++;
+          t = _compressFileText_(t, fname, settings, state);
           return ['--- ' + fname + ' ---\n' + t];
         }
         if (GEMINI_MIMES[mime] && state.geminiAvailable && settings.geminiKey) {
@@ -718,7 +724,10 @@ function processFolder_(folder, settings, state, depth) {
       Logger.log(indent + '📄 ' + fname);
       try {
         var text = DocumentApp.openById(file.getId()).getBody().getText();
-        if (text.trim()) { parts.push('--- ' + fname + ' ---\n' + text); state.filesRead++; }
+        if (text.trim()) {
+          text = _compressFileText_(text, fname, settings, state);
+          parts.push('--- ' + fname + ' ---\n' + text); state.filesRead++;
+        }
       } catch (e) { Logger.log(indent + 'Ошибка: ' + e.message); }
       continue;
     }
@@ -728,7 +737,10 @@ function processFolder_(folder, settings, state, depth) {
       Logger.log(indent + '📊 ' + fname);
       try {
         var sheetText = extractSheetText_(file.getId());
-        if (sheetText.trim()) { parts.push('--- ' + fname + ' ---\n' + sheetText); state.filesRead++; }
+        if (sheetText.trim()) {
+          sheetText = _compressFileText_(sheetText, fname, settings, state);
+          parts.push('--- ' + fname + ' ---\n' + sheetText); state.filesRead++;
+        }
         // Переходим по ссылкам из таблицы
         if (settings.followLinks) {
           var linkedParts = followLinksInSheet_(file.getId(), settings, state);
@@ -743,7 +755,10 @@ function processFolder_(folder, settings, state, depth) {
       Logger.log(indent + '📑 ' + fname);
       try {
         var slideText = extractSlidesText_(file.getId());
-        if (slideText.trim()) { parts.push('--- ' + fname + ' ---\n' + slideText); state.filesRead++; }
+        if (slideText.trim()) {
+          slideText = _compressFileText_(slideText, fname, settings, state);
+          parts.push('--- ' + fname + ' ---\n' + slideText); state.filesRead++;
+        }
       } catch (e) { Logger.log(indent + 'Ошибка: ' + e.message); }
       continue;
     }
@@ -753,7 +768,10 @@ function processFolder_(folder, settings, state, depth) {
       Logger.log(indent + '📝 ' + fname);
       try {
         var t = file.getBlob().getDataAsString('UTF-8');
-        if (t.trim()) { parts.push('--- ' + fname + ' ---\n' + t); state.filesRead++; }
+        if (t.trim()) {
+          t = _compressFileText_(t, fname, settings, state);
+          parts.push('--- ' + fname + ' ---\n' + t); state.filesRead++;
+        }
       } catch (e) { Logger.log(indent + 'Ошибка: ' + e.message); }
       continue;
     }
@@ -1966,6 +1984,15 @@ function _finalizePartialCache_(ss, key) {
   sheet.getRange(1, 1).setValue(key);
   sheet.getRange(1, 3).setValue('~' + Math.round(sheet.getLastRow() * 45 / 1000) + 'k симв.');
   SpreadsheetApp.flush();
+}
+
+// Сжимает текст одного файла, если он превышает PER_FILE_COMPRESS_ символов
+function _compressFileText_(text, fileName, settings, state) {
+  if (text.length <= PER_FILE_COMPRESS_ || !settings.geminiKey) return text;
+  Logger.log('  🗜️ Сжимаем файл (' + Math.round(text.length / 1000) + 'k → ~3k): ' + fileName);
+  var compressed = _compressOneChunk_(text, 0, 1, settings);
+  if (compressed) return '[Сжато из ' + Math.round(text.length / 1000) + 'k симв.]\n' + compressed;
+  return text.substring(0, PER_FILE_COMPRESS_) + '\n[⚠️ Обрезано — сжатие не удалось]';
 }
 
 // Сжимает один чанк через Gemini (с фоллбэком на kie.ai при 429/503)
