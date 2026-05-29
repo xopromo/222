@@ -464,7 +464,7 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
       if (mi > 0 || completedModelIds.length > 0) Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
 
       updateChecklist_(4, '⏳ [' + (completedModelIds.length + mi + 1) + '/' + models.length + '] ' + mLabel + ': 15 заходов...');
-      var r2 = callModelApi_(settings, model, buildPrompt2a_(analysisData), 5500);
+      var r2 = callModelApi_(settings, model, buildPrompt2a_(analysisData), 8000);
       writeHypothesesSheet_('Гипотезы — ' + mLabel, r2, ss);
 
       Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
@@ -1297,7 +1297,8 @@ function callModelApi_(settings, model, messages, maxTokens) {
 
       recordCost_(model.label, model.label, model.id, tokIn, tokOut);
       try { return JSON.parse(stripJsonMarkdown_(rawText)); } catch (_) {
-        throw new Error('[' + model.label + '] не JSON: «' + rawText.substring(0, 150) + '»');
+        var tail = rawText.length > 200 ? '…' + rawText.slice(-100) : '';
+        throw new Error('[' + model.label + '] не JSON: «' + rawText.substring(0, 200) + '»' + tail);
       }
     }
 
