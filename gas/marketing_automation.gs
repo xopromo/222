@@ -97,14 +97,24 @@ function onOpen() {
     .addMenu('Автоматизация маркетинга', [
       { name: 'Запустить анализ проекта',               functionName: 'runMarketingAnalysis' },
       { name: '─────────────────',                      functionName: 'noop' },
-      { name: '📦 Сжать контекст и сохранить в кэш',   functionName: 'runCompressOnly' },
+      { name: 'Сжать контекст и сохранить в кэш',      functionName: 'runCompressOnly' },
       { name: '─────────────────',                      functionName: 'noop' },
       { name: 'Тест: распознать одно видео',            functionName: 'testKieAiVideo' },
-      { name: '· · · · · · · · ·',                     functionName: 'noop' },
+      { name: '─────────────────',                      functionName: 'noop' },
       { name: 'Создать шаблон листов',                  functionName: 'initSheets' }
     ]);
 }
 function noop() {}
+
+// Запусти эту функцию ОДИН РАЗ из редактора GAS, чтобы выдать скрипту
+// все необходимые разрешения (Drive read+write, Spreadsheets, UrlFetch).
+// После этого меню появится автоматически при открытии таблицы.
+function authorizeAll_() {
+  SpreadsheetApp.getActiveSpreadsheet();
+  DriveApp.getRootFolder();
+  UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
+  SpreadsheetApp.getUi().alert('Готово', 'Все разрешения выданы. Закройте эту вкладку и откройте таблицу заново — меню появится.', SpreadsheetApp.getUi().ButtonSet.OK);
+}
 
 // ─── Только сжатие контекста → кэш (для больших папок > 4M символов) ─
 function runCompressOnly() {
