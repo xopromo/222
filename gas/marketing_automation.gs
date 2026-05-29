@@ -363,11 +363,10 @@ function _startFreshRun_() {
     var totalChunks = Math.ceil(context.length / 3000000);
     updateChecklist_(2, status2 + '\n\n⏳ Контекст ' + Math.round(context.length / 1000) + 'k симв. — начинаем сжатие (' + totalChunks + ' частей)...');
 
-    var rawFileId = _saveRawToDrive_(context);
+    _saveRawToState_(context);
     _phaseCompress_({
       phase:          'compress',
       cacheKey:       cacheKey,
-      rawFileId:      rawFileId,
       chunksDone:     0,
       totalChunks:    totalChunks,
       settingsPacked: _packSettingIds_(settings),
@@ -408,10 +407,10 @@ function _resumeRun_(state) {
 function _phaseCompress_(state, settings) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  var rawText;
-  try { rawText = _loadRawFromDrive_(state.rawFileId); } catch (e) {
+  var rawText = _loadRawFromState_();
+  if (!rawText) {
     _clearState_();
-    updateChecklist_(0, '❌ Не удалось загрузить временный файл Drive: ' + e.message);
+    updateChecklist_(0, '❌ Не удалось загрузить сырой контекст из листа МктСтейт.');
     return;
   }
 
@@ -441,7 +440,6 @@ function _phaseCompress_(state, settings) {
   }
 
   _finalizePartialCache_(ss, state.cacheKey);
-  _deleteTempFile_(state.rawFileId);
 
   var compressed = loadContextCache_(ss, state.cacheKey);
   var sz = compressed ? Math.round(compressed.length / 1000) : 0;
@@ -1960,20 +1958,30 @@ function _clearState_() {
   if (sheet) ss.deleteSheet(sheet);
 }
 
-function _saveRawToDrive_(text) {
-  var blob = Utilities.newBlob(text, 'text/plain', 'mkt_raw_tmp.txt');
-  var file = DriveApp.createFile(blob);
-  Logger.log('💾 Raw → Drive: ' + file.getId() + ' (' + Math.round(text.length / 1000) + 'k симв.)');
-  return file.getId();
+// Сырой контекст сохраняем в столбец D листа МктСтейт (без DriveApp write)
+function _saveRawToState_(text) {
+  var sheet = _getStateSheet_();
+  var CHUNK = 45000;
+  var row = 1;
+  for (var i = 0; i < text.length; i += CHUNK) {
+    sheet.getRange(row++, 4).setValue(text.substring(i, i + CHUNK));
+  }
+  Logger.log('💾 Raw → МктСтейт: ' + Math.round(text.length / 1000) + 'k симв., ' + (row - 1) + ' ячеек');
+  SpreadsheetApp.flush();
 }
 
-function _loadRawFromDrive_(fileId) {
-  return DriveApp.getFileById(fileId).getBlob().getDataAsString('UTF-8');
-}
-
-function _deleteTempFile_(fileId) {
-  if (!fileId) return;
-  try { DriveApp.getFileById(fileId).setTrashed(true); Logger.log('🗑️ Temp файл удалён: ' + fileId); } catch (e) {}
+function _loadRawFromState_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(STATE_SHEET_);
+  if (!sheet) return '';
+  var parts = [];
+  var row = 1;
+  while (row <= 200) {
+    var val = sheet.getRange(row++, 4).getValue() + '';
+    if (!val) break;
+    parts.push(val);
+  }
+  return parts.join('');
 }
 
 function _packSettingIds_(settings) {
