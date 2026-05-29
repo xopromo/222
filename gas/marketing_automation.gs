@@ -86,9 +86,8 @@ var GEMINI_MIMES = {
 // ─── Автоперезапуск: константы ───────────────────────────────
 var STATE_KEY_    = 'MKT_STATE';
 var ANALYSIS_KEY_ = 'MKT_ANALYSIS';
-var TRIGGER_KEY_  = 'MKT_TRIGGER_ID';
 var MAX_CYCLES_   = 10;      // защита от бесконечного цикла
-var MAX_RUN_MS_   = 270000;  // 4 мин 30 сек — порог для планирования перезапуска
+var MAX_RUN_MS_   = 270000;  // 4 мин 30 сек — порог для сохранения прогресса
 
 function timeIsLow_() { return (new Date().getTime() - RUN_START_MS_) > MAX_RUN_MS_; }
 
@@ -419,8 +418,7 @@ function _phaseCompress_(state, settings) {
       state.chunksDone = c;
       state.costsJson  = JSON.stringify(RUN_COSTS_);
       _saveState_(state);
-      _scheduleResume_();
-      updateChecklist_(2, (state.status2 || '') + '\n\n⏳ Сжато ' + c + '/' + totalChunks + ' частей. Продолжение через ~75 сек автоматически...');
+      updateChecklist_(2, (state.status2 || '') + '\n\n⏳ Сжато ' + c + '/' + totalChunks + ' частей. Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим с этого места.');
       return;
     }
 
@@ -441,8 +439,7 @@ function _phaseCompress_(state, settings) {
 
   if (timeIsLow_()) {
     _saveState_({ phase: 'analyze', cacheKey: state.cacheKey, completedModelIds: [], exhausted: {}, settingsPacked: state.settingsPacked, cycleCount: state.cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
-    _scheduleResume_();
-    updateChecklist_(3, '⏳ Анализ запустится автоматически через ~75 сек...');
+    updateChecklist_(3, '⏳ Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим с шага 3.');
     return;
   }
 
@@ -475,8 +472,7 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
 
     if (timeIsLow_()) {
       _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
-      _scheduleResume_();
-      updateChecklist_(4, '⏳ Генерация заходов запустится автоматически через ~75 сек...');
+      updateChecklist_(4, '⏳ Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим с генерации заходов.');
       return;
     }
   } else {
@@ -497,8 +493,7 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
   for (var mi = 0; mi < remaining.length; mi++) {
     if (timeIsLow_()) {
       _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
-      _scheduleResume_();
-      updateChecklist_(4, '⏳ [' + completedModelIds.length + '/' + models.length + '] Продолжение через ~75 сек...');
+      updateChecklist_(4, '⏳ [' + completedModelIds.length + '/' + models.length + '] Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим.');
       return;
     }
 
@@ -1927,27 +1922,7 @@ function _loadState_() {
 function _clearState_() {
   var props = PropertiesService.getScriptProperties();
   props.deleteProperty(STATE_KEY_);
-  var tid = props.getProperty(TRIGGER_KEY_);
-  if (tid) {
-    ScriptApp.getProjectTriggers().forEach(function(t) {
-      if (t.getUniqueId() === tid) ScriptApp.deleteTrigger(t);
-    });
-    props.deleteProperty(TRIGGER_KEY_);
-  }
-}
-
-function _scheduleResume_() {
-  var props  = PropertiesService.getScriptProperties();
-  var oldId  = props.getProperty(TRIGGER_KEY_);
-  if (oldId) {
-    ScriptApp.getProjectTriggers().forEach(function(t) {
-      if (t.getUniqueId() === oldId) ScriptApp.deleteTrigger(t);
-    });
-  }
-  var trigger = ScriptApp.newTrigger('runMarketingAnalysis')
-    .timeBased().at(new Date(new Date().getTime() + 75000)).create();
-  props.setProperty(TRIGGER_KEY_, trigger.getUniqueId());
-  Logger.log('⏰ Триггер создан: старт через 75 сек');
+  props.deleteProperty(ANALYSIS_KEY_);
 }
 
 function _saveRawToDrive_(text) {
