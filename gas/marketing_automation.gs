@@ -463,8 +463,14 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
     try {
       if (mi > 0 || completedModelIds.length > 0) Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
 
-      updateChecklist_(4, '⏳ [' + (completedModelIds.length + mi + 1) + '/' + models.length + '] ' + mLabel + ': 15 заходов...');
-      var r2 = callModelApi_(settings, model, buildPrompt2a_(analysisData), 8000);
+      var allHyps = [];
+      for (var bi = 0; bi < 3; bi++) {
+        updateChecklist_(4, '⏳ [' + (completedModelIds.length + mi + 1) + '/' + models.length + '] ' + mLabel + ': заходы ' + (bi * 5 + 1) + '-' + ((bi + 1) * 5) + '...');
+        var batchRes = callModelApi_(settings, model, buildPrompt2a_(analysisData, bi), 3000);
+        allHyps = allHyps.concat(batchRes.hypotheses || []);
+        if (bi < 2) Utilities.sleep(model.provider === 'groq' ? 5000 : 2000);
+      }
+      var r2 = { hypotheses: allHyps };
       writeHypothesesSheet_('Гипотезы — ' + mLabel, r2, ss);
 
       Utilities.sleep(model.provider === 'groq' ? 62000 : 3000);
@@ -1240,7 +1246,7 @@ function callModelApi_(settings, model, messages, maxTokens) {
       var inputMsgs = messages.map(function(m) {
         return { role: m.role, content: [{ type: 'input_text', text: m.content }] };
       });
-      payload = JSON.stringify({ model: model.id, stream: false, input: inputMsgs });
+      payload = JSON.stringify({ model: model.id, stream: false, input: inputMsgs, text: { format: { type: 'json_object' } }, max_output_tokens: maxTokens || 4096 });
 
     } else {
       // OpenAI-совместимый формат (Gemini)
@@ -1467,13 +1473,17 @@ function compressContextWithGemini_(fullContext, geminiKey, kieaiKey) {
 // Извлекает JSON из ответа модели: ищет первую { и последнюю }, отбрасывая всё вокруг
 function stripJsonMarkdown_(text) {
   var t = text.trim();
-  // Сначала извлекаем содержимое блока ```json ... ``` (или ``` ... ```)
+  // Извлекаем содержимое блока ```json ... ``` (или ``` ... ```)
   var fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fence) t = fence[1].trim();
-  // Затем ищем первый { до последнего }
+  // Извлекаем от первого { до последнего }
   var start = t.indexOf('{');
   var end   = t.lastIndexOf('}');
-  if (start !== -1 && end !== -1 && end > start) return t.substring(start, end + 1);
+  if (start !== -1 && end !== -1 && end > start) t = t.substring(start, end + 1);
+  // Экранируем буквальные переносы строк внутри JSON-строк (GPT иногда вставляет их напрямую)
+  t = t.replace(/"((?:[^"\\]|\\.)*)"/g, function(match, content) {
+    return '"' + content.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
+  });
   return t;
 }
 
@@ -1549,13 +1559,14 @@ function buildPrompt1_(context) {
   ];
 }
 
-// ─── Промпт 2a: 15 заходов ────────────────────────────────────
-function buildPrompt2a_(analysisData) {
-  var segs = (analysisData.audience_segments || []).map(function(s) {
-    return 'Сегмент ' + s.segment_id + ': ' + s.description +
-      '\nБоли: ' + s.pains + '\nПотребности: ' + s.needs +
-      '\nВозражения: ' + s.objections + '\nОффер: ' + s.segment_offer;
-  }).join('\n\n');
+// ─── Промпт 2a: 5 заходов для одного сегмента (segIdx = 0/1/2) ─
+function buildPrompt2a_(analysisData, segIdx) {
+  var segs = analysisData.audience_segments || [];
+  var seg  = segs[segIdx] || { segment_id: segIdx + 1, description: 'Сегмент ' + (segIdx + 1), pains: '', needs: '', objections: '', segment_offer: '' };
+
+  var segText = 'Сегмент ' + seg.segment_id + ': ' + seg.description +
+    '\nБоли: ' + seg.pains + '\nПотребности: ' + seg.needs +
+    '\nВозражения: ' + seg.objections + '\nОффер: ' + seg.segment_offer;
 
   var pb = analysisData.product_block;
   var product = 'Продукт: ' + pb.title + ' (' + pb.format + ')\nОффер: ' + pb.offer +
@@ -1563,33 +1574,32 @@ function buildPrompt2a_(analysisData) {
 
   var system = [
     'Ты — маркетолог и копирайтер в нише онлайн-образования.',
-    'Напиши 15 цепляющих заходов для промопостов ВКонтакте: по 5 на каждый из 3 сегментов.',
+    'Напиши ровно 5 цепляющих заходов для промопостов ВКонтакте для данного сегмента.',
     'Разные механики: боль, выгода, закрытие возражения, эмоция, кейс, провокация.',
+    'Каждый заход должен вызывать желание дочитать пост до конца.',
     '',
-    'ВАЖНО: каждое поле — максимально сжато, 1 предложение или короткий список.',
-    'hook — 2-3 строки текста (не больше 40 слов).',
-    'Остальные поля — 1 предложение, до 15 слов.',
+    'ВАЖНО: каждое поле — кратко и ёмко, не более 2-3 предложений.',
     '',
     '⚠️ КРИТИЧЕСКИ ВАЖНО: твой ответ должен быть ТОЛЬКО валидным JSON.',
     'НЕ пиши вступление, анализ, объяснения, markdown или любой текст вне JSON.',
     'Первый символ ответа = {',
     'Последний символ ответа = }',
     '',
-    'Формат (15 объектов):',
+    'Формат (ровно 5 объектов):',
     JSON.stringify({ hypotheses: [{
-      segment_id: 1, segment_name: 'Сегмент 1', segment_description: '...',
-      hook: 'Первый цепляющий абзац поста (2-3 строки)',
-      key_message: 'Ключевой посыл (1 предложение)',
-      structure: '1. Боль 2. Решение 3. CTA',
-      emotions_triggers: 'стыд, надежда, FOMO',
-      headline_ideas: '"Заголовок 1", "Заголовок 2"'
+      segment_id: seg.segment_id, segment_name: '...', segment_description: '...',
+      hook: 'Текст захода — первый цепляющий абзац',
+      key_message: 'Ключевое сообщение (одно предложение)',
+      structure: 'Структура: 1. ... 2. ... 3. ...',
+      emotions_triggers: 'Эмоции и триггеры: стыд, надежда...',
+      headline_ideas: 'Идеи заголовков: "...", "..."'
     }]}, null, 2),
-    '(Всего 15 объектов — по 5 на каждый из 3 сегментов)'
+    '(Ровно 5 объектов для этого сегмента)'
   ].join('\n');
 
   return [
     { role: 'system', content: system },
-    { role: 'user',   content: product + '\n\nСегменты ЦА:\n\n' + segs }
+    { role: 'user',   content: product + '\n\nСегмент ЦА:\n\n' + segText }
   ];
 }
 
