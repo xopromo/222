@@ -8,40 +8,7 @@
 var SETTINGS_SHEET  = 'Настройки';
 var ANALYSIS_SHEET  = 'Анализ';
 var CHECKLIST_SHEET = 'Чеклист';
-var EXPENSES_SHEET  = 'Расходы';
-
-// Курс доллара → рубли (обновите вручную при необходимости)
-var USD_TO_RUB_ = 90;
-
-// Оценочная стоимость за 1000 токенов на kie.ai (рассчитана из hint-цен)
-// in/out — раздельно, т.к. вывод обычно дороже
-var PRICING_ = {
-  'gemini-2.5-flash':  { in: 0.000040, out: 0.000120 },
-  'gemini-3.1-pro':    { in: 0.000900, out: 0.002700 },
-  'claude-haiku-4-5':  { in: 0.000400, out: 0.001200 },
-  'claude-sonnet-4-6': { in: 0.001400, out: 0.004200 },
-  'claude-opus-4-5':   { in: 0.007000, out: 0.021000 },
-  'gpt-5-5':           { in: 0.000900, out: 0.002700 },
-  // бесплатные провайдеры
-  'groq':              { in: 0, out: 0 },
-  'groq 2':            { in: 0, out: 0 },
-  'cerebras':          { in: 0, out: 0 },
-  'mistral':           { in: 0, out: 0 },
-  'gemini-free':       { in: 0, out: 0 }
-};
-
-// Накопитель расходов текущего запуска — сбрасывается при старте runMarketingAnalysis
-var RUN_COSTS_ = [];
-var RUN_START_MS_ = 0; // время старта текущего выполнения (мс)
-
-function recordCost_(step, providerLabel, modelId, tokensIn, tokensOut) {
-  var p   = PRICING_[modelId] || PRICING_[providerLabel.toLowerCase()] || { in: 0, out: 0 };
-  var usd = (tokensIn * p.in + tokensOut * p.out) / 1000;
-  RUN_COSTS_.push({ step: step, provider: providerLabel, model: modelId, tokensIn: tokensIn, tokensOut: tokensOut, usd: usd });
-  Logger.log('💰 ' + step + ' [' + providerLabel + ']: вх.' + tokensIn + ' вых.' + tokensOut + ' → $' + usd.toFixed(5));
-}
-
-// Пул LLM-провайдеров — используются по порядку, переключение при 429
+// Имена листов гипотез — динамические: 'Гипотезы — [модель]' и 'Лучшие — [модель]'
 var LLM_PROVIDERS = [
   { name: 'Groq',     url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile', keyProp: 'groqKey',     pauseMs: 62000 },
   { name: 'Groq 2',   url: 'https://api.groq.com/openai/v1/chat/completions',   model: 'llama-3.3-70b-versatile', keyProp: 'groqKey2',    pauseMs: 62000 },
@@ -83,38 +50,26 @@ var GEMINI_MIMES = {
   'audio/aac':  'audio',    'audio/flac': 'audio',  'audio/ogg': 'audio'
 };
 
-// ─── Автоперезапуск: константы ───────────────────────────────
-var STATE_KEY_    = 'MKT_STATE';
-var STATE_SHEET_  = 'МктСтейт'; // скрытый лист для хранения прогресса
-var MAX_CYCLES_   = 10;      // защита от бесконечного цикла
-var MAX_RUN_MS_   = 270000;  // 4 мин 30 сек — порог для сохранения прогресса
-
+var RUN_COSTS_    = [];
+var RUN_START_MS_ = 0;
+var STATE_SHEET_  = 'МктСтейт';
+var MAX_CYCLES_   = 10;
+var MAX_RUN_MS_   = 270000;
 function timeIsLow_() { return (new Date().getTime() - RUN_START_MS_) > MAX_RUN_MS_; }
+function recordCost_() {}
 
 // ─── Меню ────────────────────────────────────────────────────
 function onOpen() {
   SpreadsheetApp.getActiveSpreadsheet()
     .addMenu('Автоматизация маркетинга', [
-      { name: 'Запустить анализ проекта',               functionName: 'runMarketingAnalysis' },
-      { name: '─────────────────',                      functionName: 'noop' },
-      { name: 'Сжать контекст и сохранить в кэш',      functionName: 'runCompressOnly' },
-      { name: '─────────────────',                      functionName: 'noop' },
-      { name: 'Тест: распознать одно видео',            functionName: 'testKieAiVideo' },
-      { name: '─────────────────',                      functionName: 'noop' },
-      { name: 'Создать шаблон листов',                  functionName: 'initSheets' }
+      { name: 'Запустить анализ проекта',        functionName: 'runMarketingAnalysis' },
+      { name: '─────────────────',               functionName: 'noop' },
+      { name: 'Тест: распознать одно видео',     functionName: 'testKieAiVideo' },
+      { name: '· · · · · · · · ·',              functionName: 'noop' },
+      { name: 'Создать шаблон листов',           functionName: 'initSheets' }
     ]);
 }
 function noop() {}
-
-// Запусти эту функцию ОДИН РАЗ из редактора GAS, чтобы выдать скрипту
-// все необходимые разрешения (Drive read+write, Spreadsheets, UrlFetch).
-// После этого меню появится автоматически при открытии таблицы.
-function authorizeAll_() {
-  SpreadsheetApp.getActiveSpreadsheet();
-  DriveApp.getRootFolder();
-  UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
-  SpreadsheetApp.getUi().alert('Готово', 'Все разрешения выданы. Закройте эту вкладку и откройте таблицу заново — меню появится.', SpreadsheetApp.getUi().ButtonSet.OK);
-}
 
 // ─── Только сжатие контекста → кэш (для больших папок > 4M символов) ─
 function runCompressOnly() {
@@ -536,10 +491,8 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
     return;
   }
 
-  var totalUsd = writeExpensesSheet_(ss);
-  var totalRub = (totalUsd * USD_TO_RUB_).toFixed(0);
   updateChecklist_(5, '✅ Отбор завершён для ' + doneCount + ' моделей');
-  updateChecklist_(6, '✅ Готово! Создано ' + (doneCount * 2) + ' листов.\n💰 Расходы: $' + totalUsd.toFixed(4) + ' ≈ ' + totalRub + ' ₽ (лист «Расходы»)');
+  updateChecklist_(6, '✅ Готово! Создано ' + (doneCount * 2) + ' листов.');
 }
 
 // ─── Настройки ───────────────────────────────────────────────
@@ -1507,50 +1460,6 @@ function appendChecklistLog_(msg, ok) {
   SpreadsheetApp.flush();
 }
 
-// ─── Лист расходов ───────────────────────────────────────────
-function writeExpensesSheet_(ss) {
-  var sheet = ss.getSheetByName(EXPENSES_SHEET);
-  if (!sheet) sheet = ss.insertSheet(EXPENSES_SHEET);
-  sheet.clearContents();
-
-  var headers = ['Шаг / Модель', 'Провайдер', 'Токены вход', 'Токены выход', 'USD (оценка)', 'RUB (оценка)'];
-  sheet.getRange(1, 1, 1, 6).setValues([headers])
-    .setBackground('#1565C0').setFontColor('#FFFFFF').setFontWeight('bold');
-
-  var totalUsd = 0;
-  RUN_COSTS_.forEach(function(c, i) {
-    var rub = (c.usd * USD_TO_RUB_).toFixed(2);
-    sheet.getRange(i + 2, 1, 1, 6).setValues([[
-      c.step, c.provider,
-      c.tokensIn, c.tokensOut,
-      c.usd > 0 ? ('$' + c.usd.toFixed(5)) : 'бесплатно',
-      c.usd > 0 ? (rub + ' ₽') : '—'
-    ]]);
-    totalUsd += c.usd;
-    var bg = c.usd === 0 ? '#E8F5E9' : '#FFF9C4';
-    sheet.getRange(i + 2, 1, 1, 6).setBackground(bg);
-  });
-
-  // Итоговая строка
-  var totalRow = RUN_COSTS_.length + 2;
-  sheet.getRange(totalRow, 1, 1, 6).setValues([[
-    'ИТОГО', '',
-    RUN_COSTS_.reduce(function(s, c) { return s + c.tokensIn; }, 0),
-    RUN_COSTS_.reduce(function(s, c) { return s + c.tokensOut; }, 0),
-    '$' + totalUsd.toFixed(5),
-    (totalUsd * USD_TO_RUB_).toFixed(2) + ' ₽'
-  ]]).setFontWeight('bold').setBackground('#E3F2FD');
-
-  sheet.getRange(totalRow, 5, 1, 2).setFontColor('#C62828').setFontSize(11);
-
-  [220, 160, 110, 110, 120, 120].forEach(function(w, i) { sheet.setColumnWidth(i + 1, w); });
-  sheet.getRange(1, 1, totalRow, 6).setWrap(false).setVerticalAlignment('middle');
-  sheet.setFrozenRows(1);
-  SpreadsheetApp.flush();
-
-  Logger.log('💰 Итого за запуск: $' + totalUsd.toFixed(5) + ' / ' + (totalUsd * USD_TO_RUB_).toFixed(2) + ' ₽');
-  return totalUsd;
-}
 
 // ─── Промпт 1: анализ продукта и ЦА ─────────────────────────
 function buildPrompt1_(context) {
