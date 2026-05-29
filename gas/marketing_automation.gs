@@ -466,8 +466,19 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
       var allHyps = [];
       for (var bi = 0; bi < 3; bi++) {
         updateChecklist_(4, '⏳ [' + (completedModelIds.length + mi + 1) + '/' + models.length + '] ' + mLabel + ': заходы ' + (bi * 5 + 1) + '-' + ((bi + 1) * 5) + '...');
-        var batchRes = callModelApi_(settings, model, buildPrompt2a_(analysisData, bi), 3000);
-        allHyps = allHyps.concat(batchRes.hypotheses || []);
+        var batchRes = null;
+        for (var ri = 0; ri <= 2; ri++) {
+          try {
+            batchRes = callModelApi_(settings, model, buildPrompt2a_(analysisData, bi), 3000);
+            break;
+          } catch (be) {
+            if (ri < 2 && be.message.indexOf('HTTP 5') !== -1) {
+              Logger.log('⚠️ Батч ' + bi + ' retry ' + (ri + 1) + ': ' + be.message);
+              Utilities.sleep((ri + 1) * 8000);
+            } else { throw be; }
+          }
+        }
+        allHyps = allHyps.concat((batchRes && batchRes.hypotheses) || []);
         if (bi < 2) Utilities.sleep(model.provider === 'groq' ? 5000 : 2000);
       }
       var r2 = { hypotheses: allHyps };
