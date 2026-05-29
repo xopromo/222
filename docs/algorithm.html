@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Как работает скрипт — Автоматизация маркетинга</title>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222636;
+  --border:#2e3347;--accent:#6c8fff;--text:#e2e8f0;--muted:#8892a4;
+  --green:#34d399;--amber:#f59e0b;--red:#f87171;--purple:#a78bfa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+
+/* ─── MODE TOGGLE ─── */
+.mode-bar{
+  position:sticky;top:0;z-index:200;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:48px;
+}
+.mode-bar .brand{font-size:14px;font-weight:600;color:var(--text)}
+.mode-bar .brand span{color:var(--muted);font-weight:400}
+.toggle-btn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:20px;padding:4px 6px;cursor:pointer;
+}
+.toggle-btn .pill{
+  padding:4px 14px;border-radius:16px;font-size:12px;font-weight:600;
+  transition:background .2s,color .2s;
+  color:var(--muted);
+}
+.toggle-btn .pill.active{
+  background:var(--accent);color:#fff;
+}
+
+/* ─── VIEWS ─── */
+#view-simple{display:block}
+#view-tech{display:none}
+
+/* ═══════════════════════════════════════════════
+   SIMPLE VIEW
+═══════════════════════════════════════════════ */
+.simple-hero{
+  background:linear-gradient(135deg,#1a1d27 0%,#0f1117 100%);
+  border-bottom:1px solid var(--border);
+  padding:40px 24px 36px;
+  text-align:center;
+}
+.simple-hero .emoji-big{font-size:52px;margin-bottom:12px}
+.simple-hero h1{font-size:24px;font-weight:700;margin-bottom:8px}
+.simple-hero p{color:var(--muted);font-size:15px;max-width:520px;margin:0 auto}
+
+.simple-body{max-width:680px;margin:0 auto;padding:32px 24px}
+
+/* What block */
+.what-block{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:24px;margin-bottom:28px;
+}
+.what-block h2{font-size:16px;font-weight:700;margin-bottom:12px}
+.what-block p{font-size:14px;color:var(--muted);margin-bottom:8px}
+.what-block p:last-child{margin-bottom:0}
+
+/* Steps */
+.steps-title{
+  font-size:13px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);
+  margin-bottom:16px;
+}
+.step{
+  display:flex;gap:16px;
+  margin-bottom:4px;
+}
+.step-left{
+  display:flex;flex-direction:column;align-items:center;width:48px;flex-shrink:0;
+}
+.step-icon{
+  width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+}
+.step-vline{width:2px;flex:1;min-height:12px;background:var(--border);margin-top:4px}
+.step-body{padding:4px 0 24px;flex:1}
+.step-body h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.step-body p{font-size:13px;color:var(--muted)}
+.step-body .result{
+  display:inline-flex;align-items:center;gap:6px;
+  margin-top:8px;font-size:12px;font-weight:600;
+  background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);
+  color:var(--green);padding:3px 10px;border-radius:20px;
+}
+
+/* Result banner */
+.result-banner{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:24px;margin:0 0 28px;
+}
+.result-banner h2{font-size:16px;font-weight:700;margin-bottom:16px}
+.result-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px 0;border-top:1px solid var(--border);
+}
+.result-item:first-of-type{border-top:none;padding-top:0}
+.result-item .ri-icon{
+  font-size:24px;width:36px;flex-shrink:0;text-align:center;
+}
+.result-item h4{font-size:14px;font-weight:600;margin-bottom:2px}
+.result-item p{font-size:13px;color:var(--muted)}
+
+/* FAQ */
+.faq-title{font-size:13px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);margin-bottom:16px}
+.faq-item{
+  border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;margin-bottom:8px;
+}
+.faq-q{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;cursor:pointer;font-size:14px;font-weight:500;
+  background:var(--surface);
+  transition:background .15s;
+}
+.faq-q:hover{background:var(--surface2)}
+.faq-q .chevron{transition:transform .2s;color:var(--muted);font-size:12px}
+.faq-a{
+  display:none;padding:0 16px 14px;
+  font-size:13px;color:var(--muted);
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  padding-top:12px;
+}
+.faq-item.open .faq-a{display:block}
+.faq-item.open .chevron{transform:rotate(180deg)}
+
+/* Prereqs */
+.prereq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px}
+@media(max-width:560px){.prereq-grid{grid-template-columns:1fr}}
+.prereq-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:16px;
+}
+.prereq-card .pc-icon{font-size:24px;margin-bottom:8px}
+.prereq-card h4{font-size:13px;font-weight:700;margin-bottom:4px}
+.prereq-card p{font-size:12px;color:var(--muted)}
+.prereq-card .req{color:var(--amber);font-weight:600;font-size:11px;
+  text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.prereq-card .opt{color:var(--muted);font-weight:600;font-size:11px;
+  text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+
+/* ═══════════════════════════════════════════════
+   TECH VIEW
+═══════════════════════════════════════════════ */
+.tech-hero{
+  background:linear-gradient(135deg,#1a1d27 0%,#0f1117 100%);
+  border-bottom:1px solid var(--border);
+  padding:40px 40px 32px;
+}
+.tech-hero .badge{
+  display:inline-block;
+  background:rgba(108,143,255,.15);border:1px solid rgba(108,143,255,.3);
+  color:var(--accent);font-size:11px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:14px;
+}
+.tech-hero h1{font-size:26px;font-weight:700;margin-bottom:6px}
+.tech-hero p{color:var(--muted);font-size:14px}
+
+.tech-nav{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 40px;overflow-x:auto;
+  display:flex;gap:0;
+}
+.tech-nav a{
+  display:block;padding:13px 15px;
+  color:var(--muted);text-decoration:none;
+  font-size:12px;font-weight:500;
+  border-bottom:2px solid transparent;white-space:nowrap;
+  transition:color .15s;
+}
+.tech-nav a:hover{color:var(--text)}
+
+.tech-body{max-width:960px;margin:0 auto;padding:40px 40px 60px}
+.tsec{margin-bottom:52px}
+.tsec-title{
+  font-size:18px;font-weight:700;
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:20px;padding-bottom:12px;
+  border-bottom:1px solid var(--border);
+}
+.card{background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:20px 22px;margin-bottom:14px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:8px}
+.card p,.card li{font-size:13px;color:var(--muted)}
+.card ul{padding-left:18px}.card li{margin-bottom:4px}
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--surface2)}
+th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);padding:10px 14px;text-align:left}
+td{font-size:13px;color:var(--text);padding:10px 14px;vertical-align:top}
+tr{border-top:1px solid var(--border)}
+tr:first-child{border-top:none}
+tbody tr:hover{background:var(--surface2)}
+td .m{color:var(--muted);font-size:12px}
+.tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 7px;border-radius:12px}
+.tb{background:rgba(108,143,255,.15);color:#93b4ff;border:1px solid rgba(108,143,255,.2)}
+.tg{background:rgba(52,211,153,.12);color:#6ee7b7;border:1px solid rgba(52,211,153,.2)}
+.ta{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.2)}
+.tp{background:rgba(167,139,250,.12);color:#c4b5fd;border:1px solid rgba(167,139,250,.2)}
+.info{background:rgba(108,143,255,.08);border:1px solid rgba(108,143,255,.2);
+  border-radius:8px;padding:13px 16px;font-size:13px;color:#a8c0ff;margin-bottom:14px}
+.warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);
+  border-radius:8px;padding:13px 16px;font-size:13px;color:#fcd34d;margin-bottom:14px}
+.code{background:#13151f;border:1px solid var(--border);border-radius:8px;
+  padding:14px 18px;font-family:'SF Mono','Fira Code',monospace;
+  font-size:12px;line-height:1.8;overflow-x:auto;margin:10px 0}
+.code .kw{color:#c792ea}.code .fn{color:#82aaff}
+.code .s{color:#c3e88d}.code .n{color:#f78c6c}.code .c{color:#546e7a;font-style:italic}
+.flow-step{display:flex;gap:0;margin-bottom:0}
+.fl{display:flex;flex-direction:column;align-items:center;width:40px;flex-shrink:0}
+.fc{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;z-index:1}
+.fv{width:2px;flex:1;min-height:14px;background:var(--border)}
+.fb{padding:3px 0 22px 14px;flex:1}
+.fb h3{font-size:14px;font-weight:600;margin-bottom:5px}
+.fb p{font-size:13px;color:var(--muted);margin-bottom:4px}
+.ftags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.sm-box{background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:13px 15px;margin-bottom:8px}
+.sm-box .sm-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.sm-box p{font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- MODE TOGGLE BAR -->
+<div class="mode-bar">
+  <div class="brand">Автоматизация маркетинга <span>· Google Sheets</span></div>
+  <div class="toggle-btn" onclick="toggleMode()">
+    <div class="pill active" id="pill-simple">Понятно</div>
+    <div class="pill" id="pill-tech">Для специалистов</div>
+  </div>
+</div>
+
+<!-- ══════════════════════ SIMPLE VIEW ══════════════════════ -->
+<div id="view-simple">
+
+  <div class="simple-hero">
+    <div class="emoji-big">🤖</div>
+    <h1>Как работает скрипт?</h1>
+    <p>Скрипт читает ваши маркетинговые материалы, анализирует продукт и аудиторию, затем автоматически генерирует рекламные заходы для ВКонтакте</p>
+  </div>
+
+  <div class="simple-body">
+
+    <!-- WHAT -->
+    <div class="what-block">
+      <h2>Что делает скрипт?</h2>
+      <p>Заходит в ваши папки на Google Drive, читает все документы, таблицы, презентации, видео и PDF.</p>
+      <p>Передаёт всё это нейросети, которая извлекает суть: <strong>что за продукт</strong>, <strong>кому он нужен</strong>, <strong>какие у людей боли</strong>.</p>
+      <p>Затем — другая нейросеть пишет <strong>15 цепляющих заходов</strong> для рекламных постов ВКонтакте и выбирает <strong>10 лучших</strong>.</p>
+    </div>
+
+    <!-- WHAT DO I NEED -->
+    <div class="steps-title">Что нужно заранее</div>
+    <div class="prereq-grid">
+      <div class="prereq-card">
+        <div class="pc-icon">📁</div>
+        <div class="req">Обязательно</div>
+        <h4>Папка на Google Drive</h4>
+        <p>С материалами проекта: доки, таблицы, презентации, видео</p>
+      </div>
+      <div class="prereq-card">
+        <div class="pc-icon">🔑</div>
+        <div class="req">Обязательно</div>
+        <h4>Хотя бы один LLM-ключ</h4>
+        <p>Groq, Cerebras или Mistral — бесплатные. Вставить в ячейку B2</p>
+      </div>
+      <div class="prereq-card">
+        <div class="pc-icon">✨</div>
+        <div class="opt">Желательно</div>
+        <h4>Ключ Gemini</h4>
+        <p>Для чтения PDF, видео и фото. Бесплатный лимит достаточен для старта</p>
+      </div>
+      <div class="prereq-card">
+        <div class="pc-icon">🎯</div>
+        <div class="opt">По желанию</div>
+        <h4>Ключ kie.ai</h4>
+        <p>Для платных моделей: Claude, GPT-5.5, Gemini Pro. Дороже, но мощнее</p>
+      </div>
+    </div>
+
+    <!-- STEPS -->
+    <div class="steps-title">Как это происходит — шаг за шагом</div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-icon" style="background:rgba(108,143,255,.15)">⚙️</div>
+        <div class="step-vline"></div>
+      </div>
+      <div class="step-body">
+        <h3>Шаг 1 — Читаем настройки</h3>
+        <p>Скрипт открывает лист «Настройки» и забирает ключи API, ссылки на папки и другие параметры. Если чего-то не хватает — сразу скажет об этом.</p>
+        <div class="result">✅ Чеклист строка 1</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-icon" style="background:rgba(52,211,153,.15)">📂</div>
+        <div class="step-vline"></div>
+      </div>
+      <div class="step-body">
+        <h3>Шаг 2 — Читаем файлы</h3>
+        <p>Обходит все папки из B3. Документы и таблицы читает сам. Видео, фото и PDF — через Gemini (нейросеть описывает что там). Большие файлы сжимаются сразу, чтобы не перегружать систему.</p>
+        <div class="result">✅ Чеклист строка 2</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-icon" style="background:rgba(245,158,11,.15)">🗜️</div>
+        <div class="step-vline"></div>
+      </div>
+      <div class="step-body">
+        <h3>Шаг 3 — Сжимаем если много текста</h3>
+        <p>Если суммарно текстов больше ~80 000 символов — Gemini «пересказывает» их, оставляя самое важное. Если меньше — пропускаем этот шаг.</p>
+        <p style="margin-top:6px;font-size:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:8px 10px;color:#fcd34d">⏱ Если не успевает за 6 минут — скрипт сохраняет прогресс и попросит нажать кнопку ещё раз. Так до 10 раз автоматически.</p>
+        <div class="result">✅ Лист «Кэш» (скрытый)</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-icon" style="background:rgba(167,139,250,.15)">🧠</div>
+        <div class="step-vline"></div>
+      </div>
+      <div class="step-body">
+        <h3>Шаг 4 — Анализ продукта и аудитории</h3>
+        <p>Нейросеть (Groq/Llama — бесплатная) читает весь контекст и составляет структуру: что за продукт, кто покупает, какие боли, возражения, офферы для каждого сегмента.</p>
+        <div class="result">✅ Лист «Анализ»</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-icon" style="background:rgba(248,113,113,.15)">✍️</div>
+        <div class="step-vline"></div>
+      </div>
+      <div class="step-body">
+        <h3>Шаг 5 — Пишем 15 рекламных заходов</h3>
+        <p>Для каждой выбранной модели: пишется по 5 заходов на каждый из 3 сегментов аудитории. Итого 15. Разные механики: боль, выгода, кейс, провокация, эмоция.</p>
+        <div class="result">✅ Лист «Гипотезы — [модель]»</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left">
+        <div class="step-icon" style="background:rgba(52,211,153,.15)">🏆</div>
+        <div class="step-vline" style="display:none"></div>
+      </div>
+      <div class="step-body">
+        <h3>Шаг 6 — Отбираем 10 лучших</h3>
+        <p>Та же нейросеть смотрит на все 15 заходов и выбирает 10 самых сильных — с учётом разнообразия сегментов и цепляющего первого абзаца.</p>
+        <div class="result">✅ Лист «Лучшие — [модель]»</div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="result-banner">
+      <h2>📋 Что получаю в итоге</h2>
+      <div class="result-item">
+        <div class="ri-icon">📊</div>
+        <div>
+          <h4>Лист «Анализ»</h4>
+          <p>Описание продукта, оффер, методика, спикер. Три сегмента аудитории с болями, потребностями, возражениями и уровнем осознанности.</p>
+        </div>
+      </div>
+      <div class="result-item">
+        <div class="ri-icon">💡</div>
+        <div>
+          <h4>Листы «Гипотезы — [модель]»</h4>
+          <p>15 заходов от каждой выбранной модели. Для каждого: текст захода, ключевое сообщение, структура поста, триггеры, идеи заголовков.</p>
+        </div>
+      </div>
+      <div class="result-item">
+        <div class="ri-icon">🏆</div>
+        <div>
+          <h4>Листы «Лучшие — [модель]»</h4>
+          <p>Топ-10 заходов — уже отобранные, готовые к использованию в таргетированной рекламе ВКонтакте.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-title">Частые вопросы</div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>Скрипт завис на середине — что делать?</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="faq-a">Ничего не делать! Скрипт сохранил прогресс и сам автоматически попросит продолжить. Просто нажмите «Запустить анализ» ещё раз — он продолжит с того же места. Максимум 10 таких перезапусков.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>Файл помечен как «пропущен» — это страшно?</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="faq-a">Нет. Пропускаются файлы к которым нет доступа, или форматы которые скрипт не умеет читать. Всё остальное обрабатывается. Список пропущенных файлов виден в строке 2 чеклиста.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>Сколько времени занимает работа?</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="faq-a">Зависит от объёма материалов. Без видео — обычно 2–5 минут. Если есть видео/аудио которые читает Gemini — может занять 10–20 минут с автоперезапусками.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>Хочу пересобрать — как сбросить кэш?</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="faq-a">Удалите скрытый лист «Кэш» в таблице (правая кнопка → удалить). При следующем запуске всё пересоберётся заново из файлов.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>Ошибка «Не указан ни один LLM-ключ»</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="faq-a">Нужно добавить хотя бы один ключ в лист «Настройки». Groq и Cerebras — бесплатные, получить за 2 минуты на groq.com и cerebras.ai. Вставьте ключ в ячейку B2 (Groq) или B9 (Cerebras).</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        <span>Можно ли запустить несколько моделей сразу?</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="faq-a">Да! Поставьте галочки напротив нескольких моделей в листе «Настройки» (строки 16+). Для каждой создадутся отдельные листы «Гипотезы» и «Лучшие». Можно сравнить результаты.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ TECH VIEW ══════════════════════ -->
+<div id="view-tech">
+
+  <div class="tech-hero">
+    <div class="badge">Google Apps Script</div>
+    <h1>Алгоритм: техническое описание</h1>
+    <p>Стейт-машина, провайдеры, промпты, retry-логика, форматы API</p>
+  </div>
+
+  <nav class="tech-nav">
+    <a href="#t-overview">Схема</a>
+    <a href="#t-state">Стейт-машина</a>
+    <a href="#t-collect">Сбор данных</a>
+    <a href="#t-compress">Сжатие</a>
+    <a href="#t-analyze">Анализ ЦА</a>
+    <a href="#t-hyp">Гипотезы</a>
+    <a href="#t-providers">Провайдеры</a>
+    <a href="#t-settings">Настройки</a>
+  </nav>
+
+  <div class="tech-body">
+
+    <div class="tsec" id="t-overview">
+      <div class="tsec-title">🗺 Общая схема</div>
+      <div class="info">Точка входа — <strong>runMarketingAnalysis()</strong> → меню «Автоматизация маркетинга». Лимит GAS: 6 мин. Стейт-машина сохраняет прогресс в скрытый лист «МктСтейт».</div>
+
+      <div class="flow-step"><div class="fl"><div class="fc" style="background:rgba(108,143,255,.2);color:#93b4ff">1</div><div class="fv"></div></div><div class="fb"><h3>Чтение настроек</h3><p>readSettings_() — лист «Настройки»: ключи, источники, чёрный/белый список, модели</p><div class="ftags"><span class="tag tb">readSettings_()</span><span class="tag tg">Checklist row 1</span></div></div></div>
+
+      <div class="flow-step"><div class="fl"><div class="fc" style="background:rgba(52,211,153,.15);color:#6ee7b7">2</div><div class="fv"></div></div><div class="fb"><h3>Сбор контекста</h3><p>Рекурсивный обход Drive, Docs/Sheets/Slides/PDF/медиа. Файлы &gt;25k симв. → _compressFileText_() сразу при чтении.</p><div class="ftags"><span class="tag tb">collectDriveContext_()</span><span class="tag tb">_compressFileText_()</span><span class="tag ta">Gemini 2.0 Flash</span></div></div></div>
+
+      <div class="flow-step"><div class="fl"><div class="fc" style="background:rgba(245,158,11,.15);color:#fcd34d">3</div><div class="fv"></div></div><div class="fb"><h3>Кэш / глобальное сжатие</h3><p>context ≤ 80k → кэш as-is. &gt;80k → _phaseCompress_() чанками по 3M симв. Кэш-ключ = MD5(sources).</p><div class="ftags"><span class="tag tb">_phaseCompress_()</span><span class="tag ta">Лист «Кэш»</span></div></div></div>
+
+      <div class="flow-step"><div class="fl"><div class="fc" style="background:rgba(167,139,250,.15);color:#c4b5fd">4</div><div class="fv"></div></div><div class="fb"><h3>Анализ продукта и ЦА</h3><p>callLlmApi_() → buildPrompt1_() → writeAnalysisSheet_(). Авто-переключение Groq→Cerebras→Mistral при 429.</p><div class="ftags"><span class="tag tb">callLlmApi_()</span><span class="tag tg">Лист «Анализ»</span><span class="tag ta">max_tokens: 8192</span></div></div></div>
+
+      <div class="flow-step"><div class="fl"><div class="fc" style="background:rgba(248,113,113,.15);color:#fca5a5">5</div><div class="fv"></div></div><div class="fb"><h3>Генерация 15 заходов (3 батча × 5)</h3><p>Для каждой выбранной модели: 3 вызова buildPrompt2a_(analysisData, bi). Retry до 2 раз при HTTP 5xx (8s, 16s).</p><div class="ftags"><span class="tag tb">callModelApi_()</span><span class="tag tb">buildPrompt2a_(segIdx)</span><span class="tag ta">max_tokens: 3000/батч</span></div></div></div>
+
+      <div class="flow-step"><div class="fl"><div class="fc" style="background:rgba(52,211,153,.15);color:#6ee7b7">6</div><div class="fv"></div></div><div class="fb"><h3>Отбор 10 лучших</h3><p>buildPrompt2b_(r2) → та же модель выбирает 10 из 15 по критериям: холодная аудитория, разнообразие, конкретность хука.</p><div class="ftags"><span class="tag tb">buildPrompt2b_()</span><span class="tag tg">Лист «Лучшие — [модель]»</span><span class="tag ta">max_tokens: 3500</span></div></div></div>
+    </div>
+
+    <div class="tsec" id="t-state">
+      <div class="tsec-title">⚙️ Стейт-машина</div>
+      <div class="info">Состояние хранится в скрытом листе <strong>МктСтейт</strong>. MAX_CYCLES_ = 10, MAX_RUN_MS_ = 270 000 мс (4.5 мин).</div>
+      <div class="grid2">
+        <div class="sm-box"><div class="sm-t" style="color:var(--accent)">Нет состояния</div><p>МктСтейт пуст. Свежий старт через _startFreshRun_().</p></div>
+        <div class="sm-box"><div class="sm-t" style="color:var(--amber)">phase: compress</div><p>Чанковое сжатие Gemini. chunksDone хранит прогресс.</p></div>
+        <div class="sm-box"><div class="sm-t" style="color:var(--green)">phase: analyze</div><p>Анализ ЦА + генерация заходов. completedModelIds — список готовых.</p></div>
+        <div class="sm-box"><div class="sm-t" style="color:var(--muted)">_clearState_()</div><p>Все модели готовы → удаляем данные из МктСтейт.</p></div>
+      </div>
+      <div class="code">
+<span class="c">// Каждый запуск начинается здесь</span>
+<span class="kw">function</span> <span class="fn">runMarketingAnalysis</span>() {
+  RUN_START_MS_ = <span class="kw">new</span> Date().getTime();
+  <span class="kw">var</span> state = _loadState_();
+  <span class="kw">if</span> (state &amp;&amp; state.phase) {
+    <span class="kw">if</span> (++state.cycleCount &gt; MAX_CYCLES_) { _clearState_(); <span class="kw">return</span>; }
+    _resumeRun_(state);      <span class="c">// продолжаем с сохранённой фазы</span>
+  } <span class="kw">else</span> {
+    _startFreshRun_();       <span class="c">// свежий запуск</span>
+  }
+}
+<span class="fn">timeIsLow_</span>() → elapsed &gt; <span class="n">270 000</span> мс → сохранить состояние и выйти
+      </div>
+    </div>
+
+    <div class="tsec" id="t-collect">
+      <div class="tsec-title">📂 Сбор данных</div>
+      <div class="grid2">
+        <div class="card"><div class="card-title">Форматы</div><ul>
+          <li>📄 Google Docs — DocumentApp</li><li>📊 Google Sheets — extractSheetText_()</li>
+          <li>📑 Google Slides — extractSlidesText_()</li><li>📝 Plain text / CSV</li>
+          <li>📑 PDF → Gemini (document)</li><li>🖼 JPEG/PNG/WEBP → Gemini (image)</li>
+          <li>🎬 MP4/MOV/WebM → Gemini (video)</li><li>🎙 MP3/WAV/AAC → Gemini (audio)</li>
+        </ul></div>
+        <div class="card"><div class="card-title">Лимиты</div><ul>
+          <li>Глубина папок: max 5 уровней</li><li>Изображений: B7 (default 10/папка)</li>
+          <li>Видео/аудио: maxVideosTotal (default 10)</li><li>Пауза Gemini: 4 сек между вызовами</li>
+          <li>Недоступные файлы: пропуск с логом</li><li>Чёрный список: B5</li>
+          <li>Белый список: B6 (только depth=0)</li><li>followLinks: B8</li>
+        </ul></div>
+      </div>
+      <div class="card"><div class="card-title">⚡ Постфайловое сжатие — PER_FILE_COMPRESS_ = 25 000 симв.</div>
+        <p>Каждый файл &gt;25k сжимается через _compressOneChunk_() сразу при чтении → до сборки общего контекста. Фоллбэк: обрезка до 25k с предупреждением.</p></div>
+    </div>
+
+    <div class="tsec" id="t-compress">
+      <div class="tsec-title">🗜 Глобальное сжатие</div>
+      <div class="warn">Срабатывает только если суммарный контекст &gt; 80 000 симв. после постфайлового сжатия.</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Условие</th><th>Действие</th></tr></thead>
+        <tbody>
+          <tr><td>≤ 80k симв.</td><td class="m">Кэш as-is → сразу к анализу</td></tr>
+          <tr><td>&gt; 80k, нет ключа Gemini</td><td class="m">Обрезаем до 80k с предупреждением</td></tr>
+          <tr><td>&gt; 80k, есть Gemini</td><td class="m">Чанки по 3 000 000 симв. → _compressOneChunk_(). Фоллбэк: kie.ai Gemini 2.5 Flash при 429/503</td></tr>
+        </tbody>
+      </table></div>
+      <div class="card" style="margin-top:14px"><div class="card-title">Хранение сырого текста — МктСтейт колонка D</div>
+        <p>Разбивается на чанки по 45 000 симв. → ячейки D1, D2, … Восстанавливается при автоперезапуске. DriveApp не используется.</p></div>
+    </div>
+
+    <div class="tsec" id="t-analyze">
+      <div class="tsec-title">🧠 Анализ продукта и ЦА</div>
+      <div class="card"><div class="card-title">callLlmApi_() — автопереключение провайдеров при 429</div>
+        <p>Groq (62 сек пауза) → Groq2 → Cerebras (5 сек) → Mistral (5 сек). response_format: json_object обязателен.</p></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Поле</th><th>Содержимое</th><th>Лист</th></tr></thead>
+        <tbody>
+          <tr><td>product_block</td><td class="m">title, format, offer, advantages, methodology, landing, speaker</td><td><span class="tag tg">Анализ</span> строка 2</td></tr>
+          <tr><td>audience_segments[0..2]</td><td class="m">segment_id, description, pains, needs, objections, awareness(0–5), segment_offer</td><td><span class="tag tg">Анализ</span> строки 5–7</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="tsec" id="t-hyp">
+      <div class="tsec-title">💡 Гипотезы</div>
+      <div class="card"><div class="card-title">3 батча × 5 гипотез — buildPrompt2a_(analysisData, segIdx)</div>
+        <p>bi=0: сегмент 0 → 5 заходов, bi=1: сегмент 1, bi=2: сегмент 2. Retry при HTTP 5xx: 2 попытки (8с, 16с). max_tokens: 3000/батч.</p></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Поле</th><th>Описание</th></tr></thead>
+        <tbody>
+          <tr><td>hook</td><td class="m">Первый абзац промопоста (2–3 предложения)</td></tr>
+          <tr><td>key_message</td><td class="m">Ключевой посыл (1 предложение)</td></tr>
+          <tr><td>structure</td><td class="m">1. Боль 2. Решение 3. CTA</td></tr>
+          <tr><td>emotions_triggers</td><td class="m">Психологические триггеры</td></tr>
+          <tr><td>headline_ideas</td><td class="m">2–3 варианта заголовка</td></tr>
+        </tbody>
+      </table></div>
+      <div class="card"><div class="card-title">stripJsonMarkdown_() — устойчивый парсинг</div>
+        <p>1) Regex извлечение из ```json...```. 2) Substring от { до }. 3) Экранирование literal \n/\r/\t внутри JSON-строк через regex по строковым литералам.</p></div>
+    </div>
+
+    <div class="tsec" id="t-providers">
+      <div class="tsec-title">🔌 Провайдеры</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Модель</th><th>Провайдер</th><th>API</th><th>Роль</th><th>Ключ</th></tr></thead>
+        <tbody>
+          <tr><td>Llama 3.3-70b</td><td class="m">api.groq.com</td><td><span class="tag tb">openai</span></td><td class="m">Анализ ЦА, гипотезы</td><td><span class="tag tg">B2, B13</span></td></tr>
+          <tr><td>Llama 3.3-70b</td><td class="m">api.cerebras.ai</td><td><span class="tag tb">openai</span></td><td class="m">Фоллбэк</td><td><span class="tag tg">B9</span></td></tr>
+          <tr><td>Mistral Small</td><td class="m">api.mistral.ai</td><td><span class="tag tb">openai</span></td><td class="m">Фоллбэк</td><td><span class="tag tg">B10</span></td></tr>
+          <tr><td>Gemini 2.0 Flash</td><td class="m">googleapis.com</td><td><span class="tag ta">gemini</span></td><td class="m">Медиа, сжатие</td><td><span class="tag tg">B4</span></td></tr>
+          <tr><td>Gemini 2.5 Flash</td><td class="m">api.kie.ai</td><td><span class="tag tb">openai</span></td><td class="m">Гипотезы, фоллбэк сжатия</td><td><span class="tag tg">B11</span></td></tr>
+          <tr><td>Claude Haiku/Sonnet/Opus</td><td class="m">api.kie.ai</td><td><span class="tag tp">anthropic</span></td><td class="m">Гипотезы</td><td><span class="tag tg">B11</span></td></tr>
+          <tr><td>GPT-5.5</td><td class="m">api.kie.ai</td><td><span class="tag ta">responses</span></td><td class="m">Гипотезы</td><td><span class="tag tg">B11</span></td></tr>
+        </tbody>
+      </table></div>
+      <div class="card" style="margin-top:14px"><div class="card-title">HTTP 524 — Cloudflare timeout на kie.ai</div>
+        <p>Cloudflare таймаут ~100 сек. Claude/GPT на 15 гипотезах &gt;100 сек. Решение: батчи по 5 (~2000 токенов = ~35–50 сек). Gemini 2.5 Flash успевает и без батчей.</p></div>
+    </div>
+
+    <div class="tsec" id="t-settings">
+      <div class="tsec-title">⚙️ Настройки</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Ячейка</th><th>Параметр</th><th>Описание</th></tr></thead>
+        <tbody>
+          <tr><td>B2</td><td>groqKey</td><td class="m">API-ключ Groq (основной)</td></tr>
+          <tr><td>B3</td><td>sources</td><td class="m">URL Drive/Docs/Sheets — несколько через Alt+Enter или запятую</td></tr>
+          <tr><td>B4</td><td>geminiKey</td><td class="m">Google Gemini — для медиа и сжатия</td></tr>
+          <tr><td>B5</td><td>blacklist</td><td class="m">Папки исключить (через запятую)</td></tr>
+          <tr><td>B6</td><td>whitelist</td><td class="m">Только эти папки на первом уровне</td></tr>
+          <tr><td>B7</td><td>maxImages</td><td class="m">Лимит изображений Gemini на папку (default 10)</td></tr>
+          <tr><td>B8</td><td>followLinks</td><td class="m">Переходить по ссылкам из Sheets (да/нет)</td></tr>
+          <tr><td>B9</td><td>cerebrasKey</td><td class="m">API-ключ Cerebras</td></tr>
+          <tr><td>B10</td><td>mistralKey</td><td class="m">API-ключ Mistral</td></tr>
+          <tr><td>B11</td><td>kieaiKey</td><td class="m">API-ключ kie.ai</td></tr>
+          <tr><td>B13</td><td>groqKey2</td><td class="m">Второй ключ Groq</td></tr>
+          <tr><td>B16+</td><td>selectedModels</td><td class="m">Чекбоксы моделей для гипотез</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var isSimple = true;
+function toggleMode() {
+  isSimple = !isSimple;
+  document.getElementById('view-simple').style.display = isSimple ? 'block' : 'none';
+  document.getElementById('view-tech').style.display   = isSimple ? 'none' : 'block';
+  document.getElementById('pill-simple').classList.toggle('active', isSimple);
+  document.getElementById('pill-tech').classList.toggle('active', !isSimple);
+  window.scrollTo(0, 0);
+}
+function toggleFaq(el) {
+  el.parentElement.classList.toggle('open');
+}
+</script>
+</body>
+</html>
