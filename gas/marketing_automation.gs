@@ -583,7 +583,8 @@ function readSettings_() {
   // Находим строку, где начинаются модели в каталоге, поддерживая разные версии разметки листа
   var modelRowStart = MODEL_ROW_START;
   try {
-    var data = sheet.getRange(1, 1, 35, 1).getValues();
+    var maxRows = Math.min(sheet.getMaxRows(), 35);
+    var data = sheet.getRange(1, 1, maxRows, 1).getValues();
     var catalogLabels = MODEL_CATALOG.map(function(m) {
       return m.label.toLowerCase().replace(/\s+/g, ' ').trim();
     });
