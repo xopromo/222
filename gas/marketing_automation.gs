@@ -92,6 +92,15 @@ function formatCostSummary_() {
   });
   var totalCostStr = totalCost > 0 ? ' ≈ $' + totalCost.toFixed(4) : ' (бесплатно)';
   lines.push('Итого: ' + totalIn + ' вх. + ' + totalOut + ' вых. токенов' + totalCostStr);
+
+  if (RUN_START_MS_ > 0) {
+    var elapsedSec = Math.round((new Date().getTime() - RUN_START_MS_) / 1000);
+    var timeStr = elapsedSec < 60
+      ? elapsedSec + ' сек.'
+      : Math.floor(elapsedSec / 60) + ' мин. ' + (elapsedSec % 60) + ' сек.';
+    lines.push('⏱️ Время работы: ' + timeStr);
+  }
+
   return lines.join('\n');
 }
 
@@ -288,8 +297,12 @@ function testKieAiVideo() {
 
 // ─── Точка входа (поддерживает автоперезапуск при таймауте) ───
 function runMarketingAnalysis() {
-  RUN_START_MS_ = new Date().getTime();
   var state = _loadState_();
+  if (state && state.runStartMs) {
+    RUN_START_MS_ = state.runStartMs;
+  } else {
+    RUN_START_MS_ = new Date().getTime();
+  }
 
   if (state) {
     // Автоматический перезапуск по триггеру
@@ -365,7 +378,8 @@ function _startFreshRun_() {
       settingsPacked: _packSettingIds_(settings),
       cycleCount:     1,
       status2:        status2,
-      costsJson:      '[]'
+      costsJson:      '[]',
+      runStartMs:     RUN_START_MS_
     }, settings);
 
   } catch (e) {
@@ -425,6 +439,7 @@ function _phaseCompress_(state, settings) {
     if (timeIsLow_()) {
       state.chunksDone = c;
       state.costsJson  = JSON.stringify(RUN_COSTS_);
+      state.runStartMs = RUN_START_MS_;
       _saveState_(state);
       updateChecklist_(2, (state.status2 || '') + '\n\n⏳ Сжато ' + c + '/' + totalChunks + ' частей. Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим с этого места.');
       return;
@@ -445,7 +460,7 @@ function _phaseCompress_(state, settings) {
   updateChecklist_(2, (state.status2 || '') + '\n\n✅ Gemini сжал ' + totalChunks + ' частей → ' + sz + 'k симв. Сохранено в кэш.');
 
   if (timeIsLow_()) {
-    _saveState_({ phase: 'analyze', cacheKey: state.cacheKey, completedModelIds: [], exhausted: {}, settingsPacked: state.settingsPacked, cycleCount: state.cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
+    _saveState_({ phase: 'analyze', cacheKey: state.cacheKey, completedModelIds: [], exhausted: {}, settingsPacked: state.settingsPacked, cycleCount: state.cycleCount, costsJson: JSON.stringify(RUN_COSTS_), runStartMs: RUN_START_MS_ });
     updateChecklist_(3, '⏳ Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим с шага 3.');
     return;
   }
@@ -475,7 +490,7 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
 
   for (var mi = 0; mi < remaining.length; mi++) {
     if (timeIsLow_()) {
-      _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
+      _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_), runStartMs: RUN_START_MS_ });
       updateChecklist_(3, '⏳ [' + doneCount + '/' + models.length + '] Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим.');
       return;
     }
