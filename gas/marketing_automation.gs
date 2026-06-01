@@ -378,7 +378,13 @@ function _startFreshRun_() {
 
 // ─── Продолжение после автоперезапуска ────────────────────────
 function _resumeRun_(state) {
-  var settings = _unpackSettings_(state.settingsPacked);
+  var settings;
+  try {
+    settings = readSettings_();
+  } catch (e) {
+    Logger.log('⚠️ Не удалось прочитать настройки с листа при перезапуске, используем упакованные: ' + e.message);
+    settings = _unpackSettings_(state.settingsPacked);
+  }
   try { RUN_COSTS_ = JSON.parse(state.costsJson || '[]'); } catch (_) { RUN_COSTS_ = []; }
   try {
     if (state.phase === 'compress') {
@@ -462,20 +468,21 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
   var models    = settings.selectedModels;
   var remaining = models.filter(function(m) { return completedModelIds.indexOf(m.id) < 0; });
 
-  updateChecklist_(3, '⏳ Анализ: ' + completedModelIds.length + ' / ' + models.length + ' готово...');
+  var doneCount = models.filter(function(m) { return completedModelIds.indexOf(m.id) >= 0; }).length;
+  updateChecklist_(3, '⏳ Анализ: ' + doneCount + ' / ' + models.length + ' готово...');
   updateChecklist_(4, '⏳ Ожидание...');
   updateChecklist_(5, '⏳ Ожидание...');
 
   for (var mi = 0; mi < remaining.length; mi++) {
     if (timeIsLow_()) {
       _saveState_({ phase: 'analyze', cacheKey: cacheKey, completedModelIds: completedModelIds, exhausted: exhausted, settingsPacked: _packSettingIds_(settings), cycleCount: cycleCount, costsJson: JSON.stringify(RUN_COSTS_) });
-      updateChecklist_(3, '⏳ [' + completedModelIds.length + '/' + models.length + '] Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим.');
+      updateChecklist_(3, '⏳ [' + doneCount + '/' + models.length + '] Прогресс сохранён.\n▶ Нажмите «Запустить анализ» ещё раз — продолжим.');
       return;
     }
 
     var model  = remaining[mi];
     var mLabel = model.label;
-    var mNum   = completedModelIds.length + mi + 1;
+    var mNum   = doneCount + mi + 1;
 
     try {
       // ─── Шаг 3: анализ этой моделью (или бесплатным пулом) ───
@@ -537,7 +544,8 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
 
       completedModelIds.push(model.id);
       appendChecklistLog_('✅ ' + mLabel + ' → Анализ + Гипотезы + Лучшие', true);
-      updateChecklist_(3, '✅ Анализ + заходы: ' + completedModelIds.length + ' / ' + models.length);
+      var currentDoneCount = models.filter(function(m) { return completedModelIds.indexOf(m.id) >= 0; }).length;
+      updateChecklist_(3, '✅ Анализ + заходы: ' + currentDoneCount + ' / ' + models.length);
 
     } catch (modelErr) {
       Logger.log('Ошибка модели ' + mLabel + ': ' + modelErr.message);
