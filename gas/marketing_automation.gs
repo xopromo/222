@@ -23,7 +23,7 @@ var MODEL_CATALOG = [
   { id: 'gemini-3.1-pro',    label: 'Gemini 3.1 Pro',       provider: 'kieai',    apiFormat: 'openai',    url: 'https://api.kie.ai/gemini-3.1-pro/v1/chat/completions',   hint: '~$0.024 / запуск' },
   { id: 'claude-haiku-4-5',  label: 'Claude Haiku 4.5',     provider: 'kieai',    apiFormat: 'anthropic', url: 'https://api.kie.ai/claude/v1/messages',                   hint: '~$0.011 / запуск' },
   { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6',    provider: 'kieai',    apiFormat: 'anthropic', url: 'https://api.kie.ai/claude/v1/messages',                   hint: '~$0.039 / запуск' },
-  { id: 'claude-opus-4-5',   label: 'Claude Opus 4.5',      provider: 'kieai',    apiFormat: 'anthropic', url: 'https://api.kie.ai/claude/v1/messages',                   hint: '~$0.195 / запуск' },
+  { id: 'claude-opus-4-8',   label: 'Claude Opus 4.8',      provider: 'kieai',    apiFormat: 'anthropic', url: 'https://api.kie.ai/claude/v1/messages',                   hint: '~$0.195 / запуск' },
   { id: 'gpt-5-5',           label: 'GPT-5.5',              provider: 'kieai',    apiFormat: 'responses', url: 'https://api.kie.ai/codex/v1/responses',                   hint: '~$0.025 / запуск' },
   { id: 'groq',              label: 'Groq / Llama 3.3',     provider: 'groq',     apiFormat: 'openai',    url: null,                                                      hint: 'бесплатно'         },
   { id: 'cerebras',          label: 'Cerebras / Llama 3.3', provider: 'cerebras', apiFormat: 'openai',    url: null,                                                      hint: 'бесплатно'         },
@@ -36,7 +36,7 @@ var MODEL_ROW_START = 18;
 var MODEL_PRICES_ = {
   'claude-haiku-4-5':         { in: 0.80,  out: 4.00  },
   'claude-sonnet-4-6':        { in: 3.00,  out: 15.00 },
-  'claude-opus-4-5':          { in: 15.00, out: 75.00 },
+  'claude-opus-4-8':          { in: 15.00, out: 75.00 },
   'gemini-2.5-flash':         { in: 0.075, out: 0.30  },
   'gemini-3.1-pro':           { in: 1.25,  out: 5.00  },
   'gpt-5-5':                  { in: 10.00, out: 30.00 },
