@@ -100,6 +100,7 @@ function onOpen() {
   SpreadsheetApp.getActiveSpreadsheet()
     .addMenu('Автоматизация маркетинга', [
       { name: 'Запустить анализ проекта',        functionName: 'runMarketingAnalysis' },
+      { name: 'Сбросить текущее состояние / кэш', functionName: 'resetStateAndCache' },
       { name: '─────────────────',               functionName: 'noop' },
       { name: 'Тест: распознать одно видео',     functionName: 'testKieAiVideo' },
       { name: '· · · · · · · · ·',              functionName: 'noop' },
@@ -2219,4 +2220,15 @@ function createAnalysisSheet_(ss) {
   sheet.getRange(2,1,1,8).setWrap(true);
   sheet.getRange(5,1,3,9).setWrap(true);
 }
+
+function resetStateAndCache() {
+  _clearState_();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var cacheSheet = ss.getSheetByName('Кэш');
+  if (cacheSheet) {
+    try { ss.deleteSheet(cacheSheet); } catch(e) {}
+  }
+  SpreadsheetApp.getUi().alert('Успешно', 'Состояние и кэш очищены. Следующий запуск будет с чистого листа с новыми настройками.', SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
 
