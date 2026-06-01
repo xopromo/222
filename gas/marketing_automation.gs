@@ -580,10 +580,25 @@ function readSettings_() {
   var rawSources = sheet.getRange('B3').getValue() + '';
   var sources    = rawSources.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
 
-  // Читаем чекбоксы моделей (строки MODEL_ROW_START и далее)
+  // Находим строку, где начинается первая модель в каталоге, чтобы поддержать разные версии разметки листа
+  var modelRowStart = MODEL_ROW_START;
+  try {
+    var data = sheet.getRange(1, 1, 35, 1).getValues();
+    var firstModelLabel = MODEL_CATALOG[0].label;
+    for (var r = 0; r < data.length; r++) {
+      if ((data[r][0] + '').trim() === firstModelLabel) {
+        modelRowStart = r + 1; // 1-based индекс строки
+        break;
+      }
+    }
+  } catch (e) {
+    Logger.log('⚠️ Ошибка при поиске первой модели на листе Настройки: ' + e.message);
+  }
+
+  // Чекбоксы моделей
   var selectedModels = [];
   MODEL_CATALOG.forEach(function(m, i) {
-    if (sheet.getRange(MODEL_ROW_START + i, 2).getValue() === true) {
+    if (sheet.getRange(modelRowStart + i, 2).getValue() === true) {
       selectedModels.push(m);
     }
   });
