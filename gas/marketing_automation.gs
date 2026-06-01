@@ -580,14 +580,19 @@ function readSettings_() {
   var rawSources = sheet.getRange('B3').getValue() + '';
   var sources    = rawSources.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
 
-  // Находим строку, где начинается первая модель в каталоге, чтобы поддержать разные версии разметки листа
+  // Находим строку, где начинаются модели в каталоге, поддерживая разные версии разметки листа
   var modelRowStart = MODEL_ROW_START;
   try {
     var data = sheet.getRange(1, 1, 35, 1).getValues();
-    var firstModelLabel = MODEL_CATALOG[0].label;
+    var catalogLabels = MODEL_CATALOG.map(function(m) {
+      return m.label.toLowerCase().replace(/\s+/g, ' ').trim();
+    });
     for (var r = 0; r < data.length; r++) {
-      if ((data[r][0] + '').trim() === firstModelLabel) {
-        modelRowStart = r + 1; // 1-based индекс строки
+      var cellVal = (data[r][0] + '').toLowerCase().replace(/\s+/g, ' ').trim();
+      if (!cellVal) continue;
+      var matchedIdx = catalogLabels.indexOf(cellVal);
+      if (matchedIdx !== -1) {
+        modelRowStart = (r + 1) - matchedIdx; // вычисляем 1-based индекс первой строки моделей
         break;
       }
     }
