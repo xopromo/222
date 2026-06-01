@@ -554,7 +554,7 @@ function _phaseAnalyze_(settings, cacheKey, completedModelIds, exhausted, cycleC
 
       // ─── Шаг 5: отбор топ-10 ───
       updateChecklist_(5, '⏳ [' + mNum + '/' + models.length + '] ' + mLabel + ': отбор 10...');
-      var r3 = callModelApi_(settings, model, buildPrompt2b_({ hypotheses: allHyps }), 3500);
+      var r3 = callCheapLlmForSelection_(settings, buildPrompt2b_({ hypotheses: allHyps }));
       writeLaunchSheet_('Лучшие — ' + mLabel, r3, ss);
 
       completedModelIds.push(model.id);
@@ -1446,6 +1446,128 @@ function callModelApi_(settings, model, messages, maxTokens) {
   try { var ep2 = JSON.parse(body2); if (ep2.error && ep2.error.message) err2 += ': ' + ep2.error.message; } catch (_) {}
   throw new Error(err2);
 }
+
+// ─── Отбор 10 лучших дешёвой моделью с каскадом фоллбэков ─────
+function callCheapLlmForSelection_(settings, messages) {
+  var lastError = null;
+
+  // 1. Пробуем Gemini 2.5 Flash напрямую (если есть geminiKey в B4)
+  if (settings.geminiKey) {
+    var geminiModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+    for (var gi = 0; gi < geminiModels.length; gi++) {
+      var gModel = geminiModels[gi];
+      try {
+        Logger.log('🤖 Отбор лучших: пробуем ' + gModel + ' напрямую...');
+        
+        var systemText = '';
+        var userText = '';
+        messages.forEach(function(m) {
+          if (m.role === 'system') {
+            systemText = m.content;
+          } else {
+            userText += m.content + '\n\n';
+          }
+        });
+        userText += 'Верни ТОЛЬКО валидный JSON с 10 лучшими гипотезами в формате { hypotheses: [...] }.';
+
+        var payloadObj = {
+          contents: [{ role: 'user', parts: [{ text: userText }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: 'application/json' }
+        };
+        if (systemText) {
+          payloadObj.systemInstruction = { parts: [{ text: systemText }] };
+        }
+
+        var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + gModel + ':generateContent?key=' + settings.geminiKey;
+        var resp = UrlFetchApp.fetch(url, {
+          method: 'post', contentType: 'application/json',
+          payload: JSON.stringify(payloadObj),
+          muteHttpExceptions: true, deadline: 60
+        });
+
+        var code = resp.getResponseCode();
+        var body = resp.getContentText();
+        if (code === 200) {
+          var json = JSON.parse(body);
+          var cand = json.candidates && json.candidates[0];
+          var text = (cand && cand.content && cand.content.parts && cand.content.parts[0]) ? cand.content.parts[0].text : null;
+          if (text) {
+            var parsed = JSON.parse(stripJsonMarkdown_(text));
+            var normalized = normalizeSelectionResult_(parsed);
+            if (normalized) {
+              recordCost_('Отбор лучших', 'Gemini (direct)', gModel, (json.usageMetadata && json.usageMetadata.promptTokenCount) || 0, (json.usageMetadata && json.usageMetadata.candidatesTokenCount) || 0);
+              return normalized;
+            }
+          }
+        } else {
+          throw new Error('HTTP ' + code + ': ' + body.substring(0, 150));
+        }
+      } catch (e) {
+        Logger.log('⚠️ Ошибка отбора напрямую через ' + gModel + ': ' + e.message);
+        lastError = e;
+      }
+    }
+  }
+
+  // 2. Пробуем Gemini 2.5 Flash через KIE AI (если есть kieaiKey в B11)
+  if (settings.kieaiKey) {
+    try {
+      Logger.log('🤖 Отбор лучших: пробуем Gemini 2.5 Flash через kie.ai...');
+      var cheapModel = MODEL_CATALOG.filter(function(m) { return m.id === 'gemini-2.5-flash'; })[0] || MODEL_CATALOG[0];
+      var cheapResult = callModelApi_(settings, cheapModel, messages, 3500);
+      var normalized = normalizeSelectionResult_(cheapResult);
+      if (normalized) {
+        return normalized;
+      }
+    } catch (e) {
+      Logger.log('⚠️ Ошибка отбора через kie.ai (Gemini 2.5 Flash): ' + e.message);
+      lastError = e;
+    }
+  }
+
+  // 3. Пробуем пул бесплатных моделей (Groq -> Cerebras -> Mistral)
+  try {
+    Logger.log('🤖 Отбор лучших: пробуем бесплатный пул (Groq/Cerebras/Mistral)...');
+    var exhausted = {};
+    var freeResult = callLlmApi_(settings, messages, 3500, exhausted);
+    if (freeResult && freeResult.result) {
+      var normalized = normalizeSelectionResult_(freeResult.result);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  } catch (e) {
+    Logger.log('⚠️ Ошибка отбора через бесплатный пул: ' + e.message);
+    lastError = e;
+  }
+
+  throw new Error('Не удалось выполнить отбор лучших гипотез. Все доступные модели (Gemini, KIE AI, бесплатный пул) вернули ошибку. Последняя ошибка: ' + (lastError ? lastError.message : 'неизвестно'));
+}
+
+// Вспомогательная функция для нормализации формата результата отбора
+function normalizeSelectionResult_(parsed) {
+  if (!parsed) return null;
+  
+  // Если формат правильный { hypotheses: [...] }
+  if (parsed.hypotheses && Array.isArray(parsed.hypotheses)) {
+    return parsed;
+  }
+  
+  // Если модель вернула сразу массив гипотез [...]
+  if (Array.isArray(parsed)) {
+    return { hypotheses: parsed };
+  }
+  
+  // Если объект содержит другой ключ с массивом
+  for (var key in parsed) {
+    if (parsed.hasOwnProperty(key) && Array.isArray(parsed[key])) {
+      return { hypotheses: parsed[key] };
+    }
+  }
+  
+  return null;
+}
+
 
 // ─── Кэш сжатого контекста (лист «Кэш» в той же таблице) ─────
 // Ключ = MD5 от списка источников (B3). Изменились источники → новый ключ → пересборка.
