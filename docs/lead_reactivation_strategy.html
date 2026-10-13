@@ -436,6 +436,68 @@
       color: var(--primary);
     }
 
+    /* Схлопывающийся блок скрипта первого обращения */
+    .card-collapsible {
+      padding: 0;
+      overflow: hidden;
+      transition: all 0.15s ease;
+    }
+
+    .collapsible-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      background: #ffffff;
+      transition: background 0.15s;
+    }
+
+    .collapsible-header:hover {
+      background: #f8fafc;
+    }
+
+    .collapsible-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: transform 0.2s ease, color 0.15s;
+    }
+
+    .card-collapsible.open .collapsible-icon {
+      transform: rotate(180deg);
+      color: var(--primary);
+    }
+
+    .collapsible-hint {
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: 500;
+      background: var(--primary-light);
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--primary-border);
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .collapsible-header:hover .collapsible-hint {
+      background: #dbeafe;
+    }
+
+    .collapsible-body {
+      padding: 0 20px 20px 20px;
+      border-top: 1px solid var(--line);
+      background: #ffffff;
+      display: none;
+    }
+
+    .card-collapsible.open .collapsible-body {
+      display: block;
+    }
+
     /* Скрипт */
     .script-box {
       background: #f8fafc;
@@ -1383,12 +1445,24 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="section-title">Скрипт первого обращения (сообщение или звонок)</div>
-          <div class="script-box">
-            <button class="copy-btn" onclick="copyScript()">Копировать</button>
-            <div id="activeScriptText">
-              Загрузка текста...
+        <div class="card card-collapsible" id="scriptAccordionCard">
+          <div class="collapsible-header" onclick="toggleScriptCollapse()">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="collapsible-icon">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </span>
+              <span class="section-title" style="margin-bottom: 0;">Скрипт первого обращения (сообщение или звонок)</span>
+            </div>
+            <span class="collapsible-hint" id="scriptCollapseHint">Развернуть</span>
+          </div>
+          <div class="collapsible-body" id="scriptCollapseBody">
+            <div class="script-box" style="margin-top: 14px;">
+              <button class="copy-btn" onclick="event.stopPropagation(); copyScript()">Копировать</button>
+              <div id="activeScriptText">
+                Загрузка текста...
+              </div>
             </div>
           </div>
         </div>
@@ -2723,6 +2797,16 @@
         btn.classList.toggle('active', !!matches);
       });
       renderNiches();
+    }
+
+    function toggleScriptCollapse() {
+      const card = document.getElementById('scriptAccordionCard');
+      const hint = document.getElementById('scriptCollapseHint');
+      if (!card) return;
+      const isOpen = card.classList.toggle('open');
+      if (hint) {
+        hint.innerText = isOpen ? 'Свернуть' : 'Развернуть';
+      }
     }
 
     function copyScript() {
