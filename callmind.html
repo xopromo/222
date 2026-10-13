@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#232946" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="callmind_manifest.json" />
+  <title>Звонки AI — Умная запись звонков, встреч и заметок</title>
+  <style>
+    :root {
+      --bg-top: #222741;
+      --bg-mid: #4e5674;
+      --bg-main: #d8dce8;
+      --card-bg: #ffffff;
+      --summary-bg: #f1f2f6;
+      --text-main: #181a25;
+      --text-muted: #7a8194;
+      --accent-red: #e30611;
+      --accent-blue: #2563eb;
+      --accent-green: #10b981;
+      --accent-purple: #7c3aed;
+      --accent-amber: #d97706;
+      --radius-xl: 22px;
+      --radius-md: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 220px, var(--bg-main) 420px, var(--bg-main) 100%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 92px;
+    }
+
+    .app-shell {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 14px 14px 24px;
+    }
+
+    /* Top Header exactly like MTS screenshot + AI badges */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #ffffff;
+      padding: 6px 4px 10px;
+    }
+
+    .brand-title h1 {
+      margin: 0;
+      font-size: 31px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ai-pill {
+      font-size: 11px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ff2a36, #ff6b00);
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 99px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-sub {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.78);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      display: inline-block;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hdr-btn {
+      background: rgba(255, 255, 255, 0.88);
+      color: #181a25;
+      border: none;
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .hdr-btn.red-logo {
+      background: var(--accent-red);
+      color: #fff;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+    }
+
+    /* Pool & Telegram Status Strip */
+    .status-strip {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .status-strip::-webkit-scrollbar { display: none; }
+
+    .status-chip {
+      background: rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      color: #fff;
+      padding: 6px 11px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* 1-Click Quick Record Panel (Doctor / Lawyer / Memo / Call) */
+    .quick-record-panel {
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: var(--radius-xl);
+      padding: 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 24px rgba(18, 22, 38, 0.14);
+    }
+
+    .qr-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .qr-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #4b5267;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .engine-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      background: #eff6ff;
+      padding: 3px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .qr-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .qr-btn {
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 11px 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .qr-btn:active {
+      transform: scale(0.97);
+    }
+
+    .qr-btn.doctor {
+      background: linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%);
+      border-color: #fecdd3;
+    }
+    .qr-btn.lawyer {
+      background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
+      border-color: #bfdbfe;
+    }
+    .qr-btn.memo {
+      background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+      border-color: #bbf7d0;
+    }
+    .qr-btn.upload {
+      background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%);
+      border-color: #ddd6fe;
+    }
+
+    .qr-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      flex-shrink: 0;
+    }
+
+    .qr-info b {
+      display: block;
+      font-size: 13.5px;
+      color: #181a25;
+      line-height: 1.2;
+    }
+
+    .qr-info span {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    /* Active Live Recorder Box */
+    .live-recorder-box {
+      display: none;
+      margin-top: 12px;
+      background: #181a25;
+      color: #fff;
+      border-radius: 18px;
+      padding: 14px;
+      animation: pulseBorder 2s infinite;
+    }
+
+    @keyframes pulseBorder {
+      0% { box-shadow: 0 0 0 0 rgba(227, 6, 17, 0.45); }
+      70% { box-shadow: 0 0 0 10px rgba(227, 6, 17, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(227, 6, 17, 0); }
+    }
+
+    .rec-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .rec-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .red-blink {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0.2; }
+    }
+
+    .rec-timer {
+      font-family: monospace;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fca5a5;
+    }
+
+    .rec-live-text {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      background: rgba(255,255,255,0.07);
+      padding: 8px 10px;
+      border-radius: 10px;
+      margin: 8px 0;
+      min-height: 36px;
+      max-height: 90px;
+      overflow-y: auto;
+    }
+
+    .rec-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .btn-stop-rec {
+      flex: 1;
+      background: var(--accent-red);
+      color: #fff;
+      border: none;
+      padding: 11px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-bookmark {
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+      border: none;
+      padding: 11px 14px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* Search & Filter Tabs */
+    .search-bar {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    .search-bar input {
+      width: 100%;
+      padding: 11px 14px 11px 38px;
+      border-radius: 14px;
+      border: none;
+      background: rgba(255, 255, 255, 0.92);
+      font-size: 14px;
+      color: var(--text-main);
+      outline: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .search-bar .s-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 15px;
+      color: #6b7280;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      scrollbar-width: none;
+    }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+
+    .f-tab {
+      background: rgba(255, 255, 255, 0.7);
+      border: none;
+      padding: 7px 13px;
+      border-radius: 99px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #374151;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .f-tab.active {
+      background: #181a25;
+      color: #fff;
+    }
+
+    /* Call Cards — Exact match to the MTS Screenshot */
+    .cards-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .call-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-xl);
+      padding: 16px;
+      box-shadow: 0 4px 14px rgba(20, 25, 40, 0.07);
+      cursor: pointer;
+      transition: transform 0.12s ease;
+    }
+
+    .call-card:active {
+      transform: scale(0.99);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .caller-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #475569;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .caller-name {
+      font-size: 16.5px;
+      font-weight: 600;
+      color: #181a25;
+      margin: 0 0 3px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .source-tag {
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+    .tag-gsm { background: #f1f5f9; color: #475569; }
+    .tag-telegram { background: #e0f2fe; color: #0284c7; }
+    .tag-whatsapp { background: #dcfce7; color: #15803d; }
+    .tag-doctor { background: #ffe4e6; color: #e11d48; }
+    .tag-lawyer { background: #dbeafe; color: #1d4ed8; }
+    .tag-memo { background: #fef3c7; color: #b45309; }
+
+    .call-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .call-time {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      align-self: flex-start;
+    }
+
+    /* Gray summary bubble inside the white card — identical to MTS screenshot */
+    .summary-bubble {
+      background: var(--summary-bg);
+      border-radius: var(--radius-md);
+      padding: 13px 15px;
+      font-size: 14.5px;
+      line-height: 1.42;
+      color: #1f2430;
+    }
+
+    /* Expanded Details inside Card */
+    .card-details {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #eef0f5;
+    }
+
+    .call-card.expanded .card-details {
+      display: block;
+    }
+
+    .detail-block {
+      margin-bottom: 10px;
+    }
+
+    .detail-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 5px;
+    }
+
+    .checklist {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 13.5px;
+      color: #1f2937;
+    }
+    .checklist li { margin-bottom: 4px; }
+
+    .transcript-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #334155;
+      white-space: pre-wrap;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .act-btn {
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #1e293b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .act-btn.tg {
+      background: #0088cc;
+      color: #fff;
+      border-color: #0088cc;
+    }
+
+    /* Bottom Navigation like MTS app */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+      z-index: 90;
+    }
+
+    .nav-item {
+      border: none;
+      background: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      color: #8c93a4;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .nav-item.active {
+      color: var(--accent-red);
+    }
+
+    .nav-icon {
+      font-size: 20px;
+    }
+
+    /* Modals (Groq Key Pool, Telegram Bot Setup, Android Setup) */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-sheet {
+      background: #fff;
+      width: 100%;
+      max-width: 520px;
+      border-radius: 24px 24px 0 0;
+      padding: 20px 18px 28px;
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+
+    .modal-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .modal-hdr h3 {
+      margin: 0;
+      font-size: 19px;
+    }
+
+    .close-btn {
+      border: none;
+      background: #f1f5f9;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 5px;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--accent-red);
+      color: #fff;
+      border: none;
+      padding: 13px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .btn-secondary {
+      width: 100%;
+      background: #eff6ff;
+      color: var(--accent-blue);
+      border: 1px solid #bfdbfe;
+      padding: 11px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      text-align: center;
+      display: block;
+      text-decoration: none;
+    }
+
+    .pool-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+
+    .key-pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      margin-top: 6px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #181a25;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 999;
+      display: none;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<div class="app-shell">
+  <!-- Header -->
+  <div class="top-bar">
+    <div class="brand-title">
+      <h1>Звонки <span class="ai-pill">AI PRO</span></h1>
+      <div class="brand-sub">
+        <span class="status-dot"></span>
+        <span id="statusText">Перехват: GSM • TG • WA • Живая речь</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="hdr-btn" onclick="openModal('poolModal')">🔑 Пул Грок</button>
+      <button class="hdr-btn red-logo" onclick="openModal('tgModal')">✈️ ТГ</button>
+    </div>
+  </div>
+
+  <!-- Quick Status Chips -->
+  <div class="status-strip">
+    <div class="status-chip" onclick="openModal('poolModal')" id="poolChip">
+      ⚡ Пул ключей: загрузка...
+    </div>
+    <div class="status-chip" onclick="openModal('tgModal')" id="tgChip">
+      ✈️ Telegram-канал: Настроить
+    </div>
+    <div class="status-chip" onclick="openModal('installModal')">
+      📲 Установка на телефон / APK
+    </div>
+  </div>
+
+  <!-- 1-Click Live Recording & Call Upload Panel -->
+  <div class="quick-record-panel">
+    <div class="qr-header">
+      <span class="qr-title">🎙 Запись в 1 клик (даже в кармане)</span>
+      <span class="engine-badge" onclick="openModal('poolModal')" id="engineBadge">Движок: Groq Whisper-v3</span>
+    </div>
+
+    <div class="qr-grid">
+      <button class="qr-btn doctor" onclick="startOneClickRecord('doctor', 'live', 'Приём у врача')">
+        <div class="qr-icon">🩺</div>
+        <div class="qr-info">
+          <b>У врача</b>
+          <span>Диагноз, лекарства, анализы</span>
+        </div>
+      </button>
+
+      <button class="qr-btn lawyer" onclick="startOneClickRecord('lawyer', 'live', 'Юрист / Встреча')">
+        <div class="qr-icon">⚖️</div>
+        <div class="qr-info">
+          <b>У юриста / Встреча</b>
+          <span>Риски, договоренности, сроки</span>
+        </div>
+      </button>
+
+      <button class="qr-btn memo" onclick="startOneClickRecord('memo', 'memo', 'Быстрая заметка')">
+        <div class="qr-icon">⚡</div>
+        <div class="qr-info">
+          <b>Голосовая заметка</b>
+          <span>Мысль или задача на бегу</span>
+        </div>
+      </button>
+
+      <button class="qr-btn upload" onclick="document.getElementById('audioFileInput').click()">
+        <div class="qr-icon">📞</div>
+        <div class="qr-info">
+          <b>Звонок / Аудиофайл</b>
+          <span>GSM, Telegram, WhatsApp</span>
+        </div>
+      </button>
+    </div>
+
+    <input type="file" id="audioFileInput" accept="audio/*,video/*" style="display:none" onchange="handleUploadedFile(event)" />
+
+    <!-- Active Live Recording Widget -->
+    <div id="liveRecorderBox" class="live-recorder-box">
+      <div class="rec-top">
+        <div class="rec-indicator">
+          <span class="red-blink"></span>
+          <span id="recModeTitle">Идет запись: Приём у врача</span>
+        </div>
+        <div class="rec-timer" id="recTimer">00:00</div>
+      </div>
+      <div class="rec-live-text" id="recLivePreview">
+        Слушаю разговор... Телефон можно положить в карман или на стол.
+      </div>
+      <div class="rec-controls">
+        <button class="btn-bookmark" onclick="addTimestampNote()">📌 Важный момент</button>
+        <button class="btn-stop-rec" onclick="stopOneClickRecord()">⏹ Завершить и сделать конспект</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Bar -->
+  <div class="search-bar">
+    <span class="s-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Поиск по сути: молоко, код домофона, врач, договор..." oninput="renderCards()" />
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="filter-tabs">
+    <button class="f-tab active" onclick="setFilter('all', this)">Все записи</button>
+    <button class="f-tab" onclick="setFilter('gsm', this)">📞 Сотовые</button>
+    <button class="f-tab" onclick="setFilter('messenger', this)">💬 TG / WhatsApp</button>
+    <button class="f-tab" onclick="setFilter('doctor', this)">🩺 Врач</button>
+    <button class="f-tab" onclick="setFilter('lawyer', this)">⚖️ Юрист / Встречи</button>
+    <button class="f-tab" onclick="setFilter('memo', this)">⚡ Заметки</button>
+  </div>
+
+  <!-- Cards Feed (Matches MTS Screenshot + Detailed Expandable View) -->
+  <div id="cardsContainer" class="cards-list"></div>
+</div>
+
+<!-- Bottom Navigation Bar -->
+<div class="bottom-nav">
+  <button class="nav-item active" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+    <span class="nav-icon">📞</span>
+    <span>Звонки и записи</span>
+  </button>
+  <button class="nav-item" onclick="startOneClickRecord('doctor', 'live', 'Приём у врача')">
+    <span class="nav-icon">🔴</span>
+    <span>Запись в 1 клик</span>
+  </button>
+  <button class="nav-item" onclick="openModal('poolModal')">
+    <span class="nav-icon">🔑</span>
+    <span>Пул Groq AI</span>
+  </button>
+  <button class="nav-item" onclick="openModal('tgModal')">
+    <span class="nav-icon">✈️</span>
+    <span>Бот / Канал</span>
+  </button>
+</div>
+
+<!-- MODAL 1: Groq API Key Pool & Engine Selection -->
+<div id="poolModal" class="modal-overlay" onclick="if(event.target===this)closeModal('poolModal')">
+  <div class="modal-sheet">
+    <div class="modal-hdr">
+      <h3>🔑 Пул ключей Groq & Движок речи</h3>
+      <button class="close-btn" onclick="closeModal('poolModal')">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label>Где распознавать голос?</label>
+      <select id="engineSelect" class="form-select" onchange="saveEngineMode()">
+        <option value="groq_pool">🔥 Облачный пул Groq (Whisper-Large-v3 + Llama 3.3 70B) — Максимальная точность</option>
+        <option value="hybrid">🔄 Гибрид: На телефоне (живой текст) + доводка в Groq</option>
+        <option value="on_device">📱 Только на телефоне (Локальный движок Android без облака и ключей)</option>
+      </select>
+    </div>
+
+    <div class="pool-box">
+      <b>📊 Состояние общего пула ключей Groq:</b>
+      <div id="poolStatsText" style="margin-top:4px; color:#475569;"></div>
+      <div id="keysListBox" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Добавить бесплатный ключ Groq в общий пул (дает +8 часов аудио/день):</label>
+      <input type="text" id="newGroqKey" class="form-input" placeholder="Вставьте ключ gsk_... или VIP-код (BOSS777)" />
+      <input type="text" id="keyOwnerName" class="form-input" style="margin-top:6px" placeholder="Ваше имя (например: Константин, Сотрудник Илья)" />
+      <button class="btn-primary" onclick="addKeyToPool()">➕ Добавить ключ в пул ротации</button>
+      <a href="https://console.groq.com/keys" target="_blank" class="btn-secondary">
+        🌐 Получить бесплатный ключ Groq за 30 секунд (Create API Key)
+      </a>
+    </div>
+    <p style="font-size:12px; color:#64748b; margin:8px 0 0;">
+      💡 <b>Как работает ротация:</b> Один бесплатный ключ Groq обрабатывает до <b>8 часов разговоров в сутки</b>. Мало кто говорит больше 30–60 минут в день, поэтому ключи всех участников складываются в общий пул и автоматически подменяют друг друга по кругу!
+    </p>
+  </div>
+</div>
+
+<!-- MODAL 2: Personal Telegram Bot & Channel Setup -->
+<div id="tgModal" class="modal-overlay" onclick="if(event.target===this)closeModal('tgModal')">
+  <div class="modal-sheet">
+    <div class="modal-hdr">
+      <h3>✈️ Отправка в Telegram-канал / Бот</h3>
+      <button class="close-btn" onclick="closeModal('tgModal')">✕</button>
+    </div>
+
+    <p style="font-size:13px; color:#475569; margin-top:0;">
+      После каждого звонка или записи у врача/юриста бот мгновенно пришлет вам карточку с сутью разговора, списком задач, расшифровкой и самим аудиофайлом.
+    </p>
+
+    <div class="form-group">
+      <label>1. Токен вашего личного бота (от @BotFather):</label>
+      <input type="text" id="tgBotToken" class="form-input" placeholder="1234567890:AAH..." />
+    </div>
+
+    <div class="form-group">
+      <label>2. Куда слать отчеты (ID вашего канала или лички):</label>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="tgChatId" class="form-input" placeholder="-100... или ваш ID" />
+        <button class="hdr-btn" style="background:#eff6ff; color:#2563eb; white-space:nowrap;" onclick="autoDetectTelegramChat()">
+          🔍 Найти сам
+        </button>
+      </div>
+      <span style="font-size:11.5px; color:#64748b; display:block; margin-top:4px;">
+        Напишите любое сообщение вашему боту (или добавьте бота админом в свой канал) и нажмите <b>«🔍 Найти сам»</b> — ID подставится автоматически!
+      </span>
+    </div>
+
+    <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="tgAutoSend" checked style="width:18px; height:18px;" />
+      <label for="tgAutoSend" style="margin:0; cursor:pointer;">Автоматически отправлять все новые звонки и записи в Telegram</label>
+    </div>
+
+    <button class="btn-primary" onclick="saveTelegramConfig()">💾 Сохранить и отправить тестовую карточку</button>
+  </div>
+</div>
+
+<!-- MODAL 3: Easy Installation Guide for Friends & Employees -->
+<div id="installModal" class="modal-overlay" onclick="if(event.target===this)closeModal('installModal')">
+  <div class="modal-sheet">
+    <div class="modal-hdr">
+      <h3>📲 Установка на Android за 1 минуту</h3>
+      <button class="close-btn" onclick="closeModal('installModal')">✕</button>
+    </div>
+
+    <div class="pool-box">
+      <b>Вариант 1: Установка в 1 клик прямо сейчас (PWA-приложение)</b>
+      <ol style="padding-left:18px; margin:6px 0 0; line-height:1.5;">
+        <li>Откройте эту страницу в Chrome на Android.</li>
+        <li>Нажмите меню <b>«⋮» → «Добавить на главный экран» (Установить приложение)</b>.</li>
+        <li>Иконка <b>«Звонки AI»</b> появится на рабочем столе телефона — запись у врача, юриста и голосовые заметки работают сразу!</li>
+      </ol>
+    </div>
+
+    <div class="pool-box">
+      <b>Вариант 2: Полный фоновый перехват звонков (GSM + Telegram + WhatsApp)</b>
+      <ol style="padding-left:18px; margin:6px 0 0; line-height:1.5;">
+        <li>Установите <b>CallMind.apk</b> и разрешите доступ к микрофону и контактам.</li>
+        <li>Для обычных звонков (Xiaomi, Samsung, Realme): включите штатную «Автозапись вызовов» — приложение само забирает записи из папки <code>call_rec</code> / <code>Call</code> через секунду после звонка.</li>
+        <li>Для звонков <b>Telegram и WhatsApp</b>: нажмите кнопку ниже и включите переключатель «Звонки AI» в Специальных возможностях.</li>
+      </ol>
+      <button class="btn-secondary" onclick="if(window.AndroidBridge) window.AndroidBridge.openAccessibilitySettings(); else showToast('Доступно внутри установленного APK');">
+        ⚙️ Открыть настройки перехвата Telegram / WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- INITIAL DEMO CARDS (Matching the exact MTS screenshot + Doctor & Lawyer examples) ---
+  const DEFAULT_CARDS = [
+    {
+      id: "demo_1",
+      contact_name: "Мама",
+      phone_number: "+7 916 555-12-34",
+      direction: "Исходящий",
+      source: "gsm",
+      mode: "call",
+      time_label: "Вчера",
+      avatar_emoji: "👩🏼‍🦳",
+      summary: "Вас попросили купить пакет молока, цельнозерновой хлеб и куриное филе после работы",
+      action_items: [
+        "Купить пакет молока 2.5%",
+        "Купить цельнозерновой хлеб",
+        "Купить охлажденное куриное филе",
+        "Заехать после работы до 20:00"
+      ],
+      extra: {},
+      transcript: "— Алло, сынок, ты еще на работе?\n— Да, мам, через полчаса выезжаю.\n— Зайди, пожалуйста, по дороге в магазин: возьми пакет молока, цельнозерновой хлеб и куриное филе на ужин.\n— Хорошо, всё куплю и завезу!"
+    },
+    {
+      id: "demo_2",
+      contact_name: "Ксюша Сестра",
+      phone_number: "",
+      direction: "Исходящий",
+      source: "telegram",
+      mode: "call",
+      time_label: "Вчера",
+      avatar_emoji: "👩🏻",
+      summary: "Вы договорились встретиться в следующую субботу на ВДНХ и обсудить подарок для мамы",
+      action_items: [
+        "Суббота, 14:00 — встреча у главного входа ВДНХ",
+        "Выбрать и заказать общий подарок для мамы"
+      ],
+      extra: {},
+      transcript: "— Привет! Давай в следующую субботу пересечемся на ВДНХ?\n— Давай, заодно обсудим и выберем подарок для мамы на юбилей.\n— Супер, тогда в субботу в два часа!"
+    },
+    {
+      id: "demo_3",
+      contact_name: "Терапевт / Гастроэнтеролог",
+      phone_number: "Клиника Медси",
+      direction: "Живая запись (24 мин)",
+      source: "live",
+      mode: "doctor",
+      time_label: "Вчера",
+      avatar_emoji: "🩺",
+      summary: "Врач рекомендовал курс Омепразола 20 мг утром за 30 минут до еды (14 дней), УЗИ брюшной полости и диету без острого и кофе натощак",
+      action_items: [
+        "Купить Омепразол 20 мг — по 1 капс. за 30 мин до завтрака (14 дней)",
+        "Сдать биохимию крови и записаться на УЗИ брюшной полости",
+        "Исключить кофе натощак и острую пищу на 2 недели",
+        "Повторный прием с результатами УЗИ через 14 дней"
+      ],
+      extra: {
+        medications: [
+          "Омепразол 20 мг — 1 раз в день утром за 30 минут до еды (курс 14 дней)",
+          "Фосфалюгель — по 1 пакетику при изжоге после еды"
+        ]
+      },
+      transcript: "Врач: По симптомам у вас поверхностный гастрит. Назначаю Омепразол 20 мг утром за полчаса до завтрака на две недели. Обязательно сделайте УЗИ брюшной полости и биохимию крови. Кофе натощак временно убираем."
+    },
+    {
+      id: "demo_4",
+      contact_name: "Жена",
+      phone_number: "+7 916 777-88-99",
+      direction: "Исходящий",
+      source: "whatsapp",
+      mode: "call",
+      time_label: "Вт",
+      avatar_emoji: "👩🏽",
+      summary: "Вы обсудили что приготовить на ужин, кто сможет встретить курьера и как дела у сына",
+      action_items: [
+        "Встретить курьера с доставкой с 18:30 до 19:00",
+        "Проверить домашнее задание у сына"
+      ],
+      extra: {},
+      transcript: "— Что сегодня приготовим на ужин?\n— Давай пасту. Слушай, сможешь встретить курьера после шести? Я еще буду с сыном на тренировке.\n— Да, я буду дома, встречу."
+    },
+    {
+      id: "demo_5",
+      contact_name: "+7 903 725 24 09",
+      phone_number: "+7 903 725 24 09",
+      direction: "Исходящий",
+      source: "gsm",
+      mode: "call",
+      time_label: "Вт",
+      avatar_emoji: "👤",
+      summary: "Курьер сообщил, что приедет в течение 15 минут к дому и уточнил код от домофона",
+      action_items: [
+        "Курьер будет через 15 минут",
+        "Названный код от домофона: #4280"
+      ],
+      extra: {},
+      transcript: "— Здравствуйте, доставка! Буду у вашего дома минут через 15. Подскажите, пожалуйста, код от домофона?\n— Записывайте: решетка 4280, третий этаж.\n— Понял, скоро буду!"
+    }
+  ];
+
+  // --- STATE & STORAGE ---
+  let records = JSON.parse(localStorage.getItem("callmind_records") || "null") || DEFAULT_CARDS;
+  let groqPool = JSON.parse(localStorage.getItem("callmind_groq_pool") || "[]");
+  let engineMode = localStorage.getItem("callmind_engine_mode") || "groq_pool";
+  let tgConfig = JSON.parse(localStorage.getItem("callmind_tg_config") || '{"bot_token":"","chat_id":"","auto_send":true}');
+  let currentFilter = "all";
+
+  // Recording state
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let activeRecMode = "doctor";
+  let activeRecSource = "live";
+  let activeRecContact = "Приём у врача";
+  let recStartTime = 0;
+  let recTimerInterval = null;
+  let speechRecognition = null;
+  let liveTranscriptBuffer = "";
+  let wakeLockSentinel = null;
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.style.display = "block";
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => { t.style.display = "none"; }, 3500);
+  }
+
+  function openModal(id) {
+    document.getElementById(id).classList.add("open");
+    if (id === "poolModal") renderPoolUI();
+    if (id === "tgModal") {
+      document.getElementById("tgBotToken").value = tgConfig.bot_token || "";
+      document.getElementById("tgChatId").value = tgConfig.chat_id || "";
+      document.getElementById("tgAutoSend").checked = tgConfig.auto_send !== false;
+    }
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove("open");
+  }
+
+  // --- GROQ KEY POOL ROTATION ENGINE ---
+  function savePool() {
+    localStorage.setItem("callmind_groq_pool", JSON.stringify(groqPool));
+    updateTopChips();
+    renderPoolUI();
+  }
+
+  function addKeyToPool() {
+    const raw = (document.getElementById("newGroqKey").value || "").trim();
+    const owner = (document.getElementById("keyOwnerName").value || "Участник").trim();
+
+    if (raw.toUpperCase() === "BOSS777" || raw.toUpperCase() === "VIP2026") {
+      localStorage.setItem("callmind_vip_unlocked", "1");
+      showToast("👑 VIP-режим активирован! Используется общий пул.");
+      document.getElementById("newGroqKey").value = "";
+      updateTopChips();
+      renderPoolUI();
+      return;
+    }
+
+    if (!raw.startsWith("gsk_") || raw.length < 20) {
+      showToast("⚠️ Ключ Groq должен начинаться с gsk_...");
+      return;
+    }
+
+    const exists = groqPool.find(k => k.key === raw);
+    if (!exists) {
+      groqPool.push({
+        key: raw,
+        owner: owner,
+        usedSecToday: 0,
+        day: new Date().toISOString().slice(0, 10),
+        cooldownUntil: 0
+      });
+    } else {
+      exists.cooldownUntil = 0;
+      exists.owner = owner;
+    }
+
+    // Try syncing with backend server if reachable
+    fetch("/api/add_key", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({api_key: raw, owner_name: owner})
+    }).catch(() => {});
+
+    document.getElementById("newGroqKey").value = "";
+    savePool();
+    showToast("✅ Ключ добавлен в пул ротации (+8 часов/день)!");
+  }
+
+  function getNextRotatedGroqKey() {
+    const today = new Date().toISOString().slice(0, 10);
+    const now = Date.now();
+    groqPool.forEach(k => {
+      if (k.day !== today) {
+        k.day = today;
+        k.usedSecToday = 0;
+      }
+    });
+    const available = groqPool
+      .filter(k => (k.cooldownUntil || 0) < now && (k.usedSecToday || 0) < 28000)
+      .sort((a, b) => (a.usedSecToday || 0) - (b.usedSecToday || 0));
+    return available.length > 0 ? available[0] : null;
+  }
+
+  function renderPoolUI() {
+    document.getElementById("engineSelect").value = engineMode;
+    const totalKeys = groqPool.length;
+    const totalHours = (totalKeys * 8);
+    const usedSec = groqPool.reduce((acc, k) => acc + (k.usedSecToday || 0), 0);
+    const remHours = Math.max(0, totalHours - (usedSec / 3600)).toFixed(1);
+
+    document.getElementById("poolStatsText").innerHTML =
+      `Ключей в пуле: <b>${totalKeys} шт.</b> • Лимит пула: <b>${totalHours} ч/сутки</b> • Осталось сегодня: <b>${remHours} ч</b>`;
+
+    const box = document.getElementById("keysListBox");
+    if (totalKeys === 0) {
+      box.innerHTML = `<div style="color:#d97706; font-size:12px;">В пуле пока нет ключей. Добавьте первый бесплатный ключ gsk_... (занимает 30 сек) или включите локальный движок на телефоне!</div>`;
+    } else {
+      box.innerHTML = groqPool.map((k, idx) => `
+        <div class="key-pill">
+          <span>#${idx + 1} ${k.owner}: ${k.key.slice(0, 8)}...${k.key.slice(-4)}</span>
+          <span style="color:#10b981">${Math.round((k.usedSecToday || 0) / 60)} / 480 мин</span>
+        </div>
+      `).join("");
+    }
+  }
+
+  function saveEngineMode() {
+    engineMode = document.getElementById("engineSelect").value;
+    localStorage.setItem("callmind_engine_mode", engineMode);
+    updateTopChips();
+    showToast("Движок распознавания обновлен");
+  }
+
+  function updateTopChips() {
+    const totalKeys = groqPool.length;
+    const poolChip = document.getElementById("poolChip");
+    if (engineMode === "on_device") {
+      poolChip.innerHTML = `📱 Локальный ИИ на телефоне (0 ₽)`;
+      document.getElementById("engineBadge").textContent = "Движок: На телефоне";
+    } else {
+      poolChip.innerHTML = `🔑 Пул Groq: ${totalKeys} кл. (${totalKeys * 8} ч/день)`;
+      document.getElementById("engineBadge").textContent = engineMode === "hybrid" ? "Движок: Гибрид + Groq" : "Движок: Groq Whisper-v3";
+    }
+
+    const tgChip = document.getElementById("tgChip");
+    if (tgConfig.bot_token && tgConfig.chat_id) {
+      tgChip.innerHTML = `✈️ ТГ подключен (${tgConfig.chat_id})`;
+    } else {
+      tgChip.innerHTML = `✈️ Подключить Telegram в 1 клик`;
+    }
+  }
+
+  // --- 1-CLICK LIVE RECORDING (DOCTOR / LAWYER / MEMO) ---
+  async function startOneClickRecord(mode, source, defaultTitle) {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      showToast("Запись уже идет!");
+      return;
+    }
+
+    activeRecMode = mode;
+    activeRecSource = source;
+    activeRecContact = defaultTitle;
+    audioChunks = [];
+    liveTranscriptBuffer = "";
+
+    // Request WakeLock so phone screen/CPU never sleeps at the doctor or lawyer
+    if ("wakeLock" in navigator) {
+      try { wakeLockSentinel = await navigator.wakeLock.request("screen"); } catch (_) {}
+    }
+
+    // Also notify Native Android Service if running inside APK
+    if (window.AndroidBridge && window.AndroidBridge.startBackgroundRecording) {
+      try { window.AndroidBridge.startBackgroundRecording(mode, source, defaultTitle); } catch (_) {}
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : (MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "");
+
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 48000 }) : new MediaRecorder(stream);
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        if (wakeLockSentinel) {
+          try { await wakeLockSentinel.release(); } catch (_) {}
+          wakeLockSentinel = null;
+        }
+        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+        const durationSec = Math.max(1, Math.round((Date.now() - recStartTime) / 1000));
+        await processCapturedAudio(blob, "live_record.webm", activeRecMode, activeRecSource, activeRecContact, "", durationSec, liveTranscriptBuffer);
+      };
+
+      mediaRecorder.start(1000);
+      recStartTime = Date.now();
+
+      // Start on-device live speech recognition in parallel (for live preview & on-device fallback)
+      startOnDeviceSpeechRecognition();
+
+      document.getElementById("liveRecorderBox").style.display = "block";
+      document.getElementById("recModeTitle").textContent = `Идет запись: ${defaultTitle}`;
+      document.getElementById("recLivePreview").textContent = "🎙 Слушаю разговор... Вы можете положить телефон на стол или в карман.";
+      updateRecTimer();
+      recTimerInterval = setInterval(updateRecTimer, 1000);
+      showToast(`🔴 Запись включена: ${defaultTitle}`);
+    } catch (err) {
+      showToast("⚠️ Разрешите доступ к микрофону для записи разговора");
+    }
+  }
+
+  function startOnDeviceSpeechRecognition() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) return;
+    try {
+      speechRecognition = new SpeechRec();
+      speechRecognition.lang = "ru-RU";
+      speechRecognition.continuous = true;
+      speechRecognition.interimResults = true;
+      speechRecognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const txt = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            liveTranscriptBuffer += txt.trim() + ". ";
+          } else {
+            interim += txt;
+          }
+        }
+        const preview = (liveTranscriptBuffer + " " + interim).trim();
+        if (preview) {
+          document.getElementById("recLivePreview").textContent = preview.slice(-260);
+        }
+      };
+      speechRecognition.onerror = () => {};
+      speechRecognition.onend = () => {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          try { speechRecognition.start(); } catch (_) {}
+        }
+      };
+      speechRecognition.start();
+    } catch (_) {}
+  }
+
+  function addTimestampNote() {
+    const elapsed = document.getElementById("recTimer").textContent;
+    liveTranscriptBuffer += ` [📌 Важный момент на ${elapsed}] `;
+    showToast(`📌 Отметка поставлена (${elapsed})`);
+  }
+
+  function updateRecTimer() {
+    const sec = Math.floor((Date.now() - recStartTime) / 1000);
+    const m = String(Math.floor(sec / 60)).padStart(2, "0");
+    const s = String(sec % 60).padStart(2, "0");
+    document.getElementById("recTimer").textContent = `${m}:${s}`;
+  }
+
+  function stopOneClickRecord() {
+    clearInterval(recTimerInterval);
+    document.getElementById("liveRecorderBox").style.display = "none";
+    if (speechRecognition) {
+      try { speechRecognition.onend = null; speechRecognition.stop(); } catch (_) {}
+    }
+    if (window.AndroidBridge && window.AndroidBridge.stopBackgroundRecording) {
+      try { window.AndroidBridge.stopBackgroundRecording(); } catch (_) {}
+    }
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
+  }
+
+  // --- HANDLE UPLOADED CALL FILE OR NATIVE ANDROID INTERCEPTED CALL ---
+  async function handleUploadedFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const fname = file.name.toLowerCase();
+    let source = "gsm";
+    if (fname.includes("telegram") || fname.includes("tg")) source = "telegram";
+    if (fname.includes("whatsapp") || fname.includes("wa")) source = "whatsapp";
+    const contactGuess = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+    await processCapturedAudio(file, file.name, "call", source, contactGuess, "", 60, "");
+    event.target.value = "";
+  }
+
+  // Called automatically by Native Android CallInterceptorService when a GSM/Telegram/WhatsApp call ends!
+  window.onNativeAudioCaptured = async function(base64Audio, fileName, mode, source, contactName, phone) {
+    const byteChars = atob(base64Audio);
+    const byteArray = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([byteArray], { type: "audio/mp4" });
+    await processCapturedAudio(blob, fileName, mode || "call", source || "gsm", contactName || "Звонок", phone || "", 60, "");
+  };
+
+  // --- CORE AI PIPELINE: GROQ WHISPER-LARGE-V3-TURBO + LLAMA-3.3-70B WITH KEY POOL ROTATION ---
+  async function processCapturedAudio(audioBlob, fileName, mode, source, contactName, phone, durationSec, onDeviceText) {
+    showToast("⏳ ИИ распознает разговор и готовит краткий итог...");
+
+    let transcript = (onDeviceText || "").trim();
+    let usedGroqKeyObj = null;
+
+    // Step 1: Transcribe via Groq Whisper-large-v3-turbo if pool has keys and mode is not strictly on-device
+    if (engineMode !== "on_device") {
+      for (let attempt = 0; attempt < Math.max(1, groqPool.length); attempt++) {
+        usedGroqKeyObj = getNextRotatedGroqKey();
+        if (!usedGroqKeyObj) break;
+
+        try {
+          const formData = new FormData();
+          formData.append("file", audioBlob, fileName || "audio.webm");
+          formData.append("model", "whisper-large-v3-turbo");
+          formData.append("language", "ru");
+          formData.append("response_format", "json");
+
+          const resp = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${usedGroqKeyObj.key}` },
+            body: formData
+          });
+
+          if (resp.status === 429) {
+            // Rate limit on this key -> put in 15 min cooldown and immediately rotate to next key in pool!
+            usedGroqKeyObj.cooldownUntil = Date.now() + 15 * 60 * 1000;
+            savePool();
+            continue;
+          }
+
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.text && data.text.trim()) {
+              transcript = data.text.trim();
+            }
+            usedGroqKeyObj.usedSecToday = (usedGroqKeyObj.usedSecToday || 0) + durationSec;
+            savePool();
+            break;
+          }
+        } catch (err) {
+          console.warn("Groq STT attempt failed:", err);
+        }
+      }
+    }
+
+    if (!transcript) {
+      transcript = "Запись сохранена (для 100% распознавания аудиофайлов добавьте бесплатный ключ Groq gsk_... в пул ключей сверху).";
+    }
+
+    // Step 2: Summarize into MTS-style card + checklist via Groq Llama-3.3-70B (or smart local extractor)
+    let aiResult = await summarizeWithGroqOrLocal(transcript, mode, source, contactName, usedGroqKeyObj);
+
+    const newCard = {
+      id: "rec_" + Date.now(),
+      contact_name: aiResult.detected_caller || contactName || "Звонок",
+      phone_number: phone || "",
+      direction: mode === "call" ? "Перехваченный звонок" : `Живая запись (${Math.max(1, Math.round(durationSec / 60))} мин)`,
+      source: source,
+      mode: mode,
+      time_label: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
+      avatar_emoji: mode === "doctor" ? "🩺" : (mode === "lawyer" ? "⚖️" : (mode === "memo" ? "⚡" : "📞")),
+      summary: aiResult.summary,
+      action_items: aiResult.action_items || [],
+      extra: {
+        medications: aiResult.medications || [],
+        legal_risks_and_terms: aiResult.legal_risks_and_terms || []
+      },
+      transcript: transcript,
+      audioUrl: URL.createObjectURL(audioBlob),
+      audioBlob: audioBlob
+    };
+
+    records.unshift(newCard);
+    localStorage.setItem("callmind_records", JSON.stringify(records.map(r => ({...r, audioUrl: undefined, audioBlob: undefined}))));
+    renderCards();
+    showToast("✅ Готово! Итог разговора добавлен в ленту");
+
+    // Step 3: Auto-send to personal Telegram bot / channel if configured
+    if (tgConfig.auto_send && tgConfig.bot_token && tgConfig.chat_id) {
+      await sendCardToTelegram(newCard, audioBlob);
+    }
+  }
+
+  async function summarizeWithGroqOrLocal(transcript, mode, source, contactName, keyObj) {
+    const activeKey = keyObj || getNextRotatedGroqKey();
+    if (activeKey && engineMode !== "on_device") {
+      const promptMap = {
+        call: `Контакт: ${contactName} (${source}). Расшифровка звонка: "${transcript}". Сделай краткое саммари в 1-2 предложениях во втором лице точно в стиле 'Интеллектуальной записи МТС' (например: 'Вас попросили купить... / Вы договорились... / Курьер сообщил...'). Верни ТОЛЬКО JSON: {"summary":"...","detected_caller":"...","action_items":["..."]}`,
+        doctor: `Расшифровка приема у врача: "${transcript}". Выдели все назначения, лекарства с дозировками, анализы и рекомендации, чтобы пациент ничего не забыл. Верни ТОЛЬКО JSON: {"summary":"Краткий итог приема в 1-2 предложениях","detected_caller":"Приём у врача","medications":["Препарат и дозировка"],"action_items":["Что купить/сдать/сделать"]}`,
+        lawyer: `Расшифровка консультации у юриста / переговоров: "${transcript}". Выдели правовую суть, риски, сроки, суммы и план действий. Верни ТОЛЬКО JSON: {"summary":"Суть в 1-2 предложениях","detected_caller":"Консультация юриста","legal_risks_and_terms":["Риски, статьи, сроки"],"action_items":["Пошаговый план действий"]}`,
+        memo: `Голосовая заметка: "${transcript}". Сформулируй главную мысль без воды и список задач. Верни ТОЛЬКО JSON: {"summary":"Главная суть заметки","detected_caller":"Голосовая заметка","action_items":["Задачи"]}`
+      };
+
+      try {
+        const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${activeKey.key}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            temperature: 0.2,
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: "Ты — русскоязычный ИИ-ассистент записи звонков и встреч. Отвечай строго валидным JSON на русском языке." },
+              { role: "user", content: promptMap[mode] || promptMap.call }
+            ]
+          })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          return JSON.parse(data.choices[0].message.content);
+        }
+      } catch (e) {
+        console.warn("Groq LLM fallback to local:", e);
+      }
+    }
+
+    // Smart Local On-Device Summarizer Fallback
+    const sentences = transcript.split(/[.!?]+/).map(s => s.trim()).filter(Boolean);
+    const shortSum = sentences.slice(0, 2).join(". ") || transcript.slice(0, 160);
+    return {
+      summary: shortSum,
+      detected_caller: contactName,
+      action_items: sentences.slice(0, 4)
+    };
+  }
+
+  // --- TELEGRAM BOT DIRECT SENDER (Text Summary + Audio File) ---
+  async function autoDetectTelegramChat() {
+    const token = (document.getElementById("tgBotToken").value || "").trim();
+    if (!token) {
+      showToast("Сначала вставьте токен бота от @BotFather");
+      return;
+    }
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
+      const data = await resp.json();
+      if (data.ok && data.result && data.result.length > 0) {
+        const last = data.result[data.result.length - 1];
+        const msg = last.message || last.channel_post || (last.my_chat_member && last.my_chat_member.chat);
+        const chat = msg ? (msg.chat || msg) : null;
+        if (chat && chat.id) {
+          document.getElementById("tgChatId").value = String(chat.id);
+          showToast(`✅ Найден чат: ${chat.title || chat.first_name || chat.id}`);
+          return;
+        }
+      }
+      showToast("Напишите боту /start в Telegram и нажмите кнопку еще раз!");
+    } catch (e) {
+      showToast("Ошибка проверки токена бота");
+    }
+  }
+
+  async function saveTelegramConfig() {
+    tgConfig = {
+      bot_token: (document.getElementById("tgBotToken").value || "").trim(),
+      chat_id: (document.getElementById("tgChatId").value || "").trim(),
+      auto_send: document.getElementById("tgAutoSend").checked
+    };
+    localStorage.setItem("callmind_tg_config", JSON.stringify(tgConfig));
+    updateTopChips();
+    closeModal("tgModal");
+
+    if (tgConfig.bot_token && tgConfig.chat_id && records.length > 0) {
+      await sendCardToTelegram(records[0], null);
+    } else {
+      showToast("Настройки Telegram сохранены");
+    }
+  }
+
+  async function sendCardToTelegram(card, audioBlob) {
+    if (!tgConfig.bot_token || !tgConfig.chat_id) {
+      openModal("tgModal");
+      showToast("Укажите токен бота и Chat ID для отправки в Telegram");
+      return;
+    }
+
+    const modeBadges = {
+      call: "📞 Звонок",
+      doctor: "🩺 Приём у врача",
+      lawyer: "⚖️ Юрист / Переговоры",
+      memo: "🎙 Голосовая заметка"
+    };
+    const srcBadges = {
+      gsm: "Сотовая сеть",
+      telegram: "Telegram",
+      whatsapp: "WhatsApp",
+      live: "Живой разговор",
+      memo: "Заметка"
+    };
+
+    let lines = [
+      `<b>${modeBadges[card.mode] || "📞 Запись"} • ${srcBadges[card.source] || card.source}</b>`,
+      `👤 <b>${card.contact_name}</b> ${card.phone_number ? `(${card.phone_number})` : ""}`,
+      ``,
+      `💡 <b>Суть разговора:</b>`,
+      `${card.summary}`
+    ];
+
+    if (card.extra && card.extra.medications && card.extra.medications.length > 0) {
+      lines.push(`\n💊 <b>Назначения врача:</b>`);
+      card.extra.medications.forEach(m => lines.push(`• ${m}`));
+    }
+    if (card.extra && card.extra.legal_risks_and_terms && card.extra.legal_risks_and_terms.length > 0) {
+      lines.push(`\n⚖️ <b>Правовые детали и сроки:</b>`);
+      card.extra.legal_risks_and_terms.forEach(l => lines.push(`• ${l}`));
+    }
+    if (card.action_items && card.action_items.length > 0) {
+      lines.push(`\n✅ <b>Задачи и важные детали:</b>`);
+      card.action_items.forEach(a => lines.push(`▫️ ${a}`));
+    }
+    if (card.transcript) {
+      lines.push(`\n📝 <b>Расшифровка:</b>\n<blockquote expandable>${card.transcript.slice(0, 1500)}</blockquote>`);
+    }
+
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${tgConfig.bot_token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: tgConfig.chat_id,
+          text: lines.join("\n"),
+          parse_mode: "HTML"
+        })
+      });
+
+      // Also upload the audio recording file if available
+      if (audioBlob || card.audioBlob) {
+        const fd = new FormData();
+        fd.append("chat_id", tgConfig.chat_id);
+        fd.append("audio", audioBlob || card.audioBlob, `${card.contact_name}.webm`);
+        fd.append("caption", `🎧 Аудиозапись: ${card.contact_name}`);
+        await fetch(`https://api.telegram.org/bot${tgConfig.bot_token}/sendAudio`, {
+          method: "POST",
+          body: fd
+        });
+      }
+
+      if (resp.ok) {
+        showToast("✈️ Отправлено в ваш Telegram!");
+      } else {
+        showToast("⚠️ Ошибка отправки в Telegram — проверьте Chat ID");
+      }
+    } catch (e) {
+      showToast("⚠️ Не удалось связаться с Telegram API");
+    }
+  }
+
+  // --- RENDER CARDS FEED ---
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll(".f-tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderCards();
+  }
+
+  function getBadgeHtml(card) {
+    if (card.mode === "doctor") return `<span class="source-tag tag-doctor">🩺 Врач</span>`;
+    if (card.mode === "lawyer") return `<span class="source-tag tag-lawyer">⚖️ Юрист</span>`;
+    if (card.mode === "memo") return `<span class="source-tag tag-memo">⚡ Заметка</span>`;
+    if (card.source === "telegram") return `<span class="source-tag tag-telegram">Telegram</span>`;
+    if (card.source === "whatsapp") return `<span class="source-tag tag-whatsapp">WhatsApp</span>`;
+    return `<span class="source-tag tag-gsm">Сотовый</span>`;
+  }
+
+  function renderCards() {
+    const q = (document.getElementById("searchInput").value || "").toLowerCase().trim();
+    const container = document.getElementById("cardsContainer");
+
+    const filtered = records.filter(c => {
+      if (currentFilter === "gsm" && c.source !== "gsm") return false;
+      if (currentFilter === "messenger" && c.source !== "telegram" && c.source !== "whatsapp") return false;
+      if (currentFilter === "doctor" && c.mode !== "doctor") return false;
+      if (currentFilter === "lawyer" && c.mode !== "lawyer") return false;
+      if (currentFilter === "memo" && c.mode !== "memo") return false;
+      if (q) {
+        const hay = `${c.contact_name} ${c.phone_number} ${c.summary} ${(c.action_items || []).join(" ")} ${c.transcript}`.toLowerCase();
+        return hay.includes(q);
+      }
+      return true;
+    });
+
+    container.innerHTML = filtered.map(c => `
+      <div class="call-card" onclick="this.classList.toggle('expanded')">
+        <div class="card-top">
+          <div class="caller-left">
+            <div class="avatar">${c.avatar_emoji || "👤"}</div>
+            <div>
+              <div class="caller-name">
+                ${c.contact_name}
+                ${getBadgeHtml(c)}
+              </div>
+              <div class="call-meta">
+                <span>📞 ${c.direction || "Исходящий"}</span>
+              </div>
+            </div>
+          </div>
+          <div class="call-time">${c.time_label || "Сегодня"}</div>
+        </div>
+
+        <div class="summary-bubble">
+          ${c.summary}
+        </div>
+
+        <div class="card-details" onclick="event.stopPropagation()">
+          ${c.audioUrl ? `<audio controls src="${c.audioUrl}" style="width:100%; height:36px; margin-bottom:10px;"></audio>` : ""}
+
+          ${(c.extra && c.extra.medications && c.extra.medications.length) ? `
+            <div class="detail-block">
+              <div class="detail-label">💊 Назначенные препараты и дозировки:</div>
+              <ul class="checklist">${c.extra.medications.map(m => `<li>${m}</li>`).join("")}</ul>
+            </div>
+          ` : ""}
+
+          ${(c.extra && c.extra.legal_risks_and_terms && c.extra.legal_risks_and_terms.length) ? `
+            <div class="detail-block">
+              <div class="detail-label">⚖️ Правовые риски, статьи и сроки:</div>
+              <ul class="checklist">${c.extra.legal_risks_and_terms.map(l => `<li>${l}</li>`).join("")}</ul>
+            </div>
+          ` : ""}
+
+          ${(c.action_items && c.action_items.length) ? `
+            <div class="detail-block">
+              <div class="detail-label">✅ Задачи, коды и договоренности:</div>
+              <ul class="checklist">${c.action_items.map(a => `<li>${a}</li>`).join("")}</ul>
+            </div>
+          ` : ""}
+
+          <div class="detail-block">
+            <div class="detail-label">📝 Полная расшифровка разговора:</div>
+            <div class="transcript-box">${c.transcript || "Нет текста"}</div>
+          </div>
+
+          <div class="card-actions">
+            <button class="act-btn tg" onclick="sendCardToTelegram(records.find(r=>r.id==='${c.id}'))">
+              ✈️ Отправить в Telegram
+            </button>
+            <button class="act-btn" onclick="navigator.clipboard.writeText(records.find(r=>r.id==='${c.id}').summary); showToast('Скопировано!')">
+              📋 Копировать итог
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  // Initialize on load
+  updateTopChips();
+  renderCards();
+</script>
+</body>
+</html>
