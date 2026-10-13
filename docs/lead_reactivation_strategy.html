@@ -1,0 +1,2893 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Реактивация клиентской базы — Стратегия, ниши и смета ресурсов</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --card-hover: #f1f5f9;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --primary-border: #bfdbfe;
+      --accent: #059669;
+      --accent-light: #ecfdf5;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      --line: #f1f5f9;
+      --sidebar-w: 360px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-weight: 400;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* Верхняя строка */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: #ffffff;
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--text);
+    }
+
+    .brand-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .header-note {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Основной макет */
+    .app-container {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      flex: 1;
+      height: calc(100vh - 67px);
+      overflow: hidden;
+    }
+
+    /* Левая колонка со списком ниш */
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px 18px 12px 18px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .sidebar-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .sidebar-count {
+      font-size: 13px;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .search-input {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: inherit;
+      margin-bottom: 8px;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      background: #ffffff;
+    }
+
+    /* Сортировка ниш */
+    .sort-bar {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .sort-btn {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .sort-btn:hover {
+      background: #e2e8f0;
+      color: var(--text);
+    }
+
+    .sort-btn.active {
+      background: var(--primary-light);
+      border-color: var(--primary-border);
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .niche-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .niche-item {
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #ffffff;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+
+    .niche-item:hover {
+      background: var(--card-hover);
+    }
+
+    .niche-item.active {
+      background: var(--primary-light);
+      border-color: var(--primary-border);
+    }
+
+    .niche-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .niche-name {
+      font-weight: 500;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .badge-ltv {
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #eff6ff;
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+      font-weight: 500;
+    }
+
+    .niche-meta {
+      display: flex;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Правая колонка с материалами */
+    .content-area {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      padding: 24px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* Вкладки */
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 10px;
+    }
+
+    .tab-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .tab-btn:hover {
+      background: #f1f5f9;
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--primary-light);
+      border-color: var(--primary-border);
+      color: var(--primary);
+    }
+
+    /* Чистые карточки */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .hero-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .hero-title-group h2 {
+      font-size: 19px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .hero-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Кнопки */
+    .btn-action-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: 1px solid var(--primary);
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-family: inherit;
+    }
+    .btn-action-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-action-secondary {
+      background: #ffffff;
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .btn-action-secondary:hover {
+      background: #f8fafc;
+    }
+
+    /* Метрики в карточке */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+
+    .kpi-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .kpi-val {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Разделы карточки */
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    .analytics-item {
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .analytics-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    .analytics-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .analytics-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* Каналы выхода на ЛПР */
+    .channel-item {
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .channel-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .channel-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .channel-num {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .channel-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .channel-score {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .channel-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      line-height: 1.5;
+    }
+
+    .channel-action {
+      font-size: 12px;
+      color: var(--primary);
+    }
+
+    /* Скрипт */
+    .script-box {
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text);
+      position: relative;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .copy-btn:hover {
+      background: #f1f5f9;
+    }
+
+    /* Интерактивная таблица каналов привлечения */
+    .channels-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .channels-table th {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 2px solid var(--card-border);
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 12px;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .channels-table th.sortable {
+      cursor: pointer;
+    }
+    .channels-table th.sortable:hover {
+      color: var(--primary);
+    }
+
+    .channels-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+      color: var(--text);
+    }
+
+    .channels-table tr:hover td {
+      background: #f8fafc;
+    }
+
+    .channel-tag {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+      display: inline-block;
+      margin-right: 4px;
+      margin-top: 2px;
+    }
+
+    /* Калькулятор окупаемости */
+    .calc-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .slider-group {
+      margin-bottom: 14px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 5px;
+      color: var(--text-muted);
+    }
+
+    .slider-label b {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    input[type=range] {
+      width: 100%;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 2px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+
+    .calc-results {
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 16px;
+      border: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .calc-res-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed #e2e8f0;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .calc-res-row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .roi-highlight {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-top: 4px;
+    }
+
+    /* Текстовые блоки стратегии и каналов */
+    .text-block-item {
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .text-block-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .text-block-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .text-block-p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .text-block-highlight {
+      font-size: 12px;
+      color: var(--primary);
+      margin-top: 4px;
+    }
+
+    /* ------------------------------------------------------------- */
+    /* СТИЛИ КОНСТРУКТОРА СМЕТЫ И РЕСУРСОВ ЗАПУСКА                  */
+    /* ------------------------------------------------------------- */
+    .plan-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .plan-summary-card {
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+
+    .plan-summary-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .plan-summary-val {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .plan-niche-card {
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+
+    .plan-niche-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .plan-niche-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-remove-niche {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .btn-remove-niche:hover {
+      color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .plan-fields-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .plan-field-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .plan-field-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .edit-input-wrapper {
+      display: flex;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0 10px;
+    }
+
+    .edit-input-wrapper:focus-within {
+      border-color: var(--primary);
+      background: #ffffff;
+    }
+
+    .edit-input {
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      padding: 7px 0;
+      width: 100%;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .edit-input-suffix {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-left: 6px;
+      white-space: nowrap;
+    }
+
+    .plan-field-hint {
+      font-size: 11px;
+      color: var(--text-light);
+      margin-top: 3px;
+    }
+
+    .plan-channels-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .plan-channels-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .plan-channel-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text);
+      background: #f8fafc;
+      border: 1px solid var(--card-border);
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s;
+    }
+
+    .plan-channel-checkbox:hover {
+      background: #f1f5f9;
+    }
+
+    .plan-channel-checkbox.active {
+      background: var(--primary-light);
+      border-color: var(--primary-border);
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .plan-channel-checkbox input {
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .add-niche-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .niche-select {
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      font-family: inherit;
+      min-width: 280px;
+    }
+
+    /* Таблица ресурсного справочника каналов */
+    .res-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .res-table th {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 12px;
+    }
+
+    .res-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      color: var(--text);
+    }
+
+    .res-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Скроллбар */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+
+    /* Компактный бейдж LTV */
+    .badge-ltv {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      cursor: help;
+      flex-shrink: 0;
+      line-height: 1.3;
+      white-space: nowrap;
+      user-select: none;
+      transition: all 0.15s;
+    }
+    .badge-ltv:hover, .badge-ltv:active {
+      background: #dbeafe;
+      border-color: #93c5fd;
+    }
+
+    /* Плавающий глобальный тултип */
+    .custom-tooltip {
+      position: fixed;
+      z-index: 99999;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.4;
+      max-width: 290px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      word-break: normal;
+    }
+    .custom-tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .custom-tooltip-title {
+      font-weight: 600;
+      color: #93c5fd;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Адаптивные таблицы */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      margin-top: 10px;
+      background: #ffffff;
+    }
+    .table-scroll-hint {
+      display: none;
+      font-size: 11px;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 6px 10px;
+      border-radius: 4px;
+      margin-top: 8px;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    /* Мобильная плашка текущей ниши */
+    .mobile-niche-bar {
+      display: none;
+      background: #ffffff;
+      border-bottom: 1px solid var(--card-border);
+      padding: 10px 14px;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .mobile-niche-bar:active {
+      background: #f1f5f9;
+    }
+    .mobile-niche-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+      margin-right: 10px;
+    }
+    .mobile-niche-caption {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+    .mobile-niche-current {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-mobile-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-family: inherit;
+    }
+
+    /* Мобильный Drawer для списка ниш */
+    .drawer-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(2px);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .drawer-overlay.active {
+      display: block;
+      opacity: 1;
+    }
+
+    .mobile-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 85%;
+      max-width: 360px;
+      height: 100%;
+      background: #ffffff;
+      z-index: 1000;
+      transform: translateX(-100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+    }
+    .mobile-drawer.active {
+      transform: translateX(0);
+    }
+    .drawer-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .drawer-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .drawer-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .drawer-search {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--card-border);
+      background: #f8fafc;
+    }
+    .drawer-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ========================================================
+       МЕДИА-ЗАПРОСЫ ДЛЯ СМАРТФОНОВ И ПЛАНШЕТОВ
+       ======================================================== */
+    @media (max-width: 900px) {
+      body {
+        height: auto;
+        min-height: 100vh;
+      }
+      header {
+        padding: 12px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .brand-title {
+        font-size: 15px;
+      }
+      .brand-sub {
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .header-note {
+        font-size: 11px;
+      }
+
+      .mobile-niche-bar {
+        display: flex;
+      }
+
+      .app-container {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: auto;
+        overflow: visible;
+      }
+
+      /* Скрываем фиксированный десктопный сайдбар */
+      .sidebar {
+        display: none;
+      }
+
+      .content-area {
+        padding: 14px 14px 40px 14px;
+        height: auto;
+        overflow: visible;
+        gap: 14px;
+      }
+
+      .nav-tabs {
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .nav-tabs::-webkit-scrollbar {
+        display: none;
+      }
+      .tab-btn {
+        flex-shrink: 0;
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .hero-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .hero-header > div:last-child {
+        width: 100%;
+      }
+      .hero-header .btn-action-primary {
+        width: 100%;
+        text-align: center;
+        padding: 10px;
+      }
+
+      .kpi-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .kpi-box {
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        padding: 10px;
+        border-radius: 6px;
+      }
+      .kpi-label {
+        font-size: 10px;
+      }
+      .kpi-val {
+        font-size: 15px;
+      }
+
+      .details-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .calc-container {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .calc-results-box {
+        position: static;
+      }
+
+      .table-scroll-hint {
+        display: block;
+      }
+
+      .channels-table, .res-table {
+        min-width: 660px;
+      }
+
+      .plan-summary-grid {
+        grid-template-columns: 1fr;
+      }
+      .plan-fields-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .edit-input {
+        font-size: 16px; /* Предотвращает нежелательный зум в мобильном Safari */
+      }
+
+      .add-niche-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .niche-select {
+        min-width: 100%;
+        font-size: 15px;
+      }
+
+      .btn-action-primary, .btn-action-secondary {
+        padding: 10px 14px;
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        padding: 14px;
+      }
+      .hero-title-group h2 {
+        font-size: 17px;
+      }
+      .section-title {
+        font-size: 14px;
+      }
+      .kpi-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Верхняя строка -->
+  <header>
+    <div>
+      <div class="brand-title">Реактивация клиентской базы</div>
+      <div class="brand-sub">Поиск повторного спроса по накопленным контактам • 100 ₽ сырой контакт / 500 ₽ подтвержденный лид</div>
+    </div>
+    <div class="header-note">
+      Чек сделки в нишах: от 20.000 до 15.000.000 ₽
+    </div>
+  </header>
+
+  <!-- Мобильная плашка текущей ниши -->
+  <div class="mobile-niche-bar" id="mobileNicheBar" onclick="toggleMobileDrawer(true)">
+    <div class="mobile-niche-info">
+      <span class="mobile-niche-caption">Текущая ниша</span>
+      <div class="mobile-niche-current">
+        <span id="mobileActiveNicheName">Недвижимость и девелопмент</span>
+        <span class="badge-ltv" id="mobileNicheLtvBadge" style="display: none;">LTV+</span>
+      </div>
+    </div>
+    <button class="btn-mobile-switch" type="button">
+      <span>Сменить нишу ▾</span>
+    </button>
+  </div>
+
+  <!-- Мобильный Drawer со списком ниш -->
+  <div class="drawer-overlay" id="mobileDrawerOverlay" onclick="toggleMobileDrawer(false)"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div class="drawer-header">
+      <div class="drawer-title">Выберите нишу (<span id="mobileNicheCount">14</span>)</div>
+      <button class="drawer-close" onclick="toggleMobileDrawer(false)">✕</button>
+    </div>
+    <div class="drawer-search">
+      <input type="text" id="mobileNicheSearch" class="search-input" placeholder="Поиск ниши..." oninput="handleMobileSearch(this.value)">
+      <div class="sort-bar">
+        <button class="sort-btn active" id="mSortAll" onclick="setSortMode('all')">Все</button>
+        <button class="sort-btn" id="mSortTicket" onclick="setSortMode('ticket')">По чеку ↓</button>
+        <button class="sort-btn" id="mSortBase" onclick="setSortMode('base')">По базе ↓</button>
+        <button class="sort-btn" id="mSortLtv" onclick="setSortMode('ltv')">Только LTV+</button>
+      </div>
+    </div>
+    <div class="drawer-list" id="mobileNicheList">
+      <!-- Заполняется динамически -->
+    </div>
+  </div>
+
+  <!-- Основное окно -->
+  <div class="app-container">
+
+    <!-- Левая колонка с нишами и сортировкой -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title-row">
+          <span class="sidebar-title">Целевые ниши</span>
+          <span class="sidebar-count" id="nicheCount">14</span>
+        </div>
+        <input type="text" id="nicheSearch" class="search-input" placeholder="Поиск ниши...">
+        
+        <!-- Сортировка ниш -->
+        <div class="sort-bar">
+          <button class="sort-btn active" data-sort="default">Все</button>
+          <button class="sort-btn" data-sort="ticket">По чеку ↓</button>
+          <button class="sort-btn" data-sort="base">По базе ↓</button>
+          <button class="sort-btn" data-sort="ltv">Только LTV+</button>
+        </div>
+      </div>
+
+      <div class="niche-list" id="nicheList">
+        <!-- Заполняется динамически из JS -->
+      </div>
+    </aside>
+
+    <!-- Правая колонка с материалами -->
+    <main class="content-area">
+
+      <!-- Вкладки верхнего уровня (Смета запуска строго в конце) -->
+      <div class="nav-tabs">
+        <button class="tab-btn active" data-tab="niche-detail">1. Разбор ниши</button>
+        <button class="tab-btn" data-tab="acquisition-channels">2. Каналы привлечения клиентов</button>
+        <button class="tab-btn" data-tab="unit-economics">3. Калькулятор окупаемости</button>
+        <button class="tab-btn" data-tab="strategic-insights">4. Стратегия и аргументы</button>
+        <button class="tab-btn" data-tab="launch-planner">5. Смета запуска и ресурсы</button>
+      </div>
+
+      <!-- Вкладка 1: Разбор выбранной ниши -->
+      <div id="tab-niche-detail" class="tab-content">
+        
+        <div class="card">
+          <div class="hero-header">
+            <div class="hero-title-group">
+              <h2 id="activeNicheTitle">Недвижимость и девелопмент</h2>
+              <div class="hero-desc" id="activeNicheDesc">
+                Продажа квартир, апартаментов, коммерческой недвижимости. Базы накоплены за годы рекламных кампаний.
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span class="badge-ltv" id="activeNicheLtvBadge" style="display: none;">LTV+</span>
+              <button class="btn-action-primary" onclick="addCurrentNicheToPlan()">Включить в смету запуска</button>
+            </div>
+          </div>
+
+          <div class="kpi-row">
+            <div class="kpi-box">
+              <span class="kpi-label">Средний чек сделки</span>
+              <span class="kpi-val" id="kpiTicket">8.500.000 ₽</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Типичный размер базы</span>
+              <span class="kpi-val" id="kpiBase">80.000–250.000</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Лид в рекламе Яндекса</span>
+              <span class="kpi-val" id="kpiColdCac" style="color: #b91c1c;">8.000–20.000 ₽</span>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Окупаемость сервиса</span>
+              <span class="kpi-val" id="kpiRoi" style="color: var(--accent);">+1.500%–4.000%</span>
+            </div>
+          </div>
+
+          <div class="card" id="activeNicheLtvBox" style="margin-top: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; display: none; padding: 12px 16px;">
+            <div style="font-size: 12px; font-weight: 600; color: #15803d; margin-bottom: 4px;">Факторы высокого LTV и повторных продаж в нише:</div>
+            <div style="font-size: 13px; color: var(--text); line-height: 1.5;" id="activeLtvFeatures"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Аналитика ниши и специфика отдела продаж</div>
+
+          <div class="analytics-item">
+            <div class="analytics-label">Кто принимает решение (ЛПР):</div>
+            <div class="analytics-text" id="activeLpr">Директор по маркетингу, коммерческий директор, руководитель отдела продаж.</div>
+          </div>
+
+          <div class="analytics-item">
+            <div class="analytics-label">Поведенческий триггер (что человек ищет прямо сейчас):</div>
+            <div class="analytics-text" id="activeTrigger">Расчет ипотеки на калькуляторах, просмотр новостроек на профильных сайтах, запросы на покупку квартир в рассрочку.</div>
+          </div>
+
+          <div class="analytics-item">
+            <div class="analytics-label">Почему выгодно компании:</div>
+            <div class="analytics-text" id="activeWhy">Отделы продаж застройщиков испытывают нехватку обращений. База контактов за прошлые годы лежит без дела. Реактивация дает теплые звонки без затрат на дорогой контекст.</div>
+          </div>
+
+          <div class="analytics-item">
+            <div class="analytics-label">Специфика отдела продаж и формат тарифа:</div>
+            <div class="analytics-text" id="activeSalesComment" style="color: var(--primary);">
+              Для застройщиков подходит формат сырого контакта (100–150 ₽), так как у них есть собственный контакт-центр. Для небольших агентств недвижимости лучше предлагать подтвержденный лид (500 ₽).
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Каналы выхода на руководство компании</div>
+          <div id="activeChannelsContainer">
+            <!-- Заполняется динамически из JS -->
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Скрипт первого обращения (сообщение или звонок)</div>
+          <div class="script-box">
+            <button class="copy-btn" onclick="copyScript()">Копировать</button>
+            <div id="activeScriptText">
+              Загрузка текста...
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Вкладка 2: Каналы привлечения клиентов (Таблица с сортировкой + подробное описание каждого канала) -->
+      <div id="tab-acquisition-channels" class="tab-content" style="display: none;">
+        
+        <!-- Сравнительная таблица с сортировкой -->
+        <div class="card">
+          <div class="hero-header">
+            <div>
+              <div class="section-title" style="margin-bottom: 4px;">Сравнительный анализ каналов привлечения клиентов в сервис</div>
+              <div class="hero-desc">
+                Сравнение каналов по конверсии, емкости базы, стоимости привлечения и циклу сделки. Нажмите на заголовок колонки для сортировки.
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button class="sort-btn active" id="btnSortChConv" onclick="sortChannelsTable('conv')">По конверсии ↓</button>
+              <button class="sort-btn" id="btnSortChVol" onclick="sortChannelsTable('volume')">По объему лидов ↓</button>
+              <button class="sort-btn" id="btnSortChCost" onclick="sortChannelsTable('cost')">По стоимости лида ↑</button>
+              <button class="sort-btn" id="btnSortChSpeed" onclick="sortChannelsTable('speed')">По скорости отдачи ↓</button>
+            </div>
+          </div>
+
+          <div class="table-scroll-hint">← Прокрутите таблицу вправо для сравнения всех колонок →</div>
+          <div class="table-responsive">
+            <table class="channels-table">
+              <thead>
+              <tr>
+                <th style="width: 26%;">Канал привлечения</th>
+                <th class="sortable" onclick="sortChannelsTable('conv')" style="width: 14%;">Конверсия в оплату</th>
+                <th class="sortable" onclick="sortChannelsTable('volume')" style="width: 15%;">Емкость (лидов/мес)</th>
+                <th class="sortable" onclick="sortChannelsTable('cost')" style="width: 15%;">CPL (стоимость лида)</th>
+                <th class="sortable" onclick="sortChannelsTable('speed')" style="width: 12%;">Срок отдачи</th>
+                <th style="width: 18%;">Где дает максимум</th>
+              </tr>
+            </thead>
+            <tbody id="channelsTableBody">
+              <!-- Заполняется динамически из JS -->
+            </tbody>
+            </table>
+          </div>
+
+          <div style="border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+            <b>Важная специфика емкости каналов:</b><br>
+            • <i>Прямой аутрич (TG/WhatsApp)</i>: запускается быстрее всех (3–5 дней), но имеет <b>строго ограниченную емкость</b> (до 40–60 целевых компаний в месяц). Быстро упирается в «потолок» доступных баз и риски блокировок.<br>
+            • <i>Таргетинг (TG Ads / VK) и Поисковый спрос (SEO)</i>: требуют бюджета и времени на раскачку, но дают <b>неограниченную масштабируемость</b> (сотни лидов ежемесячно) при переходе к активному росту сервиса.<br>
+            • <i>Партнерская сеть интеграторов</i>: дает самую высокую конверсию (22%), так как клиент приходит по доверительной рекомендации своего подрядчика по CRM.
+          </div>
+        </div>
+
+        <!-- Подробное описание каждого канала привлечения -->
+        <div class="card">
+          <div class="section-title">Подробное описание инструментов привлечения клиентов</div>
+          
+          <div class="text-block-item">
+            <div class="text-block-title">1. Прямой контакт в Телеграм и WhatsApp</div>
+            <div class="text-block-p">
+              Самый быстрый способ старта. Персонализированные короткие сообщения директорам по маркетингу и учредителям. Контакты берутся из каталогов спикеров отраслевых конференций, открытых реестров юрлиц (номера генеральных директоров) и резюме маркетологов.
+            </div>
+            <div class="text-block-highlight">Стоимость обращения: 150–400 ₽ • Конверсия в диалог: 8–15% • Емкость: ограниченная</div>
+          </div>
+
+          <div class="text-block-item">
+            <div class="text-block-title">2. Таргетированная реклама на маркетологов (TG Ads, VK)</div>
+            <div class="text-block-p">
+              Показ рекламы владельцам бизнесов и маркетологам конкретных отраслей: реклама в профильных каналах девелопмента, медицины и автобизнеса, сбор администраторов коммерческих сообществ.
+            </div>
+            <div class="text-block-highlight">Стоимость заявки: 1.800–3.500 ₽ • Высокая масштабируемость</div>
+          </div>
+
+          <div class="text-block-item">
+            <div class="text-block-title">3. Партнерская сеть интеграторов и агентств</div>
+            <div class="text-block-p">
+              Канал с максимальным доверием. Клиента рекомендует его действующий подрядчик: интеграторы CRM-систем (видят размер спящих баз клиентов) и агентства контекстной рекламы (спасают клиентов от дорогого клика).
+            </div>
+            <div class="text-block-highlight">Оплата за результат (процент от сделок) • Доверие к продукту: высокое</div>
+          </div>
+
+          <div class="text-block-item">
+            <div class="text-block-title">4. Короткие видео, кейсы и подкасты</div>
+            <div class="text-block-p">
+              Формирование репутации и экспертности через контент: разборы перегретых бюджетов в рекламе, демонстрация механики работы с базой на экране, видео-кейсы с цифрами выручки.
+            </div>
+            <div class="text-block-highlight">Накопительный эффект • Позиционирование отраслевого лидера</div>
+          </div>
+
+          <div class="text-block-item">
+            <div class="text-block-title">5. Отраслевые конференции и выставки</div>
+            <div class="text-block-p">
+              Очные мероприятия собирают руководителей нужных отраслей в одном месте: форумы по недвижимости, медицинские конгрессы, автомобильные выставки. Личные встречи и экспресс-аудит баз прямо на месте.
+            </div>
+            <div class="text-block-highlight">Быстрое закрытие на тестовый запуск при личном общении</div>
+          </div>
+
+          <div class="text-block-item">
+            <div class="text-block-title">6. Поисковый спрос, каталоги и SEO (Search Engine Optimization)</div>
+            <div class="text-block-p">
+              Привлечение тех, кто уже ищет способы работы с отказниками и базой по фразам: «реактивация базы клиентов», «сервис дожима лидов из crm», «лидогенерация по старой базе».
+            </div>
+            <div class="text-block-highlight">Стабильный поток входящих горячих обращений</div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Вкладка 3: Калькулятор окупаемости для клиента -->
+      <div id="tab-unit-economics" class="tab-content" style="display: none;">
+        <div class="card">
+          <div class="section-title">Расчет окупаемости для клиента</div>
+          <div class="calc-container">
+            <div>
+              <div class="slider-group">
+                <div class="slider-label">
+                  <span>Контактов в накопленной базе:</span>
+                  <b id="calcBaseVal">80.000</b>
+                </div>
+                <input type="range" id="sliderBase" min="10000" max="250000" step="5000" value="80000">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-label">
+                  <span>Доля активного спроса в месяц:</span>
+                  <b id="calcDemandVal">3.5%</b>
+                </div>
+                <input type="range" id="sliderDemand" min="1.0" max="10.0" step="0.5" value="3.5">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-label">
+                  <span>Средний чек продажи бизнеса:</span>
+                  <b id="calcTicketVal">45.000 ₽</b>
+                </div>
+                <input type="range" id="sliderTicket" min="15000" max="500000" step="5000" value="45000">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-label">
+                  <span>Конверсия отдела продаж в сделку:</span>
+                  <b id="calcConvVal">7%</b>
+                </div>
+                <input type="range" id="sliderConv" min="2" max="20" step="1" value="7">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-label">
+                  <span>Выбранный формат работы:</span>
+                  <b id="calcTariffVal">500 ₽ (Подтвержденный лид)</b>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 6px;">
+                  <button class="sort-btn" id="btnTariff100" onclick="setTariff(150)">150 ₽ (Сырой контакт)</button>
+                  <button class="sort-btn active" id="btnTariff500" onclick="setTariff(500)">500 ₽ (Подтвержденный)</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="calc-results">
+              <div>
+                <div style="font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 12px;">Результаты расчета:</div>
+                <div class="calc-res-row">
+                  <span style="color: var(--text-muted);">Контактов со спросом в месяц:</span>
+                  <b id="resActiveLeads" style="color: var(--text);">2.800 чел</b>
+                </div>
+                <div class="calc-res-row">
+                  <span style="color: var(--text-muted);">Прогноз закрытых сделок:</span>
+                  <b id="resDeals" style="color: var(--primary);">196 сделок</b>
+                </div>
+                <div class="calc-res-row">
+                  <span style="color: var(--text-muted);">Расход компании на сервис:</span>
+                  <b id="resCost" style="color: #b91c1c;">1.400.000 ₽</b>
+                </div>
+                <div class="calc-res-row">
+                  <span style="color: var(--text-muted);">Дополнительная выручка:</span>
+                  <b id="resRevenue" style="color: var(--accent);">8.820.000 ₽</b>
+                </div>
+              </div>
+
+              <div style="border-top: 1px solid var(--card-border); padding-top: 12px; margin-top: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Окупаемость вложений:</div>
+                <div class="roi-highlight" id="resRomi">+530%</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                  Чистая прибыль: <b id="resNetProfit" style="color: var(--text);">+7.420.000 ₽</b>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка 4: Стратегия и аргументы -->
+      <div id="tab-strategic-insights" class="tab-content" style="display: none;">
+        <div class="card">
+          <div class="section-title">Аргументы при переговорах с клиентами</div>
+          
+          <div class="text-block-item">
+            <div class="text-block-title">Законность и закон о персональных данных (152-ФЗ)</div>
+            <div class="text-block-p">
+              Главное сомнение клиента — законность звонков. Ответ строится на том, что работа идет исключительно со <b>своей собственной базой компании</b>, контакты которой уже давали согласие при первом обращении. Мы не передаем сторонних людей. Система лишь сигнализирует: клиент из вашей базы прямо сейчас снова выбирает услугу. Звонок менеджера выглядит как заботливое сервисное предложение постоянному клиенту.
+            </div>
+          </div>
+
+          <div class="text-block-item">
+            <div class="text-block-title">Предложение бесплатного теста на 30–50 контактов</div>
+            <div class="text-block-p">
+              В сфере услуг руководители осторожно относятся к новым инструментам. Лучший вход в сделку — тестовый срез: компания выгружает сегмент из 5.000 старых контактов, мы находим 30–50 активных людей, их отдел продаж совершает звонки. После получения реальных оплат заключается основной договор.
+            </div>
+          </div>
+
+          <div class="text-block-item">
+            <div class="text-block-title">Кому предлагать тариф 100 ₽, а кому 500 ₽</div>
+            <div class="text-block-p">
+              Тариф 100–150 ₽ (сырой контакт) подходит крупным организациям с собственным контакт-центром (застройщики, автодилеры, онлайн-школы). Им достаточно номера и факта поиска. Тариф 500 ₽ (подтвержденный лид) идеален для медицинских центров, стоматологий, автосервисов и мебельных производств, где администраторы работают только с подтвержденными обращениями.
+            </div>
+          </div>
+
+          <div class="text-block-item">
+            <div class="text-block-title">Сравнение с высокой стоимостью рекламы в поиске</div>
+            <div class="text-block-p">
+              Стоимость клика и заявки в поисковой рекламе за последние годы выросла в несколько раз. Во многих сферах цена нового лида превышает 5.000–10.000 ₽. Предложение вернуть потенциального клиента из своей архивной базы за 100–500 ₽ существенно выгоднее закупки холодного трафика.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Вкладка 5: Интерактивная смета запуска и расчет ресурсов (В САМОМ КОНЦЕ) -->
+      <div id="tab-launch-planner" class="tab-content" style="display: none;">
+        
+        <div class="card">
+          <div class="hero-header">
+            <div>
+              <div class="section-title" style="margin-bottom: 2px;">Конструктор сметы запуска и ресурсов</div>
+              <div class="hero-desc">
+                Выберите ниши и подключенные каналы коммуникации. Бюджеты, сроки и план подключений рассчитываются автоматически с возможностью ручной корректировки.
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-action-secondary" onclick="resetPlanToDefaults()">Сбросить к рекомендованным</button>
+              <button class="btn-action-secondary" onclick="copyPlanSummary()">Копировать смету</button>
+            </div>
+          </div>
+
+          <!-- Сводные показатели сметы (динамически пересчитываются) -->
+          <div class="plan-summary-grid">
+            <div class="plan-summary-card">
+              <div class="plan-summary-label">Выбрано ниш для старта:</div>
+              <div class="plan-summary-val" id="sumNichesCount">0</div>
+            </div>
+            <div class="plan-summary-card">
+              <div class="plan-summary-label">Общий согласованный бюджет:</div>
+              <div class="plan-summary-val" id="sumTotalBudget" style="color: var(--primary);">0 ₽</div>
+            </div>
+            <div class="plan-summary-card">
+              <div class="plan-summary-label">Общий срок реализации:</div>
+              <div class="plan-summary-val" id="sumMaxWeeks">0 нед.</div>
+            </div>
+            <div class="plan-summary-card">
+              <div class="plan-summary-label">План тестовых подключений:</div>
+              <div class="plan-summary-val" id="sumTotalClients" style="color: var(--accent);">0 компаний</div>
+            </div>
+          </div>
+
+          <!-- Список выбранных ниш -->
+          <div class="section-title" style="margin-top: 10px;">Направления, включенные в запуск:</div>
+          <div id="planNichesContainer">
+            <!-- Формируется динамически из JS -->
+          </div>
+
+          <!-- Добавление новой ниши -->
+          <div class="add-niche-bar">
+            <select id="selectAddNiche" class="niche-select">
+              <!-- Заполняется доступными нишами -->
+            </select>
+            <button class="btn-action-primary" onclick="addSelectedNicheFromDropdown()">+ Добавить нишу в смету</button>
+          </div>
+        </div>
+
+        <!-- Требуемые специалисты и софт -->
+        <div class="card">
+          <div class="section-title">Требуемые ресурсы и специалисты для реализации сметы</div>
+          <div id="planResourcesSummary">
+            <!-- Расчет ролей и инструментов -->
+          </div>
+        </div>
+
+        <!-- Справочник ресурсных затрат по каналам коммуникации -->
+        <div class="card">
+          <div class="section-title">Справочник ресурсных затрат по каналам коммуникации</div>
+          <div class="table-scroll-hint">← Прокрутите таблицу вправо для просмотра всех колонок →</div>
+          <div class="table-responsive">
+            <table class="res-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">Канал коммуникации</th>
+                <th style="width: 25%;">Финансовые затраты</th>
+                <th style="width: 25%;">Специалисты и роли</th>
+                <th style="width: 25%;">Сроки до первых сделок</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>1. Прямой аутрич (TG / WhatsApp)</b><br><span style="font-size: 11px; color: var(--text-muted);">Быстрый выход на ЛПР</span></td>
+                <td>30.000–60.000 ₽<br><span style="font-size: 11px; color: var(--text-muted);">Базы, прокси, расходные аккаунты</span></td>
+                <td>Специалист по лидогенерации, оператор переписки</td>
+                <td>1–2 недели</td>
+              </tr>
+              <tr>
+                <td><b>2. Таргетированная реклама</b><br><span style="font-size: 11px; color: var(--text-muted);">Telegram Ads / VK Реклама</span></td>
+                <td>60.000–120.000 ₽<br><span style="font-size: 11px; color: var(--text-muted);">Рекламный бюджет + настройка</span></td>
+                <td>Таргетолог, копирайтер</td>
+                <td>2–3 недели</td>
+              </tr>
+              <tr>
+                <td><b>3. Партнерская сеть интеграторов</b><br><span style="font-size: 11px; color: var(--text-muted);">amoCRM, Битрикс24, агентства</span></td>
+                <td>20.000–40.000 ₽<br><span style="font-size: 11px; color: var(--text-muted);">Партнерские презентации, регламенты</span></td>
+                <td>Менеджер по развитию партнерской сети</td>
+                <td>3–4 недели</td>
+              </tr>
+              <tr>
+                <td><b>4. Видео, кейсы и подкасты</b><br><span style="font-size: 11px; color: var(--text-muted);">YouTube, Shorts, VK Видео</span></td>
+                <td>50.000–120.000 ₽<br><span style="font-size: 11px; color: var(--text-muted);">Студия, монтаж, упаковка кейсов</span></td>
+                <td>Спикер, видеомонтажер</td>
+                <td>3–5 недель (накопительный)</td>
+              </tr>
+              <tr>
+                <td><b>5. Отраслевые конференции</b><br><span style="font-size: 11px; color: var(--text-muted);">Очные стенды и доклады</span></td>
+                <td>80.000–250.000 ₽<br><span style="font-size: 11px; color: var(--text-muted);">Билеты, участие, раздаточные материалы</span></td>
+                <td>Спикер, менеджер на стенде</td>
+                <td>Привязано к датам выставок</td>
+              </tr>
+              <tr>
+                <td><b>6. Поисковый спрос (SEO / Лендинг)</b><br><span style="font-size: 11px; color: var(--text-muted);">Входящие теплые обращения</span></td>
+                <td>40.000–80.000 ₽<br><span style="font-size: 11px; color: var(--text-muted);">Посадочная страница с калькулятором</span></td>
+                <td>Веб-разработчик, маркетолог</td>
+                <td>2–4 недели</td>
+              </tr>
+            </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <script>
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formatDots(num) {
+      if (num === null || num === undefined) return '';
+      const parts = num.toString().split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return parts.join('.');
+    }
+
+    function parseDots(str) {
+      if (typeof str === 'number') return str;
+      return parseInt(str.toString().replace(/\./g, '').replace(/\s/g, ''), 10) || 0;
+    }
+
+    // Глобальные переменные состояния
+    let currentNiche = null;
+    let currentSort = 'default';
+    let currentTariff = 500;
+    let currentChannelsSort = 'conv';
+
+    // Реестр всех целевых ниш
+    const nichesData = [
+      {
+        id: "realestate",
+        name: "Недвижимость и девелопмент",
+        isHighLtv: true,
+        ltvFeatures: "Повторные инвестиции в новые корпуса застройщика, покупка квартир родственникам, арендное управление и комиссии со вторичной продажи (LTV от 15.000.000 ₽).",
+        sortTicket: 8500000,
+        sortBase: 250000,
+        ticket: "8.500.000 ₽",
+        baseSize: "80.000–250.000",
+        coldCac: "8.000–20.000 ₽",
+        roi: "+1.500%–4.000%",
+        desc: "Застройщики, агентства недвижимости, загородные поселки. Базы накоплены за годы рекламных кампаний. Спрос цикличен: расширение, инвестиции, переезд.",
+        lpr: "Директор по маркетингу, коммерческий директор, руководитель отдела продаж.",
+        trigger: "Расчет ипотеки на калькуляторах, просмотр новостроек на профильных сайтах, запросы на покупку квартир в рассрочку.",
+        why: "Отделы продаж застройщиков испытывают нехватку обращений. База контактов за прошлые годы лежит без дела. Реактивация дает теплые звонки без затрат на дорогой контекст.",
+        salesComment: "Для застройщиков подходит формат сырого контакта (100–150 ₽), так как у них есть собственный контакт-центр на 30–50 человек. Для небольших агентств недвижимости лучше предлагать подтвержденный лид (500 ₽).",
+        channels: [
+          { name: "Прямое обращение в Телеграм к директорам по маркетингу", scoreText: "9.6 из 10", desc: "Контакт с маркетологом девелопера с предложением тестового среза на 50 обращений.", action: "Скрипт: у вас в архиве лежит около 80.000 контактов, часть из которых прямо сейчас считает ипотеку..." },
+          { name: "Отраслевые форумы по недвижимости", scoreText: "9.2 из 10", desc: "Личное общение на отраслевых конгрессах и выставках.", action: "Предложение бесплатного экспресс-аудита спящей базы" },
+          { name: "Партнерство с отраслевыми CRM-системами", scoreText: "9.0 из 10", desc: "Подключение модуля реактивации непосредственно в CRM компании за процент от сделки.", action: "Совместное предложение с разработчиками систем" }
+        ],
+        script: "Добрый день! Вижу, вы руководите маркетингом в [Компания].\n\nСейчас стоимость заявки в рекламе недвижимости достаточно высокая, при этом в вашей CRM накоплены десятки тысяч контактов, которые уже знакомы с вашими проектами.\n\nМы отслеживаем, когда человек из вашей архивной базы снова начинает интересоваться новостройками или расчетом ипотеки, и передаем контакт вашему отделу продаж по цене 150-500 ₽ за обращение.\n\nГотовы бесплатно протестировать систему на сегменте в 5.000 контактов и передать первые 30 теплых обращений. Интересно взглянуть на результаты теста?"
+      },
+      {
+        id: "leasing",
+        name: "Лизинг спецтехники и авто для бизнеса",
+        isHighLtv: true,
+        ltvFeatures: "Плановое обновление парка каждые 2–3 года, добор единиц спецтехники под сезонные контракты, финансовый лизинг нескольких машин на одно юридическое лицо.",
+        sortTicket: 13750000,
+        sortBase: 70000,
+        ticket: "2.500.000–25.000.000 ₽",
+        baseSize: "20.000–70.000",
+        coldCac: "15.000–50.000 ₽",
+        roi: "+2.000%–6.000%",
+        desc: "Лизинговые компании, поставщики коммерческого транспорта, строительной техники. Компании обновляют парк каждые 2–3 года.",
+        lpr: "Директор по развитию, руководитель корпоративных продаж.",
+        trigger: "Поиск лизинговых программ, расчет графиков платежей, закупка техники под контракты.",
+        why: "Предприятия приобретают технику под новые объемы работ. Своевременное предложение позволяет закрыть сделку до обращения к конкурентам.",
+        salesComment: "В лизинге корпоративный отдел продаж самостоятельно квалифицирует сделки. Им можно отдавать как сырой сигнал (150 ₽), так и готовый лид (500 ₽). Одна закрытая сделка с лихвой окупает месячную работу.",
+        channels: [
+          { name: "Прямой диалог с руководством лизинговых компаний", scoreText: "9.6 из 10", desc: "Обоснование экономической выгоды сохранения клиентского портфеля.", action: "Индивидуальная встреча" },
+          { name: "Партнерство с поставщиками техники", scoreText: "8.7 из 10", desc: "Совместные программы дожима баз покупателей.", action: "Комплексное предложение" }
+        ],
+        script: "Здравствуйте! Вопрос по корпоративным сделкам в [Лизинговая компания].\n\nВ вашей базе сохранены предприятия, приобретавшие технику несколько лет назад. При завершении договоров или получении новых подрядов им требуется расширение парка.\n\nМы определяем, когда компания из вашей базы начинает изучать условия по коммерческому транспорту, и передаем сигнал вашим менеджерам за 500 ₽.\n\nДаже одна реализованная сделка окупает подключение сервиса на длительный срок. Предлагаем запустить тест на 50 предприятиях. Интересно?"
+      },
+      {
+        id: "corporate",
+        name: "Организация корпоративных событий",
+        isHighLtv: true,
+        ltvFeatures: "Бюджеты на 4–6 ивентов в год (новогодний банкет, летний тимбилдинг, день компании, стратегические сессии руководства). Цикл работы с компанией от 3 лет.",
+        sortTicket: 3250000,
+        sortBase: 45000,
+        ticket: "500.000–6.000.000 ₽",
+        baseSize: "15.000–45.000",
+        coldCac: "10.000–30.000 ₽",
+        roi: "+1.100%–3.000%",
+        desc: "Организация праздников, деловых конференций, тимбилдингов для компаний. Регулярный цикл: сезонные события, годовщины компаний.",
+        lpr: "Основатель агентства, генеральный продюсер, директор по развитию.",
+        trigger: "Поиск площадок для мероприятий, кейтеринга, звукового оборудования.",
+        why: "Компании ежегодно проводят мероприятия. Своевременный выход на связь за несколько месяцев до события позволяет войти в тендер и заключить контракт.",
+        salesComment: "В ивент-агентствах работают сильные аккаунт-менеджеры. Формат за 500 ₽ идеален: менеджер получает контакт постоянного заказчика ровно в тот момент, когда в компании начали планировать дату.",
+        channels: [
+          { name: "Сообщества организаторов деловых событий", scoreText: "9.0 из 10", desc: "Публикация примеров раннего бронирования корпоративных дат.", action: "Скрипты для менеджеров" },
+          { name: "Отраслевые ассоциации и премии", scoreText: "8.6 из 10", desc: "Прямой диалог с лидерами агентств.", action: "Партнерский пилот" }
+        ],
+        script: "Приветствую! К вам по поводу корпоративных клиентов для [Агентство событий].\n\nЕжегодно сотни компаний, с которыми вы сотрудничали ранее, начинают готовиться к сезонным мероприятиям. Мы определяем момент, когда представитель компании начинает искать площадку или подрядчиков, и передаем контакт за 500 ₽.\n\nПредлагаем подключить выборку вашей базы перед началом активного сезона подготовки мероприятий. Интересно обсудить?"
+      },
+      {
+        id: "tourism",
+        name: "Индивидуальный туризм и авторские туры",
+        isHighLtv: true,
+        ltvFeatures: "Постоянные премиум-клиенты летают от 2 до 5 раз в год семьями, высокий средний чек поездки (от 350.000 ₽), высокая лояльность к персональному менеджеру.",
+        sortTicket: 725000,
+        sortBase: 60000,
+        ticket: "250.000–1.200.000 ₽",
+        baseSize: "25.000–60.000",
+        coldCac: "6.000–15.000 ₽",
+        roi: "+900%–2.100%",
+        desc: "Туроператоры индивидуальных маршрутов, премиального отдыха. Клиенты совершают поездки 2–4 раза в год.",
+        lpr: "Основатель компании, ведущий менеджер по работе с постоянными клиентами.",
+        trigger: "Поиск билетов, подбор отелей, планирование дат отпуска.",
+        why: "Путешественники часто бронируют отдых там, где им быстрее предложили подходящий вариант. Своевременное напоминание обеспечивает повторное бронирование.",
+        salesComment: "Идеально заходит формат за 500 ₽. VIP-менеджер звонит постоянному туристу со словами «Мы подготовили для вас персональное предложение к отпуску».",
+        channels: [
+          { name: "Личный контакт с учредителями туристических компаний", scoreText: "9.2 из 10", desc: "Обсуждение работы с постоянными путешественниками.", action: "Демонстрация сценария" },
+          { name: "Отраслевые туристические выставки", scoreText: "8.4 из 10", desc: "Установление контактов с операторами индивидуальных туров.", action: "Личное знакомство" }
+        ],
+        script: "Добрый день! К вам по поводу работы с постоянными туристами в [Туристическая компания].\n\nВ индивидуальном туризме ключевую ценность представляют постоянные клиенты. Мы отслеживаем, когда путешественник из вашей базы снова начинает интересоваться отелями или перелетами, и передаем сигнал вашему менеджеру для своевременного звонка.\n\nСтоимость подтвержденного обращения — 500 ₽. Предлагаем протестировать сервис перед предстоящим сезоном отпусков. Обсудим детали?"
+      },
+      {
+        id: "b2b_saas",
+        name: "Деловые услуги и сопровождение (1С, бухгалтерия)",
+        isHighLtv: true,
+        ltvFeatures: "Ежемесячная абонентская плата годами (ретейнер), регулярные допродажи обновлений 1С, интеграций с банками, CRM и налогового аудита.",
+        sortTicket: 1500000,
+        sortBase: 100000,
+        ticket: "45.000–250.000 ₽/мес",
+        baseSize: "30.000–100.000",
+        coldCac: "7.000–25.000 ₽",
+        roi: "+1.500%–4.500%",
+        desc: "Аутсорсинг бухгалтерского учета, сопровождение программ 1С, юридическое обслуживание предприятий. Длительный жизненный цикл контракта.",
+        lpr: "Генеральный директор, коммерческий директор компании.",
+        trigger: "Поиск бухгалтерского обслуживания, доработок программ учета перед отчетными периодами.",
+        why: "Компании периодически меняют обслуживающие организации. Обращение в момент поиска альтернативы позволяет заключить долгосрочный контракт.",
+        salesComment: "Высочайший LTV (клиент платит годами). Продавать можно по 500 ₽ за квалифицированное обращение, так как один привлеченный абонент приносит сотни тысяч выручки.",
+        channels: [
+          { name: "Профильные сообщества и рассылки для интеграторов", scoreText: "9.3 из 10", desc: "Выход на франчайзи и аутсорсинговые центры.", action: "Совместная демонстрация" },
+          { name: "Прямой контакт с руководителями бухгалтерских компаний", scoreText: "8.9 из 10", desc: "Расчет окупаемости: несколько новых постоянных клиентов окупают внедрение.", action: "Индивидуальный расчет" }
+        ],
+        script: "Здравствуйте! Обращаюсь к вам как к руководителю [Компания].\n\nПривлечение юридического лица на постоянное бухгалтерское или программное сопровождение через рекламу требует существенных затрат. При этом у вас накоплена база обращений за прошлые периоды.\n\nМы определяем, когда компания снова начинает искать доработки учета или обслуживание, и передаем подтвержденный контакт за 500 ₽.\n\nПредлагаем протестировать систему на выборке из 50 организаций. Когда удобно провести короткий созвон?"
+      },
+      {
+        id: "autodealer",
+        name: "Автодилеры (Продажи авто и Trade-in)",
+        isHighLtv: true,
+        ltvFeatures: "Замена автомобиля каждые 3–4 года через Trade-in, регулярное прохождение ТО у официального дилера, оформление страховок КАСКО/ОСАГО и допов.",
+        sortTicket: 3250000,
+        sortBase: 300000,
+        ticket: "1.500.000–5.000.000 ₽",
+        baseSize: "50.000–300.000",
+        coldCac: "12.000–35.000 ₽",
+        roi: "+1.800%–5.000%",
+        desc: "Официальные и мультибрендовые дилерские центры. Продажи новых машин, автомобилей с пробегом, обмен по программе trade-in.",
+        lpr: "Директор по маркетингу дилерского центра, руководитель отдела продаж.",
+        trigger: "Оценка стоимости своего авто на профильных автомобильных порталах, интерес к автокредитам.",
+        why: "Клиент приобрел машину 3-4 года назад. Как только он начинает интересоваться оценкой автомобиля, дилер может сделать персональное предложение по обмену.",
+        salesComment: "У автодилеров работают крупные штатные отделы продаж. Сырой контакт за 100–150 ₽ они готовы выкупать десятками тысяч, так как менеджеры обучены технике дожима по телефону.",
+        channels: [
+          { name: "Выход на руководство отделов продаж автохолдингов", scoreText: "9.5 из 10", desc: "Презентация сокращения стоимости сделки по обмену автомобилей.", action: "Пилотный запуск в одном салоне сети" },
+          { name: "Отраслевые автомобильные конференции", scoreText: "9.1 из 10", desc: "Участие во встречах ассоциаций автомобильных дилеров.", action: "Разбор кейса реактивации базы покупателей" }
+        ],
+        script: "Здравствуйте! Вижу, вы курируете маркетинг в [Автодилер].\n\nПривлечение покупателя в салон через платную рекламу сейчас стоит достаточно дорого. При этом у вас есть база клиентов, купивших автомобиль 3–4 года назад.\n\nМы фиксируем, когда ваш клиент начинает оценивать автомобиль на сайтах объявлений или интересоваться новыми моделями, и передаем контакт вашему отделу продаж по цене 150 ₽.\n\nГотовы протестировать формат на одном центре. Когда удобно обсудить условия?"
+      },
+      {
+        id: "renovation",
+        name: "Ремонт помещений и загородные дома",
+        isHighLtv: false,
+        ltvFeatures: "Длинный цикл (ремонт раз в 5–10 лет). Потенциал допродаж: чистовые материалы, комплектация мебелью, ремонт загородных домов и рекомендации.",
+        sortTicket: 2200000,
+        sortBase: 150000,
+        ticket: "400.000–4.000.000 ₽",
+        baseSize: "50.000–150.000",
+        coldCac: "6.000–18.000 ₽",
+        roi: "+1.200%–3.500%",
+        desc: "Капитальный ремонт квартир, строительство домов, фундаменты и инженерные сети. Длинный цикл принятия решений.",
+        lpr: "Основатель строительной компании, коммерческий директор.",
+        trigger: "Поиск строительных материалов, расчет смет на отделку, выбор проектов загородных домов.",
+        why: "Заказчики часто откладывают строительство на следующий сезон. При возобновлении поиска обращение от знакомой компании обеспечивает встречу на объекте.",
+        salesComment: "В строительстве менеджеры и прорабы не успевают делать холодные звонки. Оптимально отдавать подтвержденный лид за 500 ₽, где клиент подтвердил желание заказать расчет сметы.",
+        channels: [
+          { name: "Прямой диалог с руководителями строительных компаний", scoreText: "9.2 из 10", desc: "Предложение загрузить бригады заказами из архива смет.", action: "Скрипт с акцентом на начало сезона" },
+          { name: "Партнерство с дизайнерами и архитектурными бюро", scoreText: "8.6 из 10", desc: "Взаимная передача заказчиков на этапе готовности проекта.", action: "Совместная работа с базой" }
+        ],
+        script: "Добрый день! К вам по поводу загрузки строительных бригад в [Компания].\n\nВ рекламе привлечение клиента на ремонт или стройку дома стоит достаточно дорого. При этом в вашей почте сохранены контакты сотен людей, запрашивавших расчет в прошлые периоды.\n\nМы определяем, когда они снова начинают искать подрядчиков или изучать материалы, и передаем подтвержденный контакт для выезда сметчика за 500 ₽.\n\nПредлагаем бесплатно проверить выборку вашей базы. Готовы показать результаты?"
+      },
+      {
+        id: "kitchens",
+        name: "Кухни и мебель на заказ",
+        isHighLtv: false,
+        ltvFeatures: "Разовая крупная покупка на 7–10 лет. Основной допродающий потенциал: гардеробные, шкафы-купе, мягкая мебель и рекомендации друзьям.",
+        sortTicket: 465000,
+        sortBase: 120000,
+        ticket: "180.000–750.000 ₽",
+        baseSize: "40.000–120.000",
+        coldCac: "4.000–12.000 ₽",
+        roi: "+900%–2.500%",
+        desc: "Изготовление кухонных гарнитуров, встроенной мебели, гардеробных. Клиенты запрашивают расчет проекта, а покупку совершают спустя время.",
+        lpr: "Собственник фабрики, руководитель розничной сети салонов.",
+        trigger: "Поиск мебели на заказ, изучение каталогов материалов, планировка квартир.",
+        why: "Клиент делал предварительный проект во время ремонта. Через полгода ремонт завершен, и он возвращается к заказу кухни. Своевременный звонок закрывает сделку.",
+        salesComment: "Дизайнерам-консультантам в салонах нужен только теплый повод для звонка. Модель 500 ₽ за согласованный замер заходит идеально.",
+        channels: [
+          { name: "Прямые сообщения владельцам мебельных салонов", scoreText: "9.1 из 10", desc: "Показ потенциала возврата заказчиков, которые ранее отложили покупку.", action: "Расчет для конкретного региона" },
+          { name: "Реклама для предпринимателей мебельной сферы", scoreText: "8.4 из 10", desc: "Предложение реактивации архива дизайн-проектов.", action: "Демонстрация сценария работы" }
+        ],
+        script: "Здравствуйте! Обращаюсь к вам как к руководителю [Мебельная компания].\n\nЗа время работы у вас накопились сотни рассчитанных проектов мебели, заказ которых клиенты отложили. Привлекать новых заказчиков через рекламу сейчас дорого.\n\nМы отслеживаем, когда человек из вашей архивной базы снова начинает выбирать материалы или планировать гарнитур, и передаем его вам по 500 ₽ за заявку на замер.\n\nГотовы протестировать формат на 30 заявках. Подскажите, интересно ли обсудить условия?"
+      },
+      {
+        id: "dental",
+        name: "Стоматологии (Имплантация)",
+        isHighLtv: true,
+        ltvFeatures: "После имплантации пациент проходит протезирование, регулярную профгигиену каждые 6 месяцев и приводит на лечение всю семью (LTV 400.000–1.200.000 ₽).",
+        sortTicket: 285000,
+        sortBase: 90000,
+        ticket: "120.000–450.000 ₽",
+        baseSize: "30.000–90.000",
+        coldCac: "4.000–9.000 ₽",
+        roi: "+800%–2.200%",
+        desc: "Сетевые клиники и центры дентальной имплантации. Пациенты периодически нуждаются в продолжении лечения или новых услугах.",
+        lpr: "Владелец клиники, главный врач, управляющий.",
+        trigger: "Поиск цен на имплантацию, коронки, посещение сайтов других стоматологий.",
+        why: "Имплантация имеет высокий чек. Человек, лечивший зуб 2 года назад, при новой потребности снова выбирает клинику. Своевременный звонок возвращает пациента.",
+        salesComment: "Администраторы клиник категорически не умеют звонить по сырым триггерам. Только тариф 500 ₽ за пациента, который подтвердил желание прийти на осмотр.",
+        channels: [
+          { name: "Телефонное обращение к управляющим клиник", scoreText: "9.0 из 10", desc: "Звонок с предложением загрузить врачей первичными консультациями из архивной базы.", action: "Предложение тестовой группы пациентов" },
+          { name: "Сообщества и каналы руководителей клиник", scoreText: "8.8 из 10", desc: "Публикация кейсов возврата пациентов на имплантацию без рекламы в поиске.", action: "Расчет упущенной выгоды клиники" },
+          { name: "Интеграторы медицинских программ", scoreText: "8.5 из 10", desc: "Партнерство с компаниями, внедряющими медицинские информационные системы.", action: "Рекомендация сервиса постоянным клиентам" }
+        ],
+        script: "Здравствуйте! Обращаюсь к вам как к руководителю [Клиника].\n\nПривлечение пациентов на имплантацию через контекстную рекламу сейчас обходится достаточно дорого. При этом в архиве вашей клиники накоплены тысячи карточек пациентов, которым со временем требуется продолжение лечения.\n\nМы определяем, когда пациент из вашей базы снова начинает искать стоматологические услуги, уточняем его готовность к консультации и передаем вам подтвержденного пациента за 500 ₽.\n\nПредлагаем провести тест на 30 обращений без рисков. Подскажите, куда удобнее отправить подробности?"
+      },
+      {
+        id: "cosmetology",
+        name: "Косметология и клиники красоты",
+        isHighLtv: true,
+        ltvFeatures: "Курсовые процедуры каждые 3–6 месяцев (ботулотоксин, биоревитализация, аппаратные методики). Пациент привязывается к клинике на 3–5 лет.",
+        sortTicket: 192000,
+        sortBase: 80000,
+        ticket: "35.000–350.000 ₽",
+        baseSize: "25.000–80.000",
+        coldCac: "3.000–7.500 ₽",
+        roi: "+700%–1.800%",
+        desc: "Аппаратная косметология, инъекционные процедуры, пластическая хирургия. Цикличность процедур составляет от 6 до 9 месяцев.",
+        lpr: "Основатель клиники, управляющий, маркетолог.",
+        trigger: "Поиск процедур омоложения, отзывов на аппараты, посещение страниц косметологий.",
+        why: "Эффект процедур со временем проходит. Пациентки планируют повторный визит, и напоминание от своей клиники приводит к быстрой повторной записи.",
+        salesComment: "Администраторы салонов работают мягко. Нужен подтвержденный интерес (500 ₽): звонок звучит как забота о клиентке с напоминанием о бонусах или обновлении препаратов.",
+        channels: [
+          { name: "Прямые сообщения управляющим в мессенджерах", scoreText: "9.3 из 10", desc: "Краткая демонстрация механики выявления пациенток, планирующих повторные процедуры.", action: "Короткое видео с демонстрацией" },
+          { name: "Реклама по администраторам клиник", scoreText: "8.2 из 10", desc: "Предложение по автоматическому возврату клиенток на плановые курсы.", action: "Калькулятор возврата клиентов" }
+        ],
+        script: "Добрый день! К вам по поводу возврата постоянных клиентов в [Клиника].\n\nУ большинства косметологических процедур есть естественный цикл повторения. Мы помогаем вовремя зафиксировать момент, когда ваша постоянная клиентка снова начинает выбирать процедуры, и передаем ее контакт для записи.\n\nСтоимость подтвержденного обращения — 500 ₽ при среднем чеке от 35.000 ₽. Готовы показать работу системы на небольшой выборке вашей базы. С кем можно обсудить детали?"
+      },
+      {
+        id: "bfl",
+        name: "Банкротство физлиц (БФЛ)",
+        isHighLtv: false,
+        ltvFeatures: "Разовая юридическая услуга по закону (повторное банкротство возможно только через 5 лет). Дополнительный доход только от рекомендаций знакомым.",
+        sortTicket: 150000,
+        sortBase: 400000,
+        ticket: "110.000–190.000 ₽",
+        baseSize: "80.000–400.000",
+        coldCac: "3.500–8.000 ₽",
+        roi: "+1.000%–2.800%",
+        desc: "Юридические компании по списанию задолженностей и сложным спорам. Большие базы обращений, длительное созревание клиента.",
+        lpr: "Собственник юридической компании, руководитель направления продаж.",
+        trigger: "Проверка исполнительных производств, расчет вариантов реструктуризации долга.",
+        why: "Клиент мог сомневаться полгода назад. При усложнении финансовой ситуации он возвращается к поиску решения, и своевременный звонок приводит к договору.",
+        salesComment: "Колоссальные объемы баз. Юридические колл-центры готовы забирать сырые триггеры по 100–150 ₽ тысячами штук в неделю.",
+        channels: [
+          { name: "Обращения к учредителям юридических компаний", scoreText: "9.8 из 10", desc: "Юридический рынок активно закупает лиды. Предложение прямого контакта по низкой цене воспринимается позитивно.", action: "Тариф 100-150 ₽ за подтвержденный сигнал" },
+          { name: "Юридические конференции и форумы", scoreText: "9.4 из 10", desc: "Заключение договоров на регулярный поток обращений.", action: "Пакетное подключение" }
+        ],
+        script: "Здравствуйте! Обращаюсь к вам как к руководителю [Юридическая компания].\n\nСтоимость привлечения первичного клиента по списанию долгов в рекламе сейчас высока. При этом в вашей CRM сохранены тысячи контактов граждан, которые консультировались ранее.\n\nМы отслеживаем, когда человек из вашей базы снова начинает интересоваться юридической помощью или проверять задолженности, и передаем сигнал вашему контакт-центру по 100-150 ₽.\n\nПредлагаем протестировать 10.000 контактов из вашего архива. На какой адрес отправить проект соглашения?"
+      },
+      {
+        id: "edtech",
+        name: "Онлайн-школы и EdTech",
+        isHighLtv: true,
+        ltvFeatures: "Продуктовая лестница: переход с курсов на флагманские профессии, в закрытые клубы выпускников и премиальное менторство (чек от 250.000 ₽).",
+        sortTicket: 120000,
+        sortBase: 1000000,
+        ticket: "60.000–180.000 ₽",
+        baseSize: "100.000–1.000.000",
+        coldCac: "8.000–22.000 ₽",
+        roi: "+1.000%–3.000%",
+        desc: "Обучение профессиям, иностранные языки, детские образовательные программы, курсы повышения квалификации.",
+        lpr: "Директор по маркетингу онлайн-школы, руководитель направления трафика.",
+        trigger: "Поиск программ обучения, просмотр вебинаров, сравнение курсов.",
+        why: "В образовательных платформах хранятся сотни тысяч контактов, посещавших вебинары без покупки. Повторный интерес означает готовность к началу обучения.",
+        salesComment: "У EdTech мощнейшие штатные колл-центры на сотни операторов. Для них формат 100–150 ₽ — спасение от заоблачной цены регистрации.",
+        channels: [
+          { name: "Профессиональные сообщества маркетологов онлайн-образования", scoreText: "9.7 из 10", desc: "Прямой диалог с руководителями трафика образовательных школ.", action: "Предложение снижения стоимости лида" },
+          { name: "Интеграция с обучающими платформами", scoreText: "9.2 из 10", desc: "Подключение триггеров непосредственно в воронку дожима участников.", action: "Автоматическая передача контактов" }
+        ],
+        script: "Приветствую! К вам по поводу базы регистраций в [Образовательный проект].\n\nУ вас наверняка сохранены контакты пользователей, участвовавших в бесплатных вебинарах за прошлые периоды. Закупка холодного трафика сейчас дорожает.\n\nМы определяем, когда пользователи из вашей базы снова начинают искать курсы или изучать смежные направления, и передаем сигнал вашему отделу продаж по 100-150 ₽ за контакт.\n\nПредлагаю провести тест на выборке в 10.000 контактов. Готовы показать демонстрацию?"
+      },
+      {
+        id: "fitness",
+        name: "Фитнес-клубы и спортивные комплексы",
+        isHighLtv: true,
+        ltvFeatures: "Ежегодное продление абонементов (ретеншн 45–65%), блоки персональных тренировок, детские секции, услуги спа и бара (LTV 120.000–350.000 ₽).",
+        sortTicket: 87500,
+        sortBase: 90000,
+        ticket: "35.000–140.000 ₽",
+        baseSize: "30.000–90.000",
+        coldCac: "2.500–6.000 ₽",
+        roi: "+700%–1.600%",
+        desc: "Сетевые клубы, бассейны, спортивные центры. Значительная часть клиентов не продлевает карты вовремя, но возвращается к тренировкам позже.",
+        lpr: "Управляющий клубом, директор по продажам сети.",
+        trigger: "Поиск абонементов, спортивных секций, программ тренировок.",
+        why: "Клиент сделал перерыв в занятиях. При возобновлении интереса предложение от своего привычного клуба с бонусом обеспечивает продление карты.",
+        salesComment: "Менеджеры рецепции и продаж легко возвращают клиентов, если дать им готовый сигнал с подтвержденным визитом (500 ₽).",
+        channels: [
+          { name: "Обращения к директорам по продажам фитнес-сетей", scoreText: "9.0 из 10", desc: "Презентация инструмента снижения оттока членов клуба.", action: "Внедрение в одном из клубов сети" },
+          { name: "Фитнес-конвенции и форумы", scoreText: "8.5 из 10", desc: "Личные встречи с управляющими спортивными объектами.", action: "Очное обсуждение пилота" }
+        ],
+        script: "Добрый день! К вам по вопросу возврата членов клуба в [Фитнес-клуб].\n\nЧасть клиентов после окончания карты делает паузу в тренировках. При этом привлекать абсолютно нового человека дороже, чем возобновить абонемент существующего.\n\nМы фиксируем, когда ваш бывший клиент снова начинает интересоваться тренировками или бассейнами, и передаем контакт вашему отделу продаж за 500 ₽ за подтвержденный интерес.\n\nГотовы протестировать методику и вернуть первых 30 клиентов в этом месяце. Обсудим условия?"
+      },
+      {
+        id: "autoservice",
+        name: "Автосервисы и сети СТО",
+        isHighLtv: true,
+        ltvFeatures: "Регулярное ТО каждые 10.000 км пробега или 2 раза в год, сезонный шиномонтаж, плановые замены расходников и агрегатный ремонт.",
+        sortTicket: 54000,
+        sortBase: 150000,
+        ticket: "18.000–90.000 ₽",
+        baseSize: "40.000–150.000",
+        coldCac: "1.500–4.500 ₽",
+        roi: "+600%–1.500%",
+        desc: "Слесарный и кузовной ремонт, плановое техническое обслуживание, диагностика. Периодичность обращения: пробег 10.000 км или сезон.",
+        lpr: "Владелец автосервиса, технический директор, руководитель сети.",
+        trigger: "Поиск запчастей, запросы по замене узлов, ремонту подвески или коробки передач.",
+        why: "Автовладелец обслуживал машину в прошлом году. При возникновении новой поломки он начинает искать сервис. Звонок от знакомого СТО гарантирует приезд на диагностику.",
+        salesComment: "Мастера-приемщики загружены оформлением документов. Им нужен подтвержденный заезд на подъемник за 500 ₽.",
+        channels: [
+          { name: "Телефонное обращение к руководителям автосервисов", scoreText: "9.4 из 10", desc: "Предложение загрузить свободные посты клиентами из архива заказ-нарядов.", action: "Тест на 20 заездов в сервис" },
+          { name: "Партнерство с поставщиками автософта и запчастей", scoreText: "8.9 из 10", desc: "Интеграция с учетными программами автосервисов.", action: "Совместные акции для сервисов" }
+        ],
+        script: "Приветствую! Подскажите, кто отвечает за загрузку постов в [Автосервис]?\n\nВ вашей базе заказ-нарядов собраны тысячи автовладельцев. Мы отслеживаем момент, когда человек из вашей базы снова начинает искать запчасти или ремонт, и передаем вам контакт для записи на диагностику по 500 ₽.\n\nЭто позволяет обеспечить дополнительно от 30 заездов в месяц без расходов на контекстную рекламу. Предлагаем запустить тест на 20 автомобилей. Интересно?"
+      }
+    ];
+
+    // Инициализация первой выбранной ниши
+    currentNiche = nichesData[0];
+
+    // -------------------------------------------------------------
+    // РЕЕСТР И ТАБЛИЦА КАНАЛОВ ПРИВЛЕЧЕНИЯ КЛИЕНТОВ (ВКЛАДКА 2)
+    // -------------------------------------------------------------
+    const channelsData = [
+      {
+        id: "partners",
+        name: "Партнерская сеть интеграторов (amoCRM, Битрикс24)",
+        convPct: 22,
+        convText: "22%",
+        volumeMonth: 60,
+        volumeText: "40–80 лидов",
+        costLead: 0,
+        costText: "0 ₽ (25% RevShare)",
+        speedDays: 25,
+        speedText: "3–4 нед.",
+        fitNiches: "Недвижимость, EdTech, B2B-услуги, Автодилеры"
+      },
+      {
+        id: "events",
+        name: "Отраслевые конференции и выставки (стенды, спикерство)",
+        convPct: 18,
+        convText: "18%",
+        volumeMonth: 35,
+        volumeText: "20–50 лидов/ивент",
+        costLead: 5500,
+        costText: "4.500–7.000 ₽",
+        speedDays: 14,
+        speedText: "1–2 нед.",
+        fitNiches: "Автодилеры, Девелопмент, Лизинг, Медцентры"
+      },
+      {
+        id: "seo",
+        name: "Поисковый спрос, каталоги и SEO (Search Engine Optimization)",
+        convPct: 14,
+        convText: "14%",
+        volumeMonth: 180,
+        volumeText: "120–250 лидов",
+        costLead: 1200,
+        costText: "900–1.500 ₽",
+        speedDays: 35,
+        speedText: "4–6 нед.",
+        fitNiches: "БФЛ, Автосервисы, Ремонт, Стоматологии"
+      },
+      {
+        id: "content",
+        name: "Видео-кейсы, подкасты и разборы (YouTube, Shorts)",
+        convPct: 11,
+        convText: "11%",
+        volumeMonth: 120,
+        volumeText: "80–180 лидов",
+        costLead: 1800,
+        costText: "1.200–2.400 ₽",
+        speedDays: 28,
+        speedText: "3–5 нед.",
+        fitNiches: "EdTech, Недвижимость, Индивидуальный туризм"
+      },
+      {
+        id: "target",
+        name: "Таргетированная реклама (Telegram Ads / VK Реклама)",
+        convPct: 9,
+        convText: "9%",
+        volumeMonth: 280,
+        volumeText: "200–450 лидов",
+        costLead: 2600,
+        costText: "1.800–3.400 ₽",
+        speedDays: 10,
+        speedText: "10–14 дней",
+        fitNiches: "Кухни, Ремонт квартир, БФЛ, Фитнес-сети"
+      },
+      {
+        id: "outreach",
+        name: "Прямой аутрич (персональные сообщения в TG / WhatsApp)",
+        convPct: 7,
+        convText: "7%",
+        volumeMonth: 45,
+        volumeText: "30–60 лидов (узкая емкость)",
+        costLead: 350,
+        costText: "250–500 ₽",
+        speedDays: 5,
+        speedText: "3–7 дней",
+        fitNiches: "Корпоративы, VIP-туризм, B2B-аутсорсинг"
+      }
+    ];
+
+    function renderChannelsTable() {
+      const tbody = document.getElementById('channelsTableBody');
+      if (!tbody) return;
+      let list = [...channelsData];
+
+      if (currentChannelsSort === 'conv') {
+        list.sort((a, b) => b.convPct - a.convPct);
+      } else if (currentChannelsSort === 'volume') {
+        list.sort((a, b) => b.volumeMonth - a.volumeMonth);
+      } else if (currentChannelsSort === 'cost') {
+        list.sort((a, b) => a.costLead - b.costLead);
+      } else if (currentChannelsSort === 'speed') {
+        list.sort((a, b) => a.speedDays - b.speedDays);
+      }
+
+      tbody.innerHTML = list.map(ch => `
+        <tr>
+          <td><b>${ch.name}</b></td>
+          <td><b style="color: var(--primary);">${ch.convText}</b></td>
+          <td>${ch.volumeText}</td>
+          <td>${ch.costText}</td>
+          <td>${ch.speedText}</td>
+          <td>
+            ${ch.fitNiches.split(', ').map(n => `<span class="channel-tag">${n}</span>`).join('')}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function sortChannelsTable(type) {
+      currentChannelsSort = type;
+      const bConv = document.getElementById('btnSortChConv');
+      const bVol = document.getElementById('btnSortChVol');
+      const bCost = document.getElementById('btnSortChCost');
+      const bSpeed = document.getElementById('btnSortChSpeed');
+      if (bConv) bConv.classList.toggle('active', type === 'conv');
+      if (bVol) bVol.classList.toggle('active', type === 'volume');
+      if (bCost) bCost.classList.toggle('active', type === 'cost');
+      if (bSpeed) bSpeed.classList.toggle('active', type === 'speed');
+      renderChannelsTable();
+    }
+
+    // -------------------------------------------------------------
+    // КОНФИГУРАЦИЯ СМЕТЫ ЗАПУСКА И ДИНАМИЧЕСКИЙ РАСЧЕТ КАНАЛОВ
+    // -------------------------------------------------------------
+    const CHANNEL_SPECS = {
+      outreach: { name: "Прямой аутрич (TG / WhatsApp)", cost: 35000, weeks: 1.5, clients: 7 },
+      target: { name: "Таргетинг (TG Ads / VK)", cost: 65000, weeks: 2.0, clients: 14 },
+      partners: { name: "Партнерство с интеграторами", cost: 30000, weeks: 2.5, clients: 10 },
+      content: { name: "Кейсы и видео-разборы", cost: 45000, weeks: 3.0, clients: 6 },
+      events: { name: "Отраслевые встречи / выставки", cost: 75000, weeks: 3.0, clients: 11 }
+    };
+
+    const defaultPlanItems = [
+      { id: "realestate", customBudget: null, customWeeks: null, customClients: null, channels: ["outreach", "partners", "events"] },
+      { id: "autodealer", customBudget: null, customWeeks: null, customClients: null, channels: ["outreach", "events"] },
+      { id: "kitchens", customBudget: null, customWeeks: null, customClients: null, channels: ["outreach", "target"] }
+    ];
+
+    let planItems = [];
+
+    function loadPlan() {
+      try {
+        const saved = localStorage.getItem('leadReactivatorPlan_v2');
+        if (saved) {
+          planItems = JSON.parse(saved);
+        } else {
+          planItems = JSON.parse(JSON.stringify(defaultPlanItems));
+        }
+      } catch(e) {
+        planItems = JSON.parse(JSON.stringify(defaultPlanItems));
+      }
+    }
+
+    function savePlan() {
+      try {
+        localStorage.setItem('leadReactivatorPlan_v2', JSON.stringify(planItems));
+      } catch(e) {}
+      renderPlan();
+    }
+
+    function resetPlanToDefaults() {
+      if (confirm('Сбросить смету к рекомендованным стартовым значениям?')) {
+        planItems = JSON.parse(JSON.stringify(defaultPlanItems));
+        savePlan();
+      }
+    }
+
+    function addCurrentNicheToPlan() {
+      if (!planItems.some(item => item.id === currentNiche.id)) {
+        planItems.push({
+          id: currentNiche.id,
+          customBudget: null,
+          customWeeks: null,
+          customClients: null,
+          channels: ["outreach", "partners"]
+        });
+        savePlan();
+      }
+      switchTab('launch-planner');
+    }
+
+    function addSelectedNicheFromDropdown() {
+      const select = document.getElementById('selectAddNiche');
+      const selectedId = select.value;
+      if (!selectedId) return;
+
+      const nicheObj = nichesData.find(n => n.id === selectedId);
+      if (nicheObj && !planItems.some(i => i.id === selectedId)) {
+        planItems.push({
+          id: nicheObj.id,
+          customBudget: null,
+          customWeeks: null,
+          customClients: null,
+          channels: ["outreach", "partners"]
+        });
+        savePlan();
+      }
+    }
+
+    function removePlanItem(id) {
+      planItems = planItems.filter(item => item.id !== id);
+      savePlan();
+    }
+
+    function getNicheCalculatedMetrics(item) {
+      const activeChannels = item.channels || [];
+      let calcCost = 0;
+      let calcClients = 0;
+      let maxChannelWeeks = 1.5;
+
+      activeChannels.forEach(cKey => {
+        const spec = CHANNEL_SPECS[cKey];
+        if (spec) {
+          calcCost += spec.cost;
+          calcClients += spec.clients;
+          if (spec.weeks > maxChannelWeeks) maxChannelWeeks = spec.weeks;
+        }
+      });
+
+      if (activeChannels.length === 0) {
+        calcCost = 20000;
+        calcClients = 2;
+        maxChannelWeeks = 1.0;
+      }
+
+      const budget = item.customBudget !== null ? item.customBudget : calcCost;
+      const weeks = item.customWeeks !== null ? item.customWeeks : Math.round(maxChannelWeeks);
+      const clients = item.customClients !== null ? item.customClients : calcClients;
+
+      return { budget, weeks, clients, defaultCost: calcCost, defaultClients: calcClients, defaultWeeks: Math.round(maxChannelWeeks) };
+    }
+
+    function updateItemBudget(id, rawVal) {
+      const val = parseDots(rawVal);
+      const item = planItems.find(i => i.id === id);
+      if (item) {
+        item.customBudget = Math.max(0, val);
+        savePlan();
+      }
+    }
+
+    function updateItemWeeks(id, rawVal) {
+      const val = parseInt(rawVal, 10) || 1;
+      const item = planItems.find(i => i.id === id);
+      if (item) {
+        item.customWeeks = Math.max(1, val);
+        savePlan();
+      }
+    }
+
+    function updateItemClients(id, rawVal) {
+      const val = parseInt(rawVal, 10) || 1;
+      const item = planItems.find(i => i.id === id);
+      if (item) {
+        item.customClients = Math.max(1, val);
+        savePlan();
+      }
+    }
+
+    function togglePlanChannel(nicheId, channelCode) {
+      const item = planItems.find(i => i.id === nicheId);
+      if (!item) return;
+      if (!item.channels) item.channels = [];
+      const idx = item.channels.indexOf(channelCode);
+      if (idx >= 0) {
+        item.channels.splice(idx, 1);
+      } else {
+        item.channels.push(channelCode);
+      }
+      item.customBudget = null;
+      item.customClients = null;
+      item.customWeeks = null;
+      savePlan();
+    }
+
+    // Рендер сметы
+    function renderPlan() {
+      const container = document.getElementById('planNichesContainer');
+      const selectEl = document.getElementById('selectAddNiche');
+      if (!container || !selectEl) return;
+      
+      let totalBudget = 0;
+      let totalClients = 0;
+      let maxNicheWeeks = 0;
+
+      const availableToAdd = nichesData.filter(n => !planItems.some(item => item.id === n.id));
+      selectEl.innerHTML = availableToAdd.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+      if (availableToAdd.length === 0) {
+        selectEl.innerHTML = `<option value="">Все ниши уже добавлены</option>`;
+      }
+
+      if (planItems.length === 0) {
+        container.innerHTML = `
+          <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; background: #f8fafc; border: 1px dashed var(--card-border); border-radius: 6px;">
+            В смету пока не добавлено ни одной ниши. Выберите нишу из списка ниже или из левого меню.
+          </div>
+        `;
+      } else {
+        container.innerHTML = planItems.map(item => {
+          const niche = nichesData.find(n => n.id === item.id) || {};
+          const metrics = getNicheCalculatedMetrics(item);
+
+          totalBudget += metrics.budget;
+          totalClients += metrics.clients;
+          if (metrics.weeks > maxNicheWeeks) maxNicheWeeks = metrics.weeks;
+
+          const hasOutreach = (item.channels || []).includes("outreach");
+          const hasTarget = (item.channels || []).includes("target");
+          const hasPartners = (item.channels || []).includes("partners");
+          const hasContent = (item.channels || []).includes("content");
+          const hasEvents = (item.channels || []).includes("events");
+
+          return `
+            <div class="plan-niche-card">
+              <div class="plan-niche-header">
+                <div class="plan-niche-title">
+                  <span>${niche.name || item.id}</span>
+                  ${niche.isHighLtv ? `<span class="badge-ltv" data-tooltip="Высокий LTV: ${escapeHtml(niche.ltvFeatures)}">LTV+</span>` : ''}
+                </div>
+                <button class="btn-remove-niche" onclick="removePlanItem('${item.id}')">Удалить из сметы</button>
+              </div>
+
+              <div class="plan-fields-grid">
+                <div class="plan-field-box">
+                  <div class="plan-field-label">Выделяемый бюджет:</div>
+                  <div class="edit-input-wrapper">
+                    <input type="text" class="edit-input" value="${formatDots(metrics.budget)}" 
+                           onchange="updateItemBudget('${item.id}', this.value)" 
+                           onblur="this.value = formatDots(parseDots(this.value))">
+                    <span class="edit-input-suffix">₽</span>
+                  </div>
+                  <span class="plan-field-hint">По выбранным каналам: ${formatDots(metrics.defaultCost)} ₽</span>
+                </div>
+
+                <div class="plan-field-box">
+                  <div class="plan-field-label">Срок реализации:</div>
+                  <div class="edit-input-wrapper">
+                    <input type="number" class="edit-input" value="${metrics.weeks}" 
+                           onchange="updateItemWeeks('${item.id}', this.value)" min="1" max="24">
+                    <span class="edit-input-suffix">нед.</span>
+                  </div>
+                  <span class="plan-field-hint">Расчетный срок: ${metrics.defaultWeeks} нед.</span>
+                </div>
+
+                <div class="plan-field-box">
+                  <div class="plan-field-label">План подключений:</div>
+                  <div class="edit-input-wrapper">
+                    <input type="number" class="edit-input" value="${metrics.clients}" 
+                           onchange="updateItemClients('${item.id}', this.value)" min="1" max="100">
+                    <span class="edit-input-suffix">компаний</span>
+                  </div>
+                  <span class="plan-field-hint">Прогноз от каналов: ${metrics.defaultClients} компаний</span>
+                </div>
+              </div>
+
+              <div>
+                <div class="plan-channels-title">Каналы коммуникации (чекбоксы динамически меняют бюджет и план):</div>
+                <div class="plan-channels-list">
+                  <label class="plan-channel-checkbox ${hasOutreach ? 'active' : ''}">
+                    <input type="checkbox" ${hasOutreach ? 'checked' : ''} onchange="togglePlanChannel('${item.id}', 'outreach')">
+                    Прямой аутрич (+35.000 ₽ / +7 комп.)
+                  </label>
+                  <label class="plan-channel-checkbox ${hasTarget ? 'active' : ''}">
+                    <input type="checkbox" ${hasTarget ? 'checked' : ''} onchange="togglePlanChannel('${item.id}', 'target')">
+                    Таргетинг (+65.000 ₽ / +14 комп.)
+                  </label>
+                  <label class="plan-channel-checkbox ${hasPartners ? 'active' : ''}">
+                    <input type="checkbox" ${hasPartners ? 'checked' : ''} onchange="togglePlanChannel('${item.id}', 'partners')">
+                    Партнерство (+30.000 ₽ / +10 комп.)
+                  </label>
+                  <label class="plan-channel-checkbox ${hasContent ? 'active' : ''}">
+                    <input type="checkbox" ${hasContent ? 'checked' : ''} onchange="togglePlanChannel('${item.id}', 'content')">
+                    Кейсы и видео (+45.000 ₽ / +6 комп.)
+                  </label>
+                  <label class="plan-channel-checkbox ${hasEvents ? 'active' : ''}">
+                    <input type="checkbox" ${hasEvents ? 'checked' : ''} onchange="togglePlanChannel('${item.id}', 'events')">
+                    Выставки / встречи (+75.000 ₽ / +11 комп.)
+                  </label>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      let totalRealWeeks = 0;
+      if (planItems.length > 0) {
+        totalRealWeeks = Math.round(maxNicheWeeks + (planItems.length - 1) * 0.7);
+      }
+
+      const sumN = document.getElementById('sumNichesCount');
+      const sumB = document.getElementById('sumTotalBudget');
+      const sumW = document.getElementById('sumMaxWeeks');
+      const sumC = document.getElementById('sumTotalClients');
+
+      if (sumN) sumN.innerText = planItems.length;
+      if (sumB) sumB.innerText = formatDots(totalBudget) + ' ₽';
+      if (sumW) sumW.innerText = totalRealWeeks + ' нед.';
+      if (sumC) sumC.innerText = formatDots(totalClients) + ' компаний';
+
+      renderResourcesSummary(totalBudget, totalRealWeeks, totalClients);
+    }
+
+    function renderResourcesSummary(budget, weeks, clients) {
+      const summaryBox = document.getElementById('planResourcesSummary');
+      if (!summaryBox) return;
+      if (planItems.length === 0) {
+        summaryBox.innerHTML = `<span style="color: var(--text-muted); font-size: 13px;">Выберите ниши выше для расчета команды и софта.</span>`;
+        return;
+      }
+
+      let allChannels = new Set();
+      planItems.forEach(i => (i.channels || []).forEach(c => allChannels.add(c)));
+
+      const team = [];
+      const soft = [];
+
+      if (allChannels.has('outreach')) {
+        team.push('Специалист по B2B-лидогенерации (сбор баз, первичные сообщения, ведение переписки)');
+        soft.push('Парсеры контактов (Чекко/Rusprofile), Telegram-аккаунты, мобильные прокси (~15.000 ₽)');
+      }
+      if (allChannels.has('target')) {
+        team.push('Таргетолог / специалист по контексту (настройка кампаний в Telegram Ads и VK)');
+        soft.push('Бюджеты рекламных кабинетов, сервис аналитики ссылок (~20.000 ₽)');
+      }
+      if (allChannels.has('partners')) {
+        team.push('Менеджер по развитию партнерской сети (переговоры с интеграторами amoCRM и агентствами)');
+        soft.push('Партнерские презентации, демо-кабинет сервиса (~10.000 ₽)');
+      }
+      if (allChannels.has('content')) {
+        team.push('Спикер/эксперт для записи + видеомонтажер коротких роликов');
+        soft.push('Аренда студии, монтаж видеоматериалов (~25.000 ₽)');
+      }
+      if (allChannels.has('events')) {
+        team.push('Представитель на конференции / стендист');
+        soft.push('Печатные раздаточные материалы, билеты участников (~35.000 ₽)');
+      }
+
+      summaryBox.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 13px;">
+          <div>
+            <div style="font-weight: 500; color: var(--text); margin-bottom: 6px;">Рекомендуемый состав команды:</div>
+            <ul style="padding-left: 18px; color: var(--text-muted); line-height: 1.6;">
+              ${team.map(t => `<li style="margin-bottom: 4px;">${t}</li>`).join('')}
+            </ul>
+          </div>
+          <div>
+            <div style="font-weight: 500; color: var(--text); margin-bottom: 6px;">Софт, сервисы и расходные статьи:</div>
+            <ul style="padding-left: 18px; color: var(--text-muted); line-height: 1.6;">
+              ${soft.map(s => `<li style="margin-bottom: 4px;">${s}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+        <div style="border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; font-size: 12px; color: var(--text-muted);">
+          <b>Экономический прогноз:</b> при привлечении ${clients} компаний на тестовый период со средним объемом базы и тарифом 500 ₽ за квалифицированный лид, стартовая выручка составит порядка <b>${formatDots(clients * 35 * 500)} ₽</b>, что окупает вложения в запуск.
+        </div>
+      `;
+    }
+
+    function copyPlanSummary() {
+      let text = "Смета запуска и ресурсов по проекту реактивации баз:\n\n";
+      let totalB = 0;
+      planItems.forEach((i, idx) => {
+        const n = nichesData.find(x => x.id === i.id) || {};
+        const m = getNicheCalculatedMetrics(i);
+        totalB += m.budget;
+        text += `${idx + 1}. ${n.name || i.id}: Бюджет ${formatDots(m.budget)} ₽, Срок ${m.weeks} нед., План ${m.clients} компаний\n`;
+      });
+      text += `\nИтоговый бюджет: ${formatDots(totalB)} ₽\nСрок реализации: ${document.getElementById('sumMaxWeeks').innerText}\nПлан подключений: ${document.getElementById('sumTotalClients').innerText}`;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Смета запуска скопирована в буфер обмена');
+      });
+    }
+
+    // Отрисовка списка ниш
+    function renderNiches() {
+      const listEl = document.getElementById('nicheList');
+      if (!listEl) return;
+      const search = (document.getElementById('nicheSearch')?.value || '').toLowerCase().trim();
+      let list = [...nichesData];
+
+      if (search) {
+        list = list.filter(n => n.name.toLowerCase().includes(search) || n.desc.toLowerCase().includes(search));
+      }
+      if (currentSort === 'ltv') {
+        list = list.filter(n => n.isHighLtv);
+      } else if (currentSort === 'ticket') {
+        list.sort((a, b) => b.sortTicket - a.sortTicket);
+      } else if (currentSort === 'base') {
+        list.sort((a, b) => b.sortBase - a.sortBase);
+      }
+
+      const countEl = document.getElementById('nicheCount');
+      if (countEl) countEl.innerText = list.length;
+      const mCountEl = document.getElementById('mobileNicheCount');
+      if (mCountEl) mCountEl.innerText = list.length;
+
+      const renderItem = (n) => `
+        <div class="niche-item ${(currentNiche && n.id === currentNiche.id) ? 'active' : ''}" onclick="selectNiche('${n.id}')">
+          <div class="niche-item-header">
+            <span class="niche-name" title="${escapeHtml(n.name)}">${n.name}</span>
+            ${n.isHighLtv ? `<span class="badge-ltv" data-tooltip="Высокий LTV: ${escapeHtml(n.ltvFeatures)}">LTV+</span>` : ''}
+          </div>
+          <div class="niche-meta">
+            <span>Чек: ${n.ticket}</span>
+            <span>База: ${n.baseSize}</span>
+          </div>
+        </div>
+      `;
+
+      listEl.innerHTML = list.map(renderItem).join('');
+
+      const mListEl = document.getElementById('mobileNicheList');
+      if (mListEl) {
+        mListEl.innerHTML = list.map(renderItem).join('');
+      }
+    }
+
+    function selectNiche(id) {
+      currentNiche = nichesData.find(n => n.id === id);
+      renderNiches();
+      updateNicheView();
+      toggleMobileDrawer(false);
+    }
+
+    function updateNicheView() {
+      if (!currentNiche) return;
+
+      const titleEl = document.getElementById('activeNicheTitle');
+      const descEl = document.getElementById('activeNicheDesc');
+      if (titleEl) titleEl.innerText = currentNiche.name;
+      if (descEl) descEl.innerText = currentNiche.desc;
+      
+      const ltvBadge = document.getElementById('activeNicheLtvBadge');
+      if (ltvBadge) {
+        ltvBadge.style.display = currentNiche.isHighLtv ? 'inline-flex' : 'none';
+        ltvBadge.innerText = 'LTV+';
+        ltvBadge.setAttribute('data-tooltip', 'Высокий LTV: ' + (currentNiche.ltvFeatures || 'Длительный жизненный цикл'));
+      }
+
+      // Обновляем мобильную плашку текущей ниши
+      const mobileNicheName = document.getElementById('mobileActiveNicheName');
+      if (mobileNicheName) mobileNicheName.innerText = currentNiche.name;
+      const mobileLtvBadge = document.getElementById('mobileNicheLtvBadge');
+      if (mobileLtvBadge) {
+        mobileLtvBadge.style.display = currentNiche.isHighLtv ? 'inline-flex' : 'none';
+        mobileLtvBadge.innerText = 'LTV+';
+        mobileLtvBadge.setAttribute('data-tooltip', 'Высокий LTV: ' + (currentNiche.ltvFeatures || 'Длительный жизненный цикл'));
+      }
+
+      // Блок описания факторов высокого LTV
+      const ltvBox = document.getElementById('activeNicheLtvBox');
+      const ltvFeatEl = document.getElementById('activeLtvFeatures');
+      if (ltvBox && ltvFeatEl) {
+        if (currentNiche.isHighLtv && currentNiche.ltvFeatures) {
+          ltvBox.style.display = 'block';
+          ltvFeatEl.innerText = currentNiche.ltvFeatures;
+        } else {
+          ltvBox.style.display = 'none';
+        }
+      }
+      
+      const kpiTicket = document.getElementById('kpiTicket');
+      const kpiBase = document.getElementById('kpiBase');
+      const kpiColdCac = document.getElementById('kpiColdCac');
+      const kpiRoi = document.getElementById('kpiRoi');
+
+      if (kpiTicket) kpiTicket.innerText = currentNiche.ticket;
+      if (kpiBase) kpiBase.innerText = currentNiche.baseSize;
+      if (kpiColdCac) kpiColdCac.innerText = currentNiche.coldCac;
+      if (kpiRoi) kpiRoi.innerText = currentNiche.roi;
+
+      const lprEl = document.getElementById('activeLpr');
+      const triggerEl = document.getElementById('activeTrigger');
+      const whyEl = document.getElementById('activeWhy');
+      const commentEl = document.getElementById('activeSalesComment');
+
+      if (lprEl) lprEl.innerText = currentNiche.lpr;
+      if (triggerEl) triggerEl.innerText = currentNiche.trigger;
+      if (whyEl) whyEl.innerText = currentNiche.why;
+      if (commentEl) commentEl.innerText = currentNiche.salesComment;
+
+      const channelsEl = document.getElementById('activeChannelsContainer');
+      if (channelsEl && currentNiche.channels) {
+        channelsEl.innerHTML = currentNiche.channels.map((c, idx) => `
+          <div class="channel-item">
+            <div class="channel-head">
+              <span class="channel-num">${idx + 1}.</span>
+              <span class="channel-name">${c.name}</span>
+              <span class="channel-score">Эффективность: ${c.scoreText}</span>
+            </div>
+            <div class="channel-desc">${c.desc}</div>
+            <div class="channel-action">Рекомендуемое действие: ${c.action}</div>
+          </div>
+        `).join('');
+      }
+
+      const scriptEl = document.getElementById('activeScriptText');
+      if (scriptEl) scriptEl.innerText = currentNiche.script;
+    }
+
+    function toggleMobileDrawer(open) {
+      const drawer = document.getElementById('mobileDrawer');
+      const overlay = document.getElementById('mobileDrawerOverlay');
+      if (!drawer || !overlay) return;
+      if (open) {
+        drawer.classList.add('active');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      } else {
+        drawer.classList.remove('active');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    }
+
+    function handleMobileSearch(val) {
+      const desktopSearch = document.getElementById('nicheSearch');
+      if (desktopSearch) desktopSearch.value = val;
+      renderNiches();
+    }
+
+    function setSortMode(mode) {
+      currentSort = mode;
+      document.querySelectorAll('.sort-btn:not(#btnTariff100):not(#btnTariff500):not([id^="btnSortCh"])').forEach(btn => {
+        const btnSort = btn.getAttribute('data-sort');
+        const btnId = btn.id;
+        const matches = (btnSort === mode) || (mode === 'all' && btnSort === 'default') ||
+                        (btnId === 'mSortAll' && mode === 'all') || (btnId === 'mSortTicket' && mode === 'ticket') ||
+                        (btnId === 'mSortBase' && mode === 'base') || (btnId === 'mSortLtv' && mode === 'ltv');
+        btn.classList.toggle('active', !!matches);
+      });
+      renderNiches();
+    }
+
+    function copyScript() {
+      const text = document.getElementById('activeScriptText').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Текст скопирован в буфер обмена');
+      });
+    }
+
+    function switchTab(target) {
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-tab') === target);
+      });
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+      const targetEl = document.getElementById('tab-' + target);
+      if (targetEl) targetEl.style.display = 'block';
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchTab(btn.getAttribute('data-tab'));
+      });
+    });
+
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        if(btn.id.startsWith('btnTariff') || btn.id.startsWith('btnSortCh') || btn.id.startsWith('mSort')) return;
+        document.querySelectorAll('.sort-btn:not(#btnTariff100):not(#btnTariff500):not([id^="btnSortCh"]):not([id^="mSort"])').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentSort = btn.getAttribute('data-sort');
+        renderNiches();
+      });
+    });
+
+    const searchInputEl = document.getElementById('nicheSearch');
+    if (searchInputEl) {
+      searchInputEl.addEventListener('input', renderNiches);
+    }
+
+    // Плавающий глобальный тултип
+    const tooltipEl = document.createElement('div');
+    tooltipEl.className = 'custom-tooltip';
+    tooltipEl.id = 'globalTooltip';
+    document.body.appendChild(tooltipEl);
+
+    let tooltipTimer = null;
+
+    function showTooltip(el, text) {
+      if (!text) return;
+      clearTimeout(tooltipTimer);
+      const cleanText = text.replace(/^Высокий LTV:\s*/i, '');
+      tooltipEl.innerHTML = `<div class="custom-tooltip-title">Высокий LTV</div><div>${cleanText}</div>`;
+      tooltipEl.classList.add('visible');
+
+      const rect = el.getBoundingClientRect();
+      const ttRect = tooltipEl.getBoundingClientRect();
+
+      let top = rect.top - ttRect.height - 8;
+      let left = rect.left + (rect.width / 2) - (ttRect.width / 2);
+
+      if (top < 10) {
+        top = rect.bottom + 8;
+      }
+      if (left < 10) left = 10;
+      if (left + ttRect.width > window.innerWidth - 10) {
+        left = window.innerWidth - ttRect.width - 10;
+      }
+
+      tooltipEl.style.top = `${Math.max(6, top)}px`;
+      tooltipEl.style.left = `${Math.max(6, left)}px`;
+    }
+
+    function hideTooltip() {
+      tooltipEl.classList.remove('visible');
+    }
+
+    document.addEventListener('mouseover', function(e) {
+      const target = e.target.closest('[data-tooltip]');
+      if (target) {
+        showTooltip(target, target.getAttribute('data-tooltip'));
+      }
+    });
+
+    document.addEventListener('mouseout', function(e) {
+      const target = e.target.closest('[data-tooltip]');
+      if (target) {
+        hideTooltip();
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      const target = e.target.closest('[data-tooltip]');
+      if (target) {
+        e.stopPropagation();
+        showTooltip(target, target.getAttribute('data-tooltip'));
+        clearTimeout(tooltipTimer);
+        tooltipTimer = setTimeout(hideTooltip, 4500);
+      } else {
+        hideTooltip();
+      }
+    });
+
+    // Калькулятор окупаемости для клиента
+    const sliderBase = document.getElementById('sliderBase');
+    const sliderDemand = document.getElementById('sliderDemand');
+    const sliderTicket = document.getElementById('sliderTicket');
+    const sliderConv = document.getElementById('sliderConv');
+
+    function setTariff(val) {
+      currentTariff = val;
+      const b100 = document.getElementById('btnTariff100');
+      const b500 = document.getElementById('btnTariff500');
+      const tVal = document.getElementById('calcTariffVal');
+      if (b100) b100.classList.toggle('active', val === 150);
+      if (b500) b500.classList.toggle('active', val === 500);
+      if (tVal) tVal.innerText = val === 150 ? '150 ₽ (Сырой контакт)' : '500 ₽ (Подтвержденный лид)';
+      calculate();
+    }
+
+    function calculate() {
+      if (!sliderBase || !sliderDemand || !sliderTicket || !sliderConv) return;
+      const base = parseInt(sliderBase.value);
+      const demandPct = parseFloat(sliderDemand.value);
+      const ticket = parseInt(sliderTicket.value);
+      const convPct = parseFloat(sliderConv.value);
+
+      document.getElementById('calcBaseVal').innerText = formatDots(base);
+      document.getElementById('calcDemandVal').innerText = demandPct.toFixed(1) + '%';
+      document.getElementById('calcTicketVal').innerText = formatDots(ticket) + ' ₽';
+      document.getElementById('calcConvVal').innerText = convPct + '%';
+
+      const activeLeads = Math.round(base * (demandPct / 100));
+      const effectiveConv = currentTariff === 150 ? (convPct * 0.45) : convPct;
+      const deals = Math.max(1, Math.round(activeLeads * (effectiveConv / 100)));
+      const cost = activeLeads * currentTariff;
+      const revenue = deals * ticket;
+      const netProfit = revenue - cost;
+      const romi = cost > 0 ? Math.round(((revenue - cost) / cost) * 100) : 0;
+
+      const rLeads = document.getElementById('resActiveLeads');
+      const rDeals = document.getElementById('resDeals');
+      const rCost = document.getElementById('resCost');
+      const rRev = document.getElementById('resRevenue');
+      const rNet = document.getElementById('resNetProfit');
+      const rRomi = document.getElementById('resRomi');
+
+      if (rLeads) rLeads.innerText = formatDots(activeLeads) + ' чел';
+      if (rDeals) rDeals.innerText = formatDots(deals) + ' сделок';
+      if (rCost) rCost.innerText = formatDots(cost) + ' ₽';
+      if (rRev) rRev.innerText = formatDots(revenue) + ' ₽';
+      if (rNet) rNet.innerText = (netProfit > 0 ? '+' : '') + formatDots(netProfit) + ' ₽';
+      if (rRomi) rRomi.innerText = (romi > 0 ? '+' : '') + formatDots(romi) + '%';
+    }
+
+    [sliderBase, sliderDemand, sliderTicket, sliderConv].forEach(slider => {
+      if (slider) slider.addEventListener('input', calculate);
+    });
+
+    // Инициализация при загрузке
+    loadPlan();
+    renderNiches();
+    updateNicheView();
+    calculate();
+    renderChannelsTable();
+    renderPlan();
+  </script>
+</body>
+</html>
