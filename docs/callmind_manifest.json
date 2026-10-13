@@ -1,0 +1,17 @@
+{
+  "name": "Звонки AI — Запись звонков, врачей и встреч",
+  "short_name": "Звонки AI",
+  "start_url": "./callmind.html",
+  "display": "standalone",
+  "background_color": "#222741",
+  "theme_color": "#222741",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3616/3616215.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
